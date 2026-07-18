@@ -65,13 +65,13 @@ app.get('/health', (req, res) => {
 });
 
 // ==========================================
-// API DE AUTENTICACIÓN - VERSIÓN CORREGIDA
+// API DE AUTENTICACIÓN - VERSIÓN CORREGIDA Y SIMPLIFICADA
 // ==========================================
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
-        // Validar que los campos no estén vacíos
+        // Validar campos obligatorios
         if (!email || !password) {
             return res.status(400).json({
                 success: false,
@@ -79,96 +79,118 @@ app.post('/api/auth/login', async (req, res) => {
             });
         }
 
-        // 1. Intentar autenticar con Supabase Auth
+        // 1. Autenticar con Supabase Auth
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
             email: email.trim().toLowerCase(),
             password: password
         });
 
-        if (authError) {
-            console.error('❌ Error de autenticación:', authError.message);
+        if (authError || !authData || !authData.user) {
+            console.error('❌ Error de autenticación:', authError?.message || 'Usuario no encontrado');
             
-            // Verificar si el error es por credenciales inválidas
-            if (authError.message.includes('Invalid login credentials')) {
-                return res.status(401).json({
-                    success: false,
-                    message: 'Credenciales inválidas. Verifique su email y contraseña.'
-                });
+            // Mensaje de error amigable
+            let message = 'Credenciales inválidas. Verifique su email y contraseña.';
+            if (authError?.message?.includes('Invalid login credentials')) {
+                message = 'Email o contraseña incorrectos.';
+            } else if (authError?.message) {
+                message = authError.message;
             }
             
             return res.status(401).json({
                 success: false,
-                message: authError.message || 'Error de autenticación'
+                message: message
             });
         }
-
-        if (!authData || !authData.user) {
-            return res.status(401).json({
-                success: false,
-                message: 'No se pudo autenticar el usuario'
-            });
-        }
-
-                // ... (código anterior de validación de authData) ...
 
         console.log('✅ Usuario autenticado en Auth. UID:', authData.user.id);
 
-        // 2. Buscar datos del usuario en la tabla 'users'
+        // 2. Buscar o crear perfil en la tabla 'users'
         let { data: userData, error: userError } = await supabase
             .from('users')
             .select('*')
             .eq('id', authData.user.id)
             .single();
 
-        // Si no existe en la tabla, lo creamos al vuelo
+        // Si no existe, crearlo automáticamente
         if (!userData) {
-            console.log('⚠️ Usuario no en tabla users. Creando perfil...');
+            console.log('⚠️ Usuario no encontrado en tabla users. Creando perfil...');
             
-                       const { data: newUser, error: createError } = await supabase
+            const { data: newUser, error: createError } = await supabase
                 .from('users')
                 .insert([{
                     id: authData.user.id,
                     email: authData.user.email,
-                    name: 'Administrador', // Nombre forzado para pruebas
-                    role: 'ADMIN',
-                    status: 'ACTIVE'
-                    // Quitamos created_at para que la BD lo ponga sola
+                    name: authData.user.user_metadata?.name || authData.user.email.split('@')[0] || 'Usuario',
+                    role: authData.user.user_metadata?.role || 'AUXILIAR',
+                    status: 'ACTIVE',
+                    created_at: new Date().toISOString()
                 }])
                 .select()
                 .single();
 
             if (createError) {
-                console.error('❌ DETALLE DEL ERROR AL CREAR:', createError); // Esto nos dirá la verdad
-                return res.status(500).json({ success: false, message: 'Error creando perfil: ' + createError.message });
+                console.error('❌ Error creando perfil de usuario:', createError);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Error creando perfil de usuario: ' + createError.message
+                });
             }
+
+            userData = newUser;
+            console.log('✅ Perfil de usuario creado exitosamente:', userData.id);
+        }
+
+        // Verificar que el usuario esté activo
+        if (userData.status !== 'ACTIVE') {
+            return res.status(403).json({
+                success: false,
+                message: 'Usuario inactivo. Contacte al administrador.'
+            });
+        }
 
         // 3. Generar Token JWT
         const token = jwt.sign(
-            { id: userData.id, role: userData.role },
+            { 
+                id: userData.id, 
+                role: userData.role,
+                email: userData.email 
+            },
             process.env.JWT_SECRET,
             { expiresIn: '24h' }
         );
 
-        res.json({ success: true, data: { user: userData, token } });
-
-        // 4. Registrar el login en auditoría (opcional)
+        // 4. Registrar login en auditoría (opcional - no crítico)
         try {
             await supabase
                 .from('audit_logs')
                 .insert([{
                     user_id: userData.id,
                     action: 'LOGIN',
-                    details: { email: userData.email, timestamp: new Date().toISOString() }
+                    details: { 
+                        email: userData.email, 
+                        timestamp: new Date().toISOString(),
+                        ip: req.ip || req.connection.remoteAddress
+                    }
                 }]);
         } catch (auditError) {
             console.warn('⚠️ No se pudo registrar auditoría:', auditError.message);
+            // No fallamos la respuesta por esto
         }
 
+        // 5. Respuesta exitosa
         res.json({
             success: true,
             message: 'Login exitoso',
             data: {
-                user: userData,
+                user: {
+                    id: userData.id,
+                    name: userData.name,
+                    email: userData.email,
+                    role: userData.role,
+                    cedula: userData.cedula || null,
+                    rethus: userData.rethus || null,
+                    status: userData.status
+                },
                 token
             }
         });
@@ -205,13 +227,27 @@ app.post('/api/auth/register', async (req, res) => {
             });
         }
 
+        // Verificar si el email ya existe en la tabla users
+        const { data: existingUser, error: checkError } = await supabase
+            .from('users')
+            .select('email')
+            .eq('email', email.trim().toLowerCase())
+            .maybeSingle();
+
+        if (existingUser) {
+            return res.status(409).json({
+                success: false,
+                message: 'El email ya está registrado'
+            });
+        }
+
         // 1. Registrar en Supabase Auth
         const { data: authData, error: authError } = await supabase.auth.signUp({
             email: email.trim().toLowerCase(),
             password: password,
             options: {
                 data: {
-                    name: name,
+                    name: name.trim(),
                     role: role || 'AUXILIAR'
                 }
             }
@@ -219,16 +255,24 @@ app.post('/api/auth/register', async (req, res) => {
 
         if (authError) {
             console.error('❌ Error registrando en Auth:', authError);
+            
+            let message = 'Error registrando usuario';
+            if (authError.message.includes('User already registered')) {
+                message = 'El email ya está registrado en el sistema';
+            } else if (authError.message) {
+                message = authError.message;
+            }
+            
             return res.status(400).json({
                 success: false,
-                message: authError.message || 'Error registrando usuario'
+                message: message
             });
         }
 
         if (!authData || !authData.user) {
             return res.status(500).json({
                 success: false,
-                message: 'No se pudo crear el usuario'
+                message: 'No se pudo crear el usuario en el sistema de autenticación'
             });
         }
 
@@ -250,11 +294,15 @@ app.post('/api/auth/register', async (req, res) => {
 
         if (userError) {
             console.error('❌ Error creando perfil:', userError);
-            // Si falla la creación del perfil, intentar eliminar el usuario de Auth
-            await supabase.auth.admin.deleteUser(authData.user.id);
+            // Intentar eliminar el usuario de Auth si falla la creación del perfil
+            try {
+                await supabase.auth.admin.deleteUser(authData.user.id);
+            } catch (deleteError) {
+                console.warn('⚠️ No se pudo eliminar usuario de Auth:', deleteError);
+            }
             return res.status(500).json({
                 success: false,
-                message: 'Error creando perfil de usuario'
+                message: 'Error creando perfil de usuario: ' + userError.message
             });
         }
 
@@ -268,7 +316,18 @@ app.post('/api/auth/register', async (req, res) => {
         res.status(201).json({
             success: true,
             message: 'Usuario registrado exitosamente',
-            data: { user: userData, token }
+            data: { 
+                user: {
+                    id: userData.id,
+                    name: userData.name,
+                    email: userData.email,
+                    role: userData.role,
+                    cedula: userData.cedula,
+                    rethus: userData.rethus,
+                    status: userData.status
+                }, 
+                token 
+            }
         });
 
     } catch (error) {
@@ -333,7 +392,7 @@ app.post('/api/auth/verify', async (req, res) => {
         if (error.name === 'TokenExpiredError') {
             return res.status(401).json({
                 success: false,
-                message: 'Token expirado'
+                message: 'Token expirado, por favor inicie sesión nuevamente'
             });
         }
         console.error('❌ Error verificando token:', error);
@@ -361,7 +420,10 @@ app.post('/api/auth/logout', async (req, res) => {
                         .insert([{
                             user_id: decoded.id,
                             action: 'LOGOUT',
-                            details: { timestamp: new Date().toISOString() }
+                            details: { 
+                                timestamp: new Date().toISOString(),
+                                ip: req.ip || req.connection.remoteAddress
+                            }
                         }]);
                 }
             } catch (auditError) {
