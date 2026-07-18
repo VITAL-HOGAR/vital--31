@@ -1,1 +1,226 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vital Hogar Pro IPS - Siglo 31</title>
+    
+    <!-- Librerías Externas desde CDN (Para no instalar nada local) -->
+    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
+    <style>
+        /* ==========================================
+           ESTILOS MAESTROS (CSS INTEGRADO)
+           ========================================== */
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: #1e293b;
+            --primary: #22c55e;
+            --text-main: #e2e8f0;
+            --text-muted: #94a3b8;
+            --border: #334155;
+        }
+
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 0; line-height: 1.6; }
+        
+        /* Layout General */
+        .app-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .hidden { display: none !important; }
+        
+        /* Header */
+        header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: var(--card-bg); border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--border); }
+        .logo h1 { margin: 0; font-size: 1.2rem; color: var(--primary); }
+        .user-pill { background: var(--bg-dark); padding: 5px 15px; border-radius: 20px; font-size: 0.85rem; border: 1px solid var(--border); display: flex; gap: 10px; align-items: center; }
+        
+        /* Login Screen */
+        .login-wrapper { display: flex; justify-content: center; align-items: center; height: 90vh; }
+        .login-card { background: var(--card-bg); padding: 2.5rem; border-radius: 16px; width: 100%; max-width: 400px; text-align: center; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        
+        /* Formularios y Botones */
+        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-dark); color: white; box-sizing: border-box; }
+        button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; margin-top: 10px; }
+        button:hover { opacity: 0.9; }
+        button.secondary { background: var(--border); }
+        
+        /* Navegación (Tabs) */
+        .nav-tabs { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 10px; margin-bottom: 20px; }
+        .tab-btn { background: var(--card-bg); border: 1px solid var(--border); padding: 10px 20px; border-radius: 8px; color: var(--text-muted); cursor: pointer; white-space: nowrap; }
+        .tab-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        
+        /* Módulos */
+        .module-section { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        
+        /* Toast Notifications */
+        #toast { position: fixed; bottom: 20px; right: 20px; background: var(--card-bg); padding: 15px 25px; border-radius: 8px; border-left: 4px solid var(--primary); box-shadow: 0 5px 15px rgba(0,0,0,0.3); transform: translateY(100px); transition: 0.3s; z-index: 1000; }
+        #toast.show { transform: translateY(0); }
+    </style>
+</head>
+<body>
+
+    <!-- NOTIFICACIONES -->
+    <div id="toast">Mensaje del sistema</div>
+
+    <!-- PANTALLA DE LOGIN -->
+    <div id="loginScreen" class="login-wrapper">
+        <div class="login-card">
+            <h2 style="color: var(--primary);">🏥 Vital Hogar 31</h2>
+            <p style="color: var(--text-muted); margin-bottom: 20px;">Plataforma de Cuidados Domiciliarios</p>
+            <input type="email" id="loginEmail" placeholder="Correo Electrónico" value="admin@vitalhogar.com">
+            <input type="password" id="loginPass" placeholder="Contraseña" value="123456">
+            <button onclick="handleLogin()">Ingresar al Sistema</button>
+            <p id="loginMsg" style="color: #ef4444; font-size: 0.9rem; margin-top: 10px;"></p>
+        </div>
+    </div>
+
+    <!-- APLICACIÓN PRINCIPAL -->
+    <div id="mainApp" class="app-container hidden">
+        <header>
+            <div class="logo">
+                <h1>🏥 VITAL HOGAR PRO IPS</h1>
+            </div>
+            <div class="user-pill">
+                <span id="userNameDisplay">Usuario</span>
+                <button onclick="logout()" style="width: auto; padding: 5px 10px; margin: 0; background: #ef4444; font-size: 0.8rem;">Salir</button>
+            </div>
+        </header>
+
+        <!-- Navegación de Módulos -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" onclick="showModule('dashboard')">📊 Dashboard</button>
+            <button class="tab-btn" onclick="showModule('patients')">👥 Pacientes</button>
+            <button class="tab-btn" onclick="showModule('vitals')">🩺 Signos Vitales</button>
+            <button class="tab-btn" onclick="showModule('reports')">📄 Reportes PDF</button>
+        </div>
+
+        <!-- Módulo: Dashboard -->
+        <div id="mod-dashboard" class="module-section">
+            <h3>Bienvenido al Centro de Control</h3>
+            <p>Sistema monolítico v31.0 conectado a Render y Supabase.</p>
+            <div class="grid-2">
+                <div style="background: var(--bg-dark); padding: 15px; border-radius: 8px;">
+                    <h4>Pacientes Activos</h4>
+                    <p style="font-size: 2rem; color: var(--primary);">124</p>
+                </div>
+                <div style="background: var(--bg-dark); padding: 15px; border-radius: 8px;">
+                    <h4>Signos Hoy</h4>
+                    <p style="font-size: 2rem; color: #3b82f6;">45</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Módulo: Pacientes -->
+        <div id="mod-patients" class="module-section hidden">
+            <h3>Gestión de Pacientes</h3>
+            <input type="text" placeholder="Buscar paciente por nombre o documento...">
+            <div style="margin-top: 20px; padding: 20px; background: var(--bg-dark); border-radius: 8px; text-align: center;">
+                <p>Listado de pacientes cargado desde Supabase.</p>
+                <button class="secondary" style="width: auto;">+ Nuevo Paciente</button>
+            </div>
+        </div>
+
+        <!-- Módulo: Signos Vitales -->
+        <div id="mod-vitals" class="module-section hidden">
+            <h3>Registro de Signos Vitales</h3>
+            <div class="grid-2">
+                <input type="number" placeholder="Presión Sistólica">
+                <input type="number" placeholder="Presión Diastólica">
+                <input type="number" placeholder="Frecuencia Cardíaca">
+                <input type="number" placeholder="Saturación O2 (%)">
+            </div>
+            <button onclick="showToast('Signos guardados correctamente (Simulación)')">Guardar Registro</button>
+        </div>
+
+        <!-- Módulo: Reportes -->
+        <div id="mod-reports" class="module-section hidden">
+            <h3>Generador de Reportes PDF</h3>
+            <p>Selecciona un paciente para generar su historia clínica domiciliaria.</p>
+            <button class="secondary" onclick="generateTestPDF()">📄 Generar PDF de Prueba</button>
+        </div>
+    </div>
+
+    <!-- LÓGICA DEL SISTEMA (JAVASCRIPT INTEGRADO) -->
+    <script>
+        // CONFIGURACIÓN
+        const API_URL = ''; // Se llenará automáticamente con la URL actual de Render
+
+        // UTILIDADES
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
+        }
+
+        function showModule(moduleId) {
+            document.querySelectorAll('.module-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById('mod-' + moduleId).classList.remove('hidden');
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+
+        // AUTENTICACIÓN
+        async function handleLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPass').value;
+            const msg = document.getElementById('loginMsg');
+            
+            msg.textContent = "Conectando con el cerebro central...";
+            
+            try {
+                // Usamos la ruta relativa '/api' porque el frontend y backend están en el mismo servidor
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password: pass })
+                });
+                
+                const data = await res.json();
+                
+                if (data.success) {
+                    localStorage.setItem('vital_token', data.data.token);
+                    localStorage.setItem('vital_user', JSON.stringify(data.data.user));
+                    initApp();
+                } else {
+                    msg.textContent = data.message;
+                }
+            } catch (e) {
+                msg.textContent = "Error de conexión con el servidor.";
+                console.error(e);
+            }
+        }
+
+        function logout() {
+            localStorage.clear();
+            location.reload();
+        }
+
+        // INICIALIZACIÓN
+        function initApp() {
+            const token = localStorage.getItem('vital_token');
+            const user = JSON.parse(localStorage.getItem('vital_user'));
+            
+            if (token && user) {
+                document.getElementById('loginScreen').classList.add('hidden');
+                document.getElementById('mainApp').classList.remove('hidden');
+                document.getElementById('userNameDisplay').textContent = user.name || user.email;
+            }
+        }
+
+        // FUNCIÓN DE PRUEBA PARA PDF
+        function generateTestPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text("Reporte Vital Hogar Pro IPS - Siglo 31", 10, 10);
+            doc.text("Generado desde el servidor monolítico.", 10, 20);
+            doc.save("reporte-prueba.pdf");
+            showToast("PDF Generado exitosamente");
+        }
+
+        // Arrancar
+        window.onload = initApp;
+    </script>
+</body>
+</html>
