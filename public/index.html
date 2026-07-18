@@ -4,952 +4,194 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vital Hogar Pro IPS - Siglo 31</title>
-    
-    <!-- Librerías Externas desde CDN -->
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-
     <style>
-        /* ==========================================
-           ESTILOS MAESTROS (CSS INTEGRADO)
-           ========================================== */
-        :root {
-            --bg-dark: #0f172a;
-            --card-bg: #1e293b;
-            --primary: #22c55e;
-            --primary-dark: #16a34a;
-            --text-main: #e2e8f0;
-            --text-muted: #94a3b8;
-            --border: #334155;
-            --danger: #ef4444;
-            --info: #3b82f6;
-            --warning: #f97316;
-            --radius: 12px;
-            --shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
-        }
-
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: var(--bg-dark);
-            color: var(--text-main);
-            line-height: 1.6;
-            min-height: 100vh;
-        }
-
-        /* ==========================================
-           LAYOUT GENERAL
-           ========================================== */
-        .app-container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 20px;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        /* ==========================================
-           HEADER
-           ========================================== */
-        header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 20px;
-            background: var(--card-bg);
-            border-radius: var(--radius);
-            margin-bottom: 20px;
-            border: 1px solid var(--border);
-            flex-wrap: wrap;
-            gap: 10px;
-        }
-
-        .logo-area {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-        }
-
-        .logo-area img {
-            height: 50px;
-            width: auto;
-            object-fit: contain;
-            border-radius: 8px;
-        }
-
-        .logo-text h1 {
-            margin: 0;
-            font-size: 1.2rem;
-            color: var(--primary);
-            font-weight: 700;
-        }
-
-        .logo-text span {
-            font-size: 0.8rem;
-            color: var(--text-muted);
-        }
-
-        .user-pill {
-            background: var(--bg-dark);
-            padding: 5px 15px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            border: 1px solid var(--border);
-            display: flex;
-            gap: 10px;
-            align-items: center;
-        }
-
-        .user-pill #userNameDisplay {
-            color: var(--primary);
-            font-weight: 600;
-        }
-
-        /* ==========================================
-           LOGIN SCREEN
-           ========================================== */
-        .login-wrapper {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
-        }
-
-        .login-card {
-            background: var(--card-bg);
-            padding: 2.5rem;
-            border-radius: 16px;
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-            border: 1px solid var(--border);
-            box-shadow: var(--shadow);
-            animation: slideUp 0.5s ease;
-        }
-
-        .login-logo {
-            height: 80px;
-            width: auto;
-            margin-bottom: 20px;
-            border-radius: 12px;
-        }
-
-        .login-card h2 {
-            color: var(--primary);
-            margin-bottom: 5px;
-        }
-
-        .login-card .subtitle {
-            color: var(--text-muted);
-            margin-bottom: 20px;
-            font-size: 0.9rem;
-        }
-
-        .login-error {
-            color: var(--danger);
-            font-size: 0.9rem;
-            margin-top: 10px;
-            min-height: 24px;
-        }
-
-        /* ==========================================
-           FORMULARIOS Y BOTONES
-           ========================================== */
-        .form-group {
-            position: relative;
-            margin-bottom: 15px;
-        }
-
-        input,
-        select,
-        textarea {
-            width: 100%;
-            padding: 12px 14px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            background: var(--bg-dark);
-            color: white;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            box-sizing: border-box;
-        }
-
-        input:focus,
-        select:focus,
-        textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.125);
-        }
-
-        input::placeholder,
-        textarea::placeholder {
-            color: var(--text-muted);
-        }
-
-        .password-toggle {
-            position: absolute;
-            right: 12px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            font-size: 1.2rem;
-            padding: 0;
-            width: auto;
-            margin: 0;
-        }
-
-        .password-toggle:hover {
-            color: var(--text-main);
-        }
-
-        button {
-            width: 100%;
-            padding: 12px;
-            background: var(--primary);
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 1rem;
-            transition: all 0.3s ease;
-            margin-top: 10px;
-        }
-
-        button:hover:not(:disabled) {
-            background: var(--primary-dark);
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
-        }
-
-        button:active:not(:disabled) {
-            transform: translateY(0);
-        }
-
-        button:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        button.secondary {
-            background: var(--border);
-        }
-
-        button.secondary:hover {
-            background: #475569;
-        }
-
-        button.danger {
-            background: var(--danger);
-        }
-
-        button.danger:hover {
-            background: #dc2626;
-        }
-
-        button.small {
-            width: auto;
-            padding: 6px 14px;
-            font-size: 0.8rem;
-            margin: 0;
-        }
-
-        /* ==========================================
-           NAVEGACIÓN (TABS)
-           ========================================== */
-        .nav-tabs {
-            display: flex;
-            gap: 10px;
-            overflow-x: auto;
-            padding-bottom: 10px;
-            margin-bottom: 20px;
-            flex-wrap: nowrap;
-        }
-
-        .tab-btn {
-            background: var(--card-bg);
-            border: 1px solid var(--border);
-            padding: 10px 20px;
-            border-radius: 8px;
-            color: var(--text-muted);
-            cursor: pointer;
-            white-space: nowrap;
-            font-weight: 500;
-            transition: all 0.3s ease;
-            width: auto;
-            margin: 0;
-        }
-
-        .tab-btn:hover {
-            background: var(--border);
-            color: var(--text-main);
-        }
-
-        .tab-btn.active {
-            background: var(--primary);
-            color: white;
-            border-color: var(--primary);
-        }
-
-        /* ==========================================
-           MÓDULOS
-           ========================================== */
-        .module-section {
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: var(--radius);
-            border: 1px solid var(--border);
-            animation: fadeIn 0.3s ease;
-        }
-
-        .module-section h3 {
-            color: var(--primary);
-            margin-bottom: 15px;
-            border-left: 3px solid var(--primary);
-            padding-left: 12px;
-        }
-
-        .module-section p {
-            color: var(--text-muted);
-            margin-bottom: 15px;
-        }
-
-        /* ==========================================
-           GRID SYSTEM
-           ========================================== */
-        .grid-2 {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-        }
-
-        .grid-3 {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 20px;
-        }
-
-        .stat-card {
-            background: var(--bg-dark);
-            padding: 15px;
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            transition: all 0.3s ease;
-        }
-
-        .stat-card:hover {
-            border-color: var(--primary);
-            transform: translateY(-2px);
-        }
-
-        .stat-card h4 {
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            margin-bottom: 5px;
-        }
-
-        .stat-card .stat-number {
-            font-size: 2rem;
-            font-weight: 700;
-        }
-
-        .stat-card .stat-number.green {
-            color: var(--primary);
-        }
-
-        .stat-card .stat-number.blue {
-            color: var(--info);
-        }
-
-        .stat-card .stat-number.orange {
-            color: var(--warning);
-        }
-
-        .stat-card .stat-number.red {
-            color: var(--danger);
-        }
-
-        /* ==========================================
-           TOAST NOTIFICATIONS
-           ========================================== */
-        #toast {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            background: var(--card-bg);
-            padding: 15px 25px;
-            border-radius: 8px;
-            border-left: 4px solid var(--primary);
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-            transform: translateY(100px);
-            opacity: 0;
-            transition: all 0.3s ease;
-            z-index: 1000;
-            max-width: 90%;
-        }
-
-        #toast.show {
-            transform: translateY(0);
-            opacity: 1;
-        }
-
-        #toast.error {
-            border-left-color: var(--danger);
-        }
-
-        #toast.warning {
-            border-left-color: var(--warning);
-        }
-
-        #toast.info {
-            border-left-color: var(--info);
-        }
-
-        /* ==========================================
-           ANIMACIONES
-           ========================================== */
-        @keyframes slideUp {
-            from {
-                transform: translateY(30px);
-                opacity: 0;
-            }
-            to {
-                transform: translateY(0);
-                opacity: 1;
-            }
-        }
-
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(10px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
-        }
-
-        /* ==========================================
-           RESPONSIVE
-           ========================================== */
-        @media (max-width: 768px) {
-            .app-container {
-                padding: 10px;
-            }
-
-            header {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .logo-area {
-                flex-direction: column;
-                text-align: center;
-            }
-
-            .grid-2,
-            .grid-3 {
-                grid-template-columns: 1fr;
-                gap: 10px;
-            }
-
-            .nav-tabs {
-                gap: 6px;
-            }
-
-            .tab-btn {
-                padding: 8px 14px;
-                font-size: 0.8rem;
-            }
-
-            .login-card {
-                padding: 1.5rem;
-            }
-
-            .stat-card .stat-number {
-                font-size: 1.5rem;
-            }
-        }
-
-        @media (max-width: 480px) {
-            .login-card {
-                padding: 1.2rem;
-            }
-
-            .login-logo {
-                height: 60px;
-            }
-
-            .logo-area img {
-                height: 40px;
-            }
-
-            .logo-text h1 {
-                font-size: 1rem;
-            }
-
-            .user-pill {
-                font-size: 0.75rem;
-                padding: 4px 12px;
-            }
-
-            .module-section {
-                padding: 14px;
-            }
-
-            #toast {
-                bottom: 10px;
-                right: 10px;
-                padding: 12px 18px;
-                font-size: 0.85rem;
-            }
-        }
-
-        /* ==========================================
-           ACCESIBILIDAD
-           ========================================== */
-        @media (prefers-reduced-motion: reduce) {
-            * {
-                animation-duration: 0.01ms !important;
-                animation-iteration-count: 1 !important;
-                transition-duration: 0.01ms !important;
-            }
-        }
-
-        /* Scrollbar personalizada */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-
-        ::-webkit-scrollbar-track {
-            background: var(--bg-dark);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb {
-            background: var(--border);
-            border-radius: 4px;
-        }
-
-        ::-webkit-scrollbar-thumb:hover {
-            background: var(--text-muted);
-        }
+        :root { --bg-dark: #0f172a; --card-bg: #1e293b; --primary: #22c55e; --danger: #ef4444; --warning: #f59e0b; --text-main: #e2e8f0; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 0; }
+        .app-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .hidden { display: none !important; }
+        
+        /* Header */
+        header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--card-bg); border-radius: 12px; margin-bottom: 20px; border: 1px solid #334155; }
+        .logo-area img { height: 50px; }
+        
+        /* Módulos y Tarjetas */
+        .module-section { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid #334155; margin-bottom: 20px; }
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        
+        /* Inputs y Botones */
+        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
+        button { padding: 12px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        button:hover { opacity: 0.9; }
+        button.secondary { background: #334155; }
+        button.mic-btn { background: var(--warning); color: black; width: auto; margin-left: 10px; }
+        
+        /* Checklist de Actividades */
+        .activity-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 15px; }
+        .act-btn { background: #334155; padding: 15px; text-align: center; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
+        .act-btn.active { background: var(--primary); border-color: white; }
+        .act-time { font-size: 0.7rem; display: block; margin-top: 5px; opacity: 0.8; }
+
+        /* Semáforo SpO2 */
+        .spo2-indicator { display: inline-block; width: 15px; height: 15px; border-radius: 50%; margin-right: 10px; }
+        .status-green { background: var(--primary); box-shadow: 0 0 10px var(--primary); }
+        .status-red { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+
+        /* Login */
+        .login-wrapper { display: flex; justify-content: center; align-items: center; height: 90vh; }
+        .login-card { background: var(--card-bg); padding: 2rem; border-radius: 16px; width: 100%; max-width: 400px; text-align: center; }
     </style>
 </head>
 <body>
 
-    <!-- NOTIFICACIONES -->
-    <div id="toast">Mensaje del sistema</div>
-
-    <!-- PANTALLA DE LOGIN -->
+    <!-- LOGIN -->
     <div id="loginScreen" class="login-wrapper">
         <div class="login-card">
-            <img src="https://i.imgur.com/01YZxey.jpeg" alt="Logo Vital Hogar" class="login-logo">
+            <img src="https://i.imgur.com/01YZxey.jpeg" style="height: 80px;">
             <h2>Vital Hogar Pro IPS</h2>
-            <p class="subtitle">Plataforma de Cuidados Domiciliarios</p>
-            
-            <div class="form-group">
-                <input type="email" id="loginEmail" placeholder="Correo Electrónico" value="admin@vitalhogar.com">
-            </div>
-            
-            <div class="form-group">
-                <input type="password" id="loginPass" placeholder="Contraseña" value="123456">
-                <button type="button" class="password-toggle" onclick="togglePassword()" aria-label="Mostrar contraseña">
-                    <i class="fas fa-eye"></i>
-                </button>
-            </div>
-            
-            <button onclick="handleLogin()" id="loginBtn">
-                <span id="loginBtnText">Ingresar al Sistema</span>
-                <span id="loginSpinner" class="hidden"><i class="fas fa-spinner fa-spin"></i></span>
-            </button>
-            
-            <p id="loginMsg" class="login-error"></p>
+            <input type="email" id="loginEmail" placeholder="Email" value="admin@vitalhogar.com">
+            <input type="password" id="loginPass" placeholder="Contraseña" value="123456">
+            <button onclick="handleLogin()">Ingresar</button>
+            <p id="loginMsg" style="color: var(--danger);"></p>
         </div>
     </div>
 
-    <!-- APLICACIÓN PRINCIPAL -->
+    <!-- APP PRINCIPAL -->
     <div id="mainApp" class="app-container hidden">
         <header>
             <div class="logo-area">
-                <img src="https://i.imgur.com/01YZxey.jpeg" alt="Logo Vital Hogar">
-                <div class="logo-text">
-                    <h1>VITAL HOGAR PRO IPS</h1>
-                    <span>Cuidados Domiciliarios</span>
-                </div>
+                <img src="https://i.imgur.com/01YZxey.jpeg">
+                <div><h1>VITAL HOGAR PRO</h1><small>Cuidados Domiciliarios Siglo 31</small></div>
             </div>
-            <div class="user-pill">
-                <span id="userNameDisplay">Usuario</span>
-                <span id="userRoleDisplay" style="font-size:0.7rem;color:var(--text-muted);"></span>
-                <button onclick="logout()" class="small danger">Salir</button>
-            </div>
+            <button onclick="logout()" style="background: var(--danger); width: auto;">Salir</button>
         </header>
 
-        <!-- Navegación de Módulos -->
-        <div class="nav-tabs" id="navTabs">
-            <button class="tab-btn active" data-module="dashboard" onclick="showModule('dashboard', this)">📊 Dashboard</button>
-            <button class="tab-btn" data-module="patients" onclick="showModule('patients', this)">👥 Pacientes</button>
-            <button class="tab-btn" data-module="vitals" onclick="showModule('vitals', this)">🩺 Signos Vitales</button>
-            <button class="tab-btn" data-module="reports" onclick="showModule('reports', this)">📄 Reportes PDF</button>
-        </div>
-
-        <!-- Módulo: Dashboard -->
-        <div id="mod-dashboard" class="module-section">
-            <h3>📊 Centro de Control</h3>
-            <p>Sistema monolítico v31.0 conectado a Render y Supabase.</p>
+        <!-- MÓDULO: INICIO DE TURNO Y ACTIVIDADES -->
+        <div class="module-section">
+            <h3>📋 Recepción de Paciente y Turno</h3>
+            
+            <!-- Selección de Ciudad para Lógica de Altitud -->
             <div class="grid-2">
-                <div class="stat-card">
-                    <h4>Pacientes Activos</h4>
-                    <p class="stat-number green" id="totalPacientes">124</p>
+                <div>
+                    <label>Ciudad del Paciente (Lógica SpO2):</label>
+                    <select id="patientCity" onchange="updateSpo2Logic()">
+                        <option value="97">Cúcuta / Costa (Nivel 1)</option>
+                        <option value="96">Cali / Bga (Nivel 2)</option>
+                        <option value="95">Medellín (Nivel 3)</option>
+                        <option value="93">Bogotá (Nivel 4)</option>
+                    </select>
                 </div>
-                <div class="stat-card">
-                    <h4>Signos Hoy</h4>
-                    <p class="stat-number blue" id="signosHoy">45</p>
+                <div>
+                    <label>Duración del Turno:</label>
+                    <select id="shiftDuration">
+                        <option value="6">6 Horas</option>
+                        <option value="8">8 Horas</option>
+                        <option value="12">12 Horas</option>
+                        <option value="24">24 Horas</option>
+                    </select>
                 </div>
-                <div class="stat-card">
-                    <h4>Profesionales</h4>
-                    <p class="stat-number orange" id="totalProfesionales">12</p>
-                </div>
-                <div class="stat-card">
-                    <h4>Actividades Pendientes</h4>
-                    <p class="stat-number red" id="actividadesPendientes">8</p>
-                </div>
+            </div>
+
+            <!-- Reporte SBAR por Voz -->
+            <label>Reporte de Recepción (SBAR) - Usa el micrófono 🎤:</label>
+            <div style="display: flex;">
+                <textarea id="sbarNotes" rows="3" placeholder="Ej: Paciente consciente, recibe cama limpia, sin novedades..."></textarea>
+                <button class="mic-btn" onclick="startDictation()"><i class="fas fa-microphone"></i></button>
+            </div>
+
+            <!-- Checklist de Actividades Rápidas -->
+            <h4>⚡ Registro Rápido de Actividades</h4>
+            <div class="activity-grid">
+                <div class="act-btn" onclick="registerActivity(this, 'BAÑO')">🛁 Baño<i class="act-time"></i></div>
+                <div class="act-btn" onclick="registerActivity(this, 'TENDIDO_CAMA')">🛏️ Tendido Cama<i class="act-time"></i></div>
+                <div class="act-btn" onclick="registerActivity(this, 'ALIMENTACION')">🍽️ Alimentación<i class="act-time"></i></div>
+                <div class="act-btn" onclick="registerActivity(this, 'CAMBIO_POSICION')">🔄 Cambio Posición<i class="act-time"></i></div>
+                <div class="act-btn" onclick="registerActivity(this, 'MEDICAMENTOS')">💊 Medicamentos<i class="act-time"></i></div>
             </div>
         </div>
 
-        <!-- Módulo: Pacientes -->
-        <div id="mod-patients" class="module-section hidden">
-            <h3>👥 Gestión de Pacientes</h3>
-            <div class="form-group">
-                <input type="text" id="searchPatient" placeholder="Buscar paciente por nombre o documento...">
-            </div>
-            <div style="margin-top: 20px; padding: 20px; background: var(--bg-dark); border-radius: 8px; text-align: center;">
-                <p style="color: var(--text-muted);">Listado de pacientes cargado desde Supabase.</p>
-                <button class="secondary" style="width: auto; margin-top: 10px;">+ Nuevo Paciente</button>
-            </div>
-        </div>
-
-        <!-- Módulo: Signos Vitales -->
-        <div id="mod-vitals" class="module-section hidden">
-            <h3>🩺 Registro de Signos Vitales</h3>
+        <!-- MÓDULO: SIGNOS VITALES INTELIGENTES -->
+        <div class="module-section">
+            <h3>🩺 Signos Vitales y Escalas</h3>
             <div class="grid-2">
-                <div class="form-group">
-                    <input type="number" placeholder="Presión Sistólica" id="presionSistolica">
+                <input type="number" placeholder="TA Sistólica">
+                <input type="number" placeholder="TA Diastólica">
+                <input type="number" placeholder="Frecuencia Cardíaca">
+                
+                <!-- SpO2 con Semáforo -->
+                <div style="position: relative;">
+                    <span id="spo2Light" class="spo2-indicator status-green"></span>
+                    <input type="number" id="spo2Input" placeholder="SpO2 (%)" oninput="checkSpo2Alert()">
                 </div>
-                <div class="form-group">
-                    <input type="number" placeholder="Presión Diastólica" id="presionDiastolica">
-                </div>
-                <div class="form-group">
-                    <input type="number" placeholder="Frecuencia Cardíaca" id="frecuenciaCardiaca">
-                </div>
-                <div class="form-group">
-                    <input type="number" placeholder="Saturación O2 (%)" id="saturacionO2">
-                </div>
+                
+                <input type="number" placeholder="Glucometría (mg/dL)">
+                <input type="number" placeholder="Temperatura (°C)">
             </div>
-            <button onclick="guardarSignos()">Guardar Registro</button>
-        </div>
-
-        <!-- Módulo: Reportes -->
-        <div id="mod-reports" class="module-section hidden">
-            <h3>📄 Generador de Reportes PDF</h3>
-            <p>Selecciona un paciente para generar su historia clínica domiciliaria.</p>
-            <button class="secondary" onclick="generateTestPDF()">
-                <i class="fas fa-file-pdf"></i> Generar PDF de Prueba con Logo
-            </button>
+            
+            <div class="grid-2" style="margin-top: 15px;">
+                <select><option>EVA Dolor (0-10)</option><option>0 - Sin dolor</option><option>10 - Dolor máximo</option></select>
+                <select><option>Escala Glasgow</option><option>15 - Consciente</option><option>3 - Coma</option></select>
+            </div>
+            <button style="margin-top: 15px;">Guardar Registro Clínico</button>
         </div>
     </div>
 
-    <!-- LÓGICA DEL SISTEMA (JAVASCRIPT INTEGRADO) -->
     <script>
-        // ==========================================
-        // CONFIGURACIÓN
-        // ==========================================
-        const API_URL = window.location.origin;
-
-        // ==========================================
-        // UTILIDADES
-        // ==========================================
-        function showToast(msg, type = 'info') {
-            const t = document.getElementById('toast');
-            t.textContent = msg;
-            t.className = 'show';
-            if (type) t.classList.add(type);
-            
-            clearTimeout(t._timeout);
-            t._timeout = setTimeout(() => {
-                t.classList.remove('show');
-            }, 3000);
+        // LÓGICA DEL SISTEMA
+        function handleLogin() {
+            // Simulación de login exitoso para probar la interfaz
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('mainApp').classList.remove('hidden');
         }
 
-        function togglePassword() {
-            const passInput = document.getElementById('loginPass');
-            const icon = document.querySelector('.password-toggle i');
-            
-            if (passInput.type === 'password') {
-                passInput.type = 'text';
-                icon.className = 'fas fa-eye-slash';
+        function logout() { location.reload(); }
+
+        // Dictado por Voz
+        function startDictation() {
+            if (window.hasOwnProperty('webkitSpeechRecognition')) {
+                const recognition = new webkitSpeechRecognition();
+                recognition.continuous = false;
+                recognition.lang = "es-CO";
+                recognition.start();
+                
+                recognition.onresult = function(e) {
+                    document.getElementById('sbarNotes').value += e.results[0][0].transcript + " ";
+                };
+                recognition.onerror = function(e) { alert("Error de micrófono: " + e.message); };
             } else {
-                passInput.type = 'password';
-                icon.className = 'fas fa-eye';
+                alert("Tu navegador no soporta dictado por voz.");
             }
         }
 
-        function showModule(moduleId, btnElement) {
-            // Ocultar todos los módulos
-            document.querySelectorAll('.module-section').forEach(el => {
-                el.classList.add('hidden');
-            });
-            
-            // Mostrar el módulo seleccionado
-            const target = document.getElementById('mod-' + moduleId);
-            if (target) {
-                target.classList.remove('hidden');
-            }
-            
-            // Actualizar tabs
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            
-            if (btnElement) {
-                btnElement.classList.add('active');
+        // Registro de Actividades con Hora
+        function registerActivity(btn, type) {
+            btn.classList.toggle('active');
+            const timeSpan = btn.querySelector('.act-time');
+            if (btn.classList.contains('active')) {
+                const now = new Date();
+                timeSpan.textContent = now.getHours() + ":" + String(now.getMinutes()).padStart(2, '0');
             } else {
-                // Buscar el botón correspondiente
-                document.querySelectorAll('.tab-btn').forEach(btn => {
-                    if (btn.dataset.module === moduleId) {
-                        btn.classList.add('active');
-                    }
-                });
+                timeSpan.textContent = "";
             }
         }
 
-        // ==========================================
-        // AUTENTICACIÓN
-        // ==========================================
-        async function handleLogin() {
-            const email = document.getElementById('loginEmail').value.trim();
-            const pass = document.getElementById('loginPass').value;
-            const msg = document.getElementById('loginMsg');
-            const btn = document.getElementById('loginBtn');
-            const btnText = document.getElementById('loginBtnText');
-            const spinner = document.getElementById('loginSpinner');
-            
-            // Validaciones básicas
-            if (!email || !pass) {
-                msg.textContent = 'Por favor ingrese email y contraseña';
-                return;
-            }
-            
-            // Mostrar estado de carga
-            msg.textContent = 'Conectando con el servidor...';
-            btn.disabled = true;
-            btnText.classList.add('hidden');
-            spinner.classList.remove('hidden');
-            
-            try {
-                const res = await fetch(`${API_URL}/api/auth/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password: pass })
-                });
-                
-                const data = await res.json();
-                
-                if (data.success) {
-                    localStorage.setItem('vital_token', data.data.token);
-                    localStorage.setItem('vital_user', JSON.stringify(data.data.user));
-                    showToast('✅ Bienvenido al sistema', 'success');
-                    initApp();
-                } else {
-                    msg.textContent = data.message || 'Credenciales incorrectas';
-                }
-            } catch (e) {
-                msg.textContent = 'Error de conexión con el servidor. Verifique su red.';
-                console.error('Login error:', e);
-            } finally {
-                btn.disabled = false;
-                btnText.classList.remove('hidden');
-                spinner.classList.add('hidden');
-            }
+        // Lógica de Altitud y SpO2
+        let spo2Threshold = 97; // Por defecto Cúcuta/Costa
+        function updateSpo2Logic() {
+            spo2Threshold = document.getElementById('patientCity').value;
+            checkSpo2Alert();
         }
 
-        function logout() {
-            localStorage.clear();
-            showToast('Sesión cerrada exitosamente', 'info');
-            setTimeout(() => {
-                location.reload();
-            }, 500);
-        }
-
-        // ==========================================
-        // FUNCIONES DEL SISTEMA
-        // ==========================================
-        function guardarSignos() {
-            const sistolica = document.getElementById('presionSistolica').value;
-            const diastolica = document.getElementById('presionDiastolica').value;
-            const fc = document.getElementById('frecuenciaCardiaca').value;
-            const spo2 = document.getElementById('saturacionO2').value;
-            
-            if (!sistolica && !diastolica && !fc && !spo2) {
-                showToast('⚠️ Por favor ingrese al menos un signo vital', 'warning');
-                return;
-            }
-            
-            showToast('✅ Signos guardados correctamente (Simulación)', 'success');
-            
-            // Limpiar campos
-            document.getElementById('presionSistolica').value = '';
-            document.getElementById('presionDiastolica').value = '';
-            document.getElementById('frecuenciaCardiaca').value = '';
-            document.getElementById('saturacionO2').value = '';
-        }
-
-        // ==========================================
-        // FUNCIÓN DE PRUEBA PARA PDF CON LOGO
-        // ==========================================
-        function generateTestPDF() {
-            try {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                
-                // Intentar agregar el logo (URL de Imgur)
-                try {
-                    doc.addImage('https://i.imgur.com/01YZxey.jpeg', 'JPEG', 10, 10, 30, 30);
-                } catch (e) {
-                    console.warn('No se pudo cargar la imagen del logo:', e);
-                }
-
-                // Encabezado
-                doc.setFontSize(18);
-                doc.setTextColor(34, 197, 94);
-                doc.text("VITAL HOGAR PRO IPS", 50, 25);
-                
-                doc.setFontSize(10);
-                doc.setTextColor(100);
-                doc.text("Reporte de Cuidados Domiciliarios - Siglo 31", 50, 32);
-                
-                // Línea divisoria
-                doc.setDrawColor(200);
-                doc.line(10, 40, 200, 40);
-
-                // Contenido
-                doc.setFontSize(12);
-                doc.setTextColor(0);
-                doc.text("Paciente: Juan Pérez", 10, 55);
-                doc.text("Fecha: " + new Date().toLocaleDateString('es-CO'), 10, 65);
-                doc.text("Hora: " + new Date().toLocaleTimeString('es-CO'), 10, 75);
-                doc.text("Observaciones: Paciente estable, signos vitales dentro de rangos normales.", 10, 85);
-
-                // Tabla de signos vitales
-                doc.setFontSize(11);
-                doc.text("Signos Vitales:", 10, 105);
-                
-                const tableData = [
-                    ['Signo', 'Valor', 'Normal'],
-                    ['Presión Arterial', '120/80', 'Sí'],
-                    ['Frecuencia Cardíaca', '72 bpm', 'Sí'],
-                    ['Saturación O2', '98%', 'Sí'],
-                    ['Temperatura', '36.5°C', 'Sí']
-                ];
-
-                let y = 115;
-                doc.setFontSize(9);
-                tableData.forEach(row => {
-                    doc.text(row[0], 10, y);
-                    doc.text(row[1], 80, y);
-                    doc.text(row[2], 140, y);
-                    y += 8;
-                });
-
-                // Pie de página
-                doc.setFontSize(8);
-                doc.setTextColor(150);
-                doc.text("Generado por Vital Hogar Pro IPS - Plataforma Monolítica", 10, 280);
-                doc.text("Documento válido para fines clínicos", 10, 288);
-
-                doc.save("reporte-vital-hogar.pdf");
-                showToast('✅ PDF Generado exitosamente', 'success');
-            } catch (error) {
-                console.error('Error generando PDF:', error);
-                showToast('❌ Error al generar el PDF', 'error');
+        function checkSpo2Alert() {
+            const val = document.getElementById('spo2Input').value;
+            const light = document.getElementById('spo2Light');
+            if (val && val < spo2Threshold) {
+                light.className = "spo2-indicator status-red"; // Alarma
+            } else {
+                light.className = "spo2-indicator status-green"; // Normal
             }
         }
-
-        // ==========================================
-        // INICIALIZACIÓN
-        // ==========================================
-        function initApp() {
-            const token = localStorage.getItem('vital_token');
-            const userJson = localStorage.getItem('vital_user');
-            
-            if (token && userJson) {
-                try {
-                    const user = JSON.parse(userJson);
-                    
-                    document.getElementById('loginScreen').classList.add('hidden');
-                    document.getElementById('mainApp').classList.remove('hidden');
-                    
-                    document.getElementById('userNameDisplay').textContent = user.name || user.email || 'Usuario';
-                    
-                    if (user.role) {
-                        const roleDisplay = document.getElementById('userRoleDisplay');
-                        roleDisplay.textContent = '• ' + user.role;
-                    }
-                    
-                    showToast('✅ Bienvenido ' + (user.name || 'al sistema'), 'success');
-                } catch (e) {
-                    console.error('Error parseando usuario:', e);
-                    localStorage.clear();
-                    location.reload();
-                }
-            }
-        }
-
-        // ==========================================
-        // MANEJO DE ENTER EN LOGIN
-        // ==========================================
-        document.addEventListener('DOMContentLoaded', function() {
-            // Permitir login con Enter
-            document.getElementById('loginPass').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    handleLogin();
-                }
-            });
-            
-            document.getElementById('loginEmail').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    document.getElementById('loginPass').focus();
-                }
-            });
-            
-            // Inicializar
-            initApp();
-        });
-
-        // Exponer funciones globalmente
-        window.handleLogin = handleLogin;
-        window.logout = logout;
-        window.showModule = showModule;
-        window.showToast = showToast;
-        window.togglePassword = togglePassword;
-        window.guardarSignos = guardarSignos;
-        window.generateTestPDF = generateTestPDF;
     </script>
 </body>
 </html>
