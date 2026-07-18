@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Vital Hogar Pro IPS - Siglo 31</title>
     
-    <!-- Librerías Externas desde CDN (Para no instalar nada local) -->
+    <!-- Librerías Externas desde CDN -->
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -29,15 +29,20 @@
         .app-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         .hidden { display: none !important; }
         
-        /* Header */
+        /* Header con Logo */
         header { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; background: var(--card-bg); border-radius: 12px; margin-bottom: 20px; border: 1px solid var(--border); }
-        .logo h1 { margin: 0; font-size: 1.2rem; color: var(--primary); }
+        .logo-area { display: flex; align-items: center; gap: 15px; }
+        .logo-area img { height: 50px; width: auto; object-fit: contain; }
+        .logo-text h1 { margin: 0; font-size: 1.2rem; color: var(--primary); }
+        .logo-text span { font-size: 0.8rem; color: var(--text-muted); }
+        
         .user-pill { background: var(--bg-dark); padding: 5px 15px; border-radius: 20px; font-size: 0.85rem; border: 1px solid var(--border); display: flex; gap: 10px; align-items: center; }
         
         /* Login Screen */
         .login-wrapper { display: flex; justify-content: center; align-items: center; height: 90vh; }
         .login-card { background: var(--card-bg); padding: 2.5rem; border-radius: 16px; width: 100%; max-width: 400px; text-align: center; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
-        
+        .login-logo { height: 80px; margin-bottom: 20px; }
+
         /* Formularios y Botones */
         input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-dark); color: white; box-sizing: border-box; }
         button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; margin-top: 10px; }
@@ -66,7 +71,8 @@
     <!-- PANTALLA DE LOGIN -->
     <div id="loginScreen" class="login-wrapper">
         <div class="login-card">
-            <h2 style="color: var(--primary);">🏥 Vital Hogar 31</h2>
+            <img src="https://i.imgur.com/01YZxey.jpeg" alt="Logo Vital Hogar" class="login-logo">
+            <h2 style="color: var(--primary);">Vital Hogar Pro IPS</h2>
             <p style="color: var(--text-muted); margin-bottom: 20px;">Plataforma de Cuidados Domiciliarios</p>
             <input type="email" id="loginEmail" placeholder="Correo Electrónico" value="admin@vitalhogar.com">
             <input type="password" id="loginPass" placeholder="Contraseña" value="123456">
@@ -78,8 +84,12 @@
     <!-- APLICACIÓN PRINCIPAL -->
     <div id="mainApp" class="app-container hidden">
         <header>
-            <div class="logo">
-                <h1>🏥 VITAL HOGAR PRO IPS</h1>
+            <div class="logo-area">
+                <img src="https://i.imgur.com/01YZxey.jpeg" alt="Logo Vital Hogar">
+                <div class="logo-text">
+                    <h1>VITAL HOGAR PRO IPS</h1>
+                    <span>Cuidados Domiciliarios</span>
+                </div>
             </div>
             <div class="user-pill">
                 <span id="userNameDisplay">Usuario</span>
@@ -137,7 +147,7 @@
         <div id="mod-reports" class="module-section hidden">
             <h3>Generador de Reportes PDF</h3>
             <p>Selecciona un paciente para generar su historia clínica domiciliaria.</p>
-            <button class="secondary" onclick="generateTestPDF()">📄 Generar PDF de Prueba</button>
+            <button class="secondary" onclick="generateTestPDF()">📄 Generar PDF de Prueba con Logo</button>
         </div>
     </div>
 
@@ -170,7 +180,6 @@
             msg.textContent = "Conectando con el cerebro central...";
             
             try {
-                // Usamos la ruta relativa '/api' porque el frontend y backend están en el mismo servidor
                 const res = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -209,13 +218,44 @@
             }
         }
 
-        // FUNCIÓN DE PRUEBA PARA PDF
+        // FUNCIÓN DE PRUEBA PARA PDF CON LOGO
         function generateTestPDF() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
-            doc.text("Reporte Vital Hogar Pro IPS - Siglo 31", 10, 10);
-            doc.text("Generado desde el servidor monolítico.", 10, 20);
-            doc.save("reporte-prueba.pdf");
+            
+            // Intentar agregar el logo (URL de Imgur)
+            try {
+                // x, y, ancho, alto
+                doc.addImage('https://i.imgur.com/01YZxey.jpeg', 'JPEG', 10, 10, 30, 30); 
+            } catch (e) {
+                console.log("Nota: Algunos navegadores bloquean imágenes externas en PDFs por seguridad.");
+            }
+
+            // Encabezado
+            doc.setFontSize(18);
+            doc.setTextColor(34, 197, 94); // Verde Vital Hogar
+            doc.text("VITAL HOGAR PRO IPS", 50, 25);
+            
+            doc.setFontSize(10);
+            doc.setTextColor(100);
+            doc.text("Reporte de Cuidados Domiciliarios - Siglo 31", 50, 32);
+            
+            // Línea divisoria
+            doc.setDrawColor(200);
+            doc.line(10, 40, 200, 40);
+
+            // Contenido
+            doc.setFontSize(12);
+            doc.setTextColor(0);
+            doc.text("Paciente: Juan Pérez", 10, 55);
+            doc.text("Fecha: " + new Date().toLocaleDateString(), 10, 65);
+            doc.text("Observaciones: Paciente estable, signos vitales dentro de rangos normales.", 10, 75);
+
+            // Pie de página
+            doc.setFontSize(8);
+            doc.text("Generado por Vital Hogar Pro IPS - Plataforma Monolítica", 10, 280);
+
+            doc.save("reporte-vital-hogar.pdf");
             showToast("PDF Generado exitosamente");
         }
 
