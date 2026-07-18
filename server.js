@@ -5,7 +5,6 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 
 // ==========================================
 // CONFIGURACIÓN INICIAL
