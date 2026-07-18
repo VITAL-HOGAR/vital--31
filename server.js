@@ -124,24 +124,23 @@ app.post('/api/auth/login', async (req, res) => {
         if (!userData) {
             console.log('⚠️ Usuario no en tabla users. Creando perfil...');
             
-            const { data: newUser, error: createError } = await supabase
+                       const { data: newUser, error: createError } = await supabase
                 .from('users')
                 .insert([{
                     id: authData.user.id,
                     email: authData.user.email,
-                    name: authData.user.user_metadata?.name || 'Usuario Nuevo', // Usa el nombre de Auth o uno por defecto
-                    role: 'ADMIN', // Por seguridad, el primero siempre es ADMIN o cambia a AUXILIAR
+                    name: 'Administrador', // Nombre forzado para pruebas
+                    role: 'ADMIN',
                     status: 'ACTIVE'
+                    // Quitamos created_at para que la BD lo ponga sola
                 }])
                 .select()
                 .single();
 
             if (createError) {
-                console.error('❌ Error creando perfil:', createError);
-                return res.status(500).json({ success: false, message: 'Error creando perfil' });
+                console.error('❌ DETALLE DEL ERROR AL CREAR:', createError); // Esto nos dirá la verdad
+                return res.status(500).json({ success: false, message: 'Error creando perfil: ' + createError.message });
             }
-            userData = newUser;
-        }
 
         // 3. Generar Token JWT
         const token = jwt.sign(
