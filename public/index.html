@@ -3,37 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vital Hogar Pro IPS - Siglo 31</title>
-    <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <title>Vital Hogar Pro IPS - Gestión</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --bg-dark: #0f172a; --card-bg: #1e293b; --primary: #22c55e; --danger: #ef4444; --text-main: #e2e8f0; }
+        :root { --bg-dark: #0f172a; --card-bg: #1e293b; --primary: #22c55e; --text-main: #e2e8f0; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 0; }
-        .app-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
-        .hidden { display: none !important; }
+        .app-container { max-width: 1000px; margin: 0 auto; padding: 20px; }
         
         /* Header */
-        header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--card-bg); border-radius: 12px; margin-bottom: 20px; border: 1px solid #334155; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--card-bg); border-radius: 12px; margin-bottom: 20px; }
         .logo-area img { height: 50px; }
         
-        /* Módulos */
-        .module-section { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid #334155; margin-bottom: 20px; }
-        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        /* Formularios Responsive */
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
+        input, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
         
-        /* Inputs y Botones */
-        input, select, textarea { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
-        button { padding: 12px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
-        button:hover { opacity: 0.9; }
+        /* Canvas de Firma (Responsive) */
+        .signature-container { background: white; border-radius: 8px; overflow: hidden; touch-action: none; }
+        canvas { width: 100%; height: 200px; cursor: crosshair; }
+        
+        /* Botones */
+        button { padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
         button.secondary { background: #334155; }
-        button.mic-btn { background: #f59e0b; color: black; width: auto; margin-left: 10px; }
         
-        /* Canvas de Firma */
-        .signature-pad { border: 2px dashed #334155; background: white; width: 100%; height: 150px; cursor: crosshair; touch-action: none; }
-        
-        /* Toast de Confirmación */
-        #toast { position: fixed; top: 20px; right: 20px; background: var(--primary); color: white; padding: 15px 25px; border-radius: 8px; transform: translateX(200%); transition: 0.3s; z-index: 1000; }
-        #toast.show { transform: translateX(0); }
-
         /* Login */
         .login-wrapper { display: flex; justify-content: center; align-items: center; height: 90vh; }
         .login-card { background: var(--card-bg); padding: 2rem; border-radius: 16px; width: 100%; max-width: 400px; text-align: center; }
@@ -41,187 +33,124 @@
 </head>
 <body>
 
-    <!-- NOTIFICACIÓN DE ÉXITO -->
-    <div id="toast">✅ Registro Clínico Guardado Exitosamente</div>
-
-    <!-- LOGIN -->
+    <!-- LOGIN SIMPLIFICADO -->
     <div id="loginScreen" class="login-wrapper">
         <div class="login-card">
             <img src="https://i.imgur.com/01YZxey.jpeg" style="height: 80px;">
-            <h2>Vital Hogar Pro IPS</h2>
+            <h2>Acceso Vital Hogar</h2>
             <input type="email" id="loginEmail" placeholder="Email" value="admin@vitalhogar.com">
             <input type="password" id="loginPass" placeholder="Contraseña" value="123456">
-            <button onclick="handleLogin()">Ingresar</button>
-            <p id="loginMsg" style="color: var(--danger);"></p>
+            <button onclick="handleLogin()">Ingresar como ADMIN</button>
         </div>
     </div>
 
-    <!-- APP PRINCIPAL -->
-    <div id="mainApp" class="app-container hidden">
+    <!-- PANEL DE ADMINISTRACIÓN -->
+    <div id="adminPanel" class="app-container hidden">
         <header>
             <div class="logo-area">
                 <img src="https://i.imgur.com/01YZxey.jpeg">
-                <div><h1>VITAL HOGAR PRO</h1><small id="userRoleDisplay">Rol: Cargando...</small></div>
+                <div><h1>Gestión de Profesionales</h1><small>Registro y Firmas Digitales</small></div>
             </div>
-            <button onclick="logout()" style="background: var(--danger); width: auto;">Salir</button>
+            <button onclick="logout()" style="width: auto; background: #ef4444;">Salir</button>
         </header>
 
-        <!-- VISTA ADMIN (Gestión) -->
-        <div id="adminView" class="hidden">
-            <div class="module-section">
-                <h3>👨‍💼 Panel de Administración</h3>
-                <p>Aquí el Admin crea profesionales, asigna turnos y gestiona la IPS.</p>
-                <button>Crear Nuevo Profesional</button>
-                <button class="secondary">Asignar Turnos</button>
-            </div>
-        </div>
-
-        <!-- VISTA AUXILIAR (Operativo) -->
-        <div id="auxiliarView" class="hidden">
-            <!-- 1. RECEPCIÓN Y ACTIVIDADES -->
-            <div class="module-section">
-                <h3>📋 Turno Activo: Recepción</h3>
-                <div class="grid-2">
-                    <select id="patientCity" onchange="updateSpo2Logic()">
-                        <option value="97">Cúcuta / Costa (Nivel 1)</option>
-                        <option value="93">Bogotá (Nivel 4)</option>
-                    </select>
-                    <select><option>Turno: 8 Horas (Diurno)</option></select>
-                </div>
-                
-                <label>Reporte SBAR (Dictado por voz 🎤):</label>
-                <div style="display: flex;">
-                    <textarea id="sbarNotes" rows="2" placeholder="Estado inicial del paciente..."></textarea>
-                    <button class="mic-btn" onclick="startDictation()"><i class="fas fa-microphone"></i></button>
-                </div>
-
-                <h4>⚡ Actividades Realizadas:</h4>
-                <div class="activity-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px;">
-                    <div class="act-btn" onclick="toggleAct(this)">🛁 Baño<span class="time"></span></div>
-                    <div class="act-btn" onclick="toggleAct(this)">🍽️ Comida<span class="time"></span></div>
-                    <div class="act-btn" onclick="toggleAct(this)">💊 Meds<span class="time"></span></div>
-                </div>
+        <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px;">
+            <h3>👨‍⚕️ Nuevo Profesional / Auxiliar</h3>
+            
+            <div class="form-grid">
+                <input type="text" id="profName" placeholder="Nombre Completo">
+                <input type="text" id="profDoc" placeholder="Cédula de Ciudadanía">
+                <select id="profSpecialty">
+                    <option value="">Seleccionar Especialidad...</option>
+                    <option value="AUXILIAR_ENFERMERIA">Auxiliar de Enfermería</option>
+                    <option value="ENFERMERIA">Enfermero Jefe</option>
+                    <option value="MEDICINA">Médico General</option>
+                    <option value="FISIOTERAPIA">Fisioterapeuta</option>
+                    <option value="NUTRICION">Nutricionista</option>
+                </select>
+                <input type="text" id="profCard" placeholder="Tarjeta Profesional / RETHUS">
             </div>
 
-            <!-- 2. SIGNOS VITALES -->
-            <div class="module-section">
-                <h3>🩺 Signos Vitales</h3>
-                <div class="grid-2">
-                    <input type="number" placeholder="TA Sistólica">
-                    <input type="number" placeholder="SpO2 %" oninput="checkSpo2Alert()">
-                </div>
-                <button onclick="saveClinicalRecord()" style="margin-top: 15px;">💾 Guardar Registro Clínico</button>
+            <h4 style="margin-top: 20px;">✍️ Captura de Firma Digital</h4>
+            <p style="font-size: 0.9rem; color: #94a3b8;">Dibuja la firma aquí (funciona con mouse o dedo en tablet/celular):</p>
+            
+            <div class="signature-container">
+                <canvas id="sigCanvas"></canvas>
             </div>
+            <button class="secondary" onclick="clearSignature()" style="width: auto; margin-top: 5px;">🗑️ Borrar Firma</button>
 
-            <!-- 3. CIERRE LEGAL Y FIRMAS -->
-            <div class="module-section">
-                <h3>✍️ Cierre de Turno y Legalización</h3>
-                <div class="grid-2">
-                    <div>
-                        <label>Firma del Auxiliar (Tú):</label>
-                        <canvas id="sigAux" class="signature-pad"></canvas>
-                        <button class="secondary" onclick="clearSig('sigAux')">Borrar</button>
-                    </div>
-                    <div>
-                        <label>Firma del Familiar/Cuidador:</label>
-                        <canvas id="sigFam" class="signature-pad"></canvas>
-                        <button class="secondary" onclick="clearSig('sigFam')">Borrar</button>
-                    </div>
-                </div>
-                <div style="margin-top: 15px;">
-                    <input type="text" placeholder="Nombre Completo del Familiar">
-                    <input type="text" placeholder="Cédula del Familiar">
-                    <input type="text" placeholder="Parentesco (Hijo, Esposa, etc.)">
-                </div>
-                <button onclick="generateLegalPDF()" style="background: #3b82f6; margin-top: 15px;">📄 Generar Informe Legal PDF</button>
-            </div>
+            <button onclick="saveProfessional()" style="margin-top: 20px; font-size: 1.1rem;">💾 Guardar Profesional en Base de Datos</button>
         </div>
     </div>
 
     <script>
-        // SIMULACIÓN DE DATOS DE USUARIO
-        let currentUser = { role: 'AUXILIAR', name: 'Juan Auxiliar' }; 
-
+        // --- LÓGICA DE LOGIN ---
         function handleLogin() {
-            // Aquí iría el fetch real a tu backend
+            // Simulación: En producción esto valida con Supabase
             document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('mainApp').classList.remove('hidden');
-            
-            // Mostrar vista según rol
-            document.getElementById('userRoleDisplay').textContent = "Rol: " + currentUser.role;
-            if(currentUser.role === 'ADMIN') {
-                document.getElementById('adminView').classList.remove('hidden');
-            } else {
-                document.getElementById('auxiliarView').classList.remove('hidden');
-                initSignatures(); // Iniciar canvas de firmas
-            }
+            document.getElementById('adminPanel').classList.remove('hidden');
+            initCanvas(); // Iniciar el canvas al entrar
         }
 
         function logout() { location.reload(); }
 
-        // --- LÓGICA DE FIRMAS (CANVAS) ---
-        function initSignatures() {
-            ['sigAux', 'sigFam'].forEach(id => {
-                const canvas = document.getElementById(id);
-                const ctx = canvas.getContext('2d');
-                let drawing = false;
-                
-                // Ajustar tamaño
-                canvas.width = canvas.offsetWidth;
-                canvas.height = canvas.offsetHeight;
+        // --- LÓGICA DEL CANVAS DE FIRMA (TOUCH & MOUSE) ---
+        let canvas, ctx, drawing = false;
 
-                canvas.addEventListener('mousedown', () => drawing = true);
-                canvas.addEventListener('mouseup', () => drawing = false);
-                canvas.addEventListener('mousemove', (e) => {
-                    if (!drawing) return;
-                    ctx.lineWidth = 2;
-                    ctx.lineCap = 'round';
-                    ctx.strokeStyle = 'black';
-                    ctx.lineTo(e.offsetX, e.offsetY);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.moveTo(e.offsetX, e.offsetY);
-                });
-            });
+        function initCanvas() {
+            canvas = document.getElementById('sigCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // Ajustar tamaño real del canvas
+            canvas.width = canvas.offsetWidth;
+            canvas.height = canvas.offsetHeight;
+
+            // Eventos Mouse
+            canvas.addEventListener('mousedown', startDraw);
+            canvas.addEventListener('mouseup', endDraw);
+            canvas.addEventListener('mousemove', draw);
+            
+            // Eventos Touch (Celulares/Tablets)
+            canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e.touches[0]); });
+            canvas.addEventListener('touchend', (e) => { e.preventDefault(); endDraw(); });
+            canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); });
         }
 
-        function clearSig(id) {
-            const canvas = document.getElementById(id);
-            const ctx = canvas.getContext('2d');
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        function startDraw(e) {
+            drawing = true;
+            ctx.beginPath();
+            const rect = canvas.getBoundingClientRect();
+            ctx.moveTo((e.clientX || e.pageX) - rect.left, (e.clientY || e.pageY) - rect.top);
         }
 
-        // --- UTILIDADES ---
-        function showToast(msg) {
-            const t = document.getElementById('toast');
-            t.textContent = msg; t.classList.add('show');
-            setTimeout(() => t.classList.remove('show'), 3000);
+        function draw(e) {
+            if (!drawing) return;
+            const rect = canvas.getBoundingClientRect();
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = 'black';
+            ctx.lineTo((e.clientX || e.pageX) - rect.left, (e.clientY || e.pageY) - rect.top);
+            ctx.stroke();
         }
 
-        function toggleAct(btn) {
-            btn.classList.toggle('act-btn-active'); // Estilizar con CSS si quieres
-            const timeSpan = btn.querySelector('.time');
-            timeSpan.textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        }
+        function endDraw() { drawing = false; }
+        function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
-        function saveClinicalRecord() {
-            // Aquí iría el fetch POST a /api/vitals
-            showToast("✅ Registro Clínico Guardado Exitosamente");
-        }
+        // --- GUARDAR PROFESIONAL ---
+        function saveProfessional() {
+            const name = document.getElementById('profName').value;
+            if(!name) return alert("Falta el nombre");
 
-        function generateLegalPDF() {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF();
-            doc.text("INFORME LEGAL DE CUIDADOS DOMICILIARIOS", 10, 10);
-            doc.text("Firmas digitalizadas anexadas al sistema.", 10, 20);
-            doc.save("informe_legal.pdf");
-            showToast("📄 PDF Legal Generado");
+            // Convertir firma a imagen Base64
+            const signatureData = canvas.toDataURL();
+            
+            console.log("Guardando:", { name, signature: signatureData.substring(0, 50) + "..." });
+            alert(`✅ Profesional ${name} guardado exitosamente con firma digital.`);
+            
+            // Aquí iría el fetch a tu backend para guardar en Supabase
+            clearSignature();
+            document.getElementById('profName').value = "";
         }
-
-        // Dictado por voz y SpO2 logic (simplificado para el ejemplo)
-        function startDictation() { alert("Escuchando... (Simulación)"); }
-        function updateSpo2Logic() {}
-        function checkSpo2Alert() {}
     </script>
 </body>
 </html>
