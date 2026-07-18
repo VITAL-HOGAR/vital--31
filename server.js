@@ -70,96 +70,49 @@ app.get('/health', (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
+        
+        // 1. Autenticar
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+        if (authError || !authData.user) return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
 
-        // Validar campos obligatorios
-        if (!email || !password) {
-            return res.status(400).json({
-                success: false,
-                message: 'Email y contraseña son obligatorios'
-            });
-        }
+        // 2. Buscar en la tabla users
+        let { data: userData } = await supabase.from('users').select('*').eq('id', authData.user.id).single();
 
-        // 1. Autenticar con Supabase Auth
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
-            email: email.trim().toLowerCase(),
-            password: password
-        });
-
-        if (authError || !authData || !authData.user) {
-            console.error('❌ Error de autenticación:', authError?.message || 'Usuario no encontrado');
-            
-            // Mensaje de error amigable
-            let message = 'Credenciales inválidas. Verifique su email y contraseña.';
-            if (authError?.message?.includes('Invalid login credentials')) {
-                message = 'Email o contraseña incorrectos.';
-            } else if (authError?.message) {
-                message = authError.message;
-            }
-            
-            return res.status(401).json({
-                success: false,
-                message: message
-            });
-        }
-
-        console.log('✅ Usuario autenticado en Auth. UID:', authData.user.id);
-
-        // 2. Buscar o crear perfil en la tabla 'users'
-        let { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', authData.user.id)
-            .single();
-
-        // Si no existe, crearlo automáticamente
+        // 3. Si no existe, crearlo (Auto-registro)
         if (!userData) {
-            console.log('⚠️ Usuario no encontrado en tabla users. Creando perfil...');
+            console.log('Creando perfil para:', authData.user.email);
             
             const { data: newUser, error: createError } = await supabase
                 .from('users')
-                .insert([{
-                    id: authData.user.id,
-                    email: authData.user.email,
-                    name: authData.user.user_metadata?.name || authData.user.email.split('@')[0] || 'Usuario',
-                    role: authData.user.user_metadata?.role || 'AUXILIAR',
-                    status: 'ACTIVE',
-                    created_at: new Date().toISOString()
-                }])
+                .insert({ 
+                    id: authData.user.id, 
+                    email: authData.user.email, 
+                    name: 'Administrador', 
+                    role: 'ADMIN', 
+                    status: 'ACTIVE' 
+                })
                 .select()
                 .single();
 
             if (createError) {
-                console.error('❌ Error creando perfil de usuario:', createError);
-                return res.status(500).json({
-                    success: false,
-                    message: 'Error creando perfil de usuario: ' + createError.message
-                });
+                console.error('Fallo al crear:', createError);
+                return res.status(500).json({ success: false, message: 'Error creando perfil: ' + createError.message });
             }
-
             userData = newUser;
-            console.log('✅ Perfil de usuario creado exitosamente:', userData.id);
         }
 
-        // Verificar que el usuario esté activo
-        if (userData.status !== 'ACTIVE') {
-            return res.status(403).json({
-                success: false,
-                message: 'Usuario inactivo. Contacte al administrador.'
-            });
-        }
+        // 4. Generar Token
+        const token = jwt.sign({ id: userData.id, role: userData.role }, process.env.JWT_SECRET, { expiresIn: '24h' });
+        
+        res.json({ success: true, data: { user: userData, token } });
 
-        // 3. Generar Token JWT
-        const token = jwt.sign(
-            { 
-                id: userData.id, 
-                role: userData.role,
-                email: userData.email 
-            },
-            process.env.JWT_SECRET,
-            { expiresIn: '24h' }
-        );
+    } catch (error) {
+        console.error('Error crítico:', error);
+        res.status(500).json({ success: false, message: 'Error interno' });
+    }
+});
 
-        // 4. Registrar login en auditoría (opcional - no crítico)
+        // 5. Registrar login en auditoría (opcional - no crítico)
         try {
             await supabase
                 .from('audit_logs')
@@ -177,7 +130,7 @@ app.post('/api/auth/login', async (req, res) => {
             // No fallamos la respuesta por esto
         }
 
-        // 5. Respuesta exitosa
+        // 6. Respuesta exitosa
         res.json({
             success: true,
             message: 'Login exitoso',
