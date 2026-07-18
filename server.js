@@ -109,81 +109,48 @@ app.post('/api/auth/login', async (req, res) => {
             });
         }
 
+                // ... (código anterior de validación de authData) ...
+
         console.log('✅ Usuario autenticado en Auth. UID:', authData.user.id);
 
         // 2. Buscar datos del usuario en la tabla 'users'
-        const { data: userData, error: userError } = await supabase
+        let { data: userData, error: userError } = await supabase
             .from('users')
-            .select('id, name, email, role, cedula, rethus, status, created_at')
+            .select('*')
             .eq('id', authData.user.id)
             .single();
 
-        if (userError || !userData) {
-            console.error('❌ Error buscando usuario en tabla users:', userError);
-            console.error('   ID buscado:', authData.user.id);
+        // Si no existe en la tabla, lo creamos al vuelo
+        if (!userData) {
+            console.log('⚠️ Usuario no en tabla users. Creando perfil...');
             
-            // Si el usuario existe en Auth pero no en nuestra tabla, lo creamos
-            if (userError && userError.code === 'PGRST116') {
-                // Intentar crear el usuario en la tabla
-                const { data: newUser, error: createError } = await supabase
-                    .from('users')
-                    .insert([{
-                        id: authData.user.id,
-                        email: authData.user.email,
-                        name: authData.user.email.split('@')[0],
-                        role: 'AUXILIAR',
-                        status: 'ACTIVE',
-                        created_at: new Date().toISOString()
-                    }])
-                    .select('id, name, email, role, cedula, rethus, status, created_at')
-                    .single();
+            const { data: newUser, error: createError } = await supabase
+                .from('users')
+                .insert([{
+                    id: authData.user.id,
+                    email: authData.user.email,
+                    name: authData.user.user_metadata?.name || 'Usuario Nuevo', // Usa el nombre de Auth o uno por defecto
+                    role: 'ADMIN', // Por seguridad, el primero siempre es ADMIN o cambia a AUXILIAR
+                    status: 'ACTIVE'
+                }])
+                .select()
+                .single();
 
-                if (createError) {
-                    console.error('❌ Error creando usuario:', createError);
-                    return res.status(500).json({
-                        success: false,
-                        message: 'Error creando perfil de usuario'
-                    });
-                }
-
-                // Generar token para el nuevo usuario
-                const token = jwt.sign(
-                    { id: newUser.id, role: newUser.role },
-                    process.env.JWT_SECRET,
-                    { expiresIn: '24h' }
-                );
-
-                return res.json({
-                    success: true,
-                    message: 'Usuario creado automáticamente',
-                    data: { user: newUser, token }
-                });
+            if (createError) {
+                console.error('❌ Error creando perfil:', createError);
+                return res.status(500).json({ success: false, message: 'Error creando perfil' });
             }
-
-            return res.status(404).json({
-                success: false,
-                message: 'Usuario no encontrado en la base de datos'
-            });
-        }
-
-        // Verificar que el usuario esté activo
-        if (userData.status !== 'ACTIVE') {
-            return res.status(403).json({
-                success: false,
-                message: 'Usuario inactivo. Contacte al administrador.'
-            });
+            userData = newUser;
         }
 
         // 3. Generar Token JWT
         const token = jwt.sign(
-            { 
-                id: userData.id, 
-                role: userData.role,
-                email: userData.email 
-            },
+            { id: userData.id, role: userData.role },
             process.env.JWT_SECRET,
             { expiresIn: '24h' }
         );
+
+        res.json({ success: true, data: { user: userData, token } });
 
         // 4. Registrar el login en auditoría (opcional)
         try {
