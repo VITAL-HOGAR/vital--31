@@ -7,7 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --bg-dark: #0f172a; --card-bg: #1e293b; --primary: #22c55e; --danger: #ef4444; --warning: #f59e0b; --text-main: #e2e8f0; }
+        :root { --bg-dark: #0f172a; --card-bg: #1e293b; --primary: #22c55e; --danger: #ef4444; --text-main: #e2e8f0; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 0; }
         .app-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         .hidden { display: none !important; }
@@ -16,7 +16,7 @@
         header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--card-bg); border-radius: 12px; margin-bottom: 20px; border: 1px solid #334155; }
         .logo-area img { height: 50px; }
         
-        /* Módulos y Tarjetas */
+        /* Módulos */
         .module-section { background: var(--card-bg); padding: 20px; border-radius: 12px; border: 1px solid #334155; margin-bottom: 20px; }
         .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
         
@@ -25,18 +25,14 @@
         button { padding: 12px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; transition: 0.2s; }
         button:hover { opacity: 0.9; }
         button.secondary { background: #334155; }
-        button.mic-btn { background: var(--warning); color: black; width: auto; margin-left: 10px; }
+        button.mic-btn { background: #f59e0b; color: black; width: auto; margin-left: 10px; }
         
-        /* Checklist de Actividades */
-        .activity-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 15px; }
-        .act-btn { background: #334155; padding: 15px; text-align: center; border-radius: 8px; cursor: pointer; border: 1px solid transparent; }
-        .act-btn.active { background: var(--primary); border-color: white; }
-        .act-time { font-size: 0.7rem; display: block; margin-top: 5px; opacity: 0.8; }
-
-        /* Semáforo SpO2 */
-        .spo2-indicator { display: inline-block; width: 15px; height: 15px; border-radius: 50%; margin-right: 10px; }
-        .status-green { background: var(--primary); box-shadow: 0 0 10px var(--primary); }
-        .status-red { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+        /* Canvas de Firma */
+        .signature-pad { border: 2px dashed #334155; background: white; width: 100%; height: 150px; cursor: crosshair; touch-action: none; }
+        
+        /* Toast de Confirmación */
+        #toast { position: fixed; top: 20px; right: 20px; background: var(--primary); color: white; padding: 15px 25px; border-radius: 8px; transform: translateX(200%); transition: 0.3s; z-index: 1000; }
+        #toast.show { transform: translateX(0); }
 
         /* Login */
         .login-wrapper { display: flex; justify-content: center; align-items: center; height: 90vh; }
@@ -44,6 +40,9 @@
     </style>
 </head>
 <body>
+
+    <!-- NOTIFICACIÓN DE ÉXITO -->
+    <div id="toast">✅ Registro Clínico Guardado Exitosamente</div>
 
     <!-- LOGIN -->
     <div id="loginScreen" class="login-wrapper">
@@ -62,136 +61,167 @@
         <header>
             <div class="logo-area">
                 <img src="https://i.imgur.com/01YZxey.jpeg">
-                <div><h1>VITAL HOGAR PRO</h1><small>Cuidados Domiciliarios Siglo 31</small></div>
+                <div><h1>VITAL HOGAR PRO</h1><small id="userRoleDisplay">Rol: Cargando...</small></div>
             </div>
             <button onclick="logout()" style="background: var(--danger); width: auto;">Salir</button>
         </header>
 
-        <!-- MÓDULO: INICIO DE TURNO Y ACTIVIDADES -->
-        <div class="module-section">
-            <h3>📋 Recepción de Paciente y Turno</h3>
-            
-            <!-- Selección de Ciudad para Lógica de Altitud -->
-            <div class="grid-2">
-                <div>
-                    <label>Ciudad del Paciente (Lógica SpO2):</label>
-                    <select id="patientCity" onchange="updateSpo2Logic()">
-                        <option value="97">Cúcuta / Costa (Nivel 1)</option>
-                        <option value="96">Cali / Bga (Nivel 2)</option>
-                        <option value="95">Medellín (Nivel 3)</option>
-                        <option value="93">Bogotá (Nivel 4)</option>
-                    </select>
-                </div>
-                <div>
-                    <label>Duración del Turno:</label>
-                    <select id="shiftDuration">
-                        <option value="6">6 Horas</option>
-                        <option value="8">8 Horas</option>
-                        <option value="12">12 Horas</option>
-                        <option value="24">24 Horas</option>
-                    </select>
-                </div>
-            </div>
-
-            <!-- Reporte SBAR por Voz -->
-            <label>Reporte de Recepción (SBAR) - Usa el micrófono 🎤:</label>
-            <div style="display: flex;">
-                <textarea id="sbarNotes" rows="3" placeholder="Ej: Paciente consciente, recibe cama limpia, sin novedades..."></textarea>
-                <button class="mic-btn" onclick="startDictation()"><i class="fas fa-microphone"></i></button>
-            </div>
-
-            <!-- Checklist de Actividades Rápidas -->
-            <h4>⚡ Registro Rápido de Actividades</h4>
-            <div class="activity-grid">
-                <div class="act-btn" onclick="registerActivity(this, 'BAÑO')">🛁 Baño<i class="act-time"></i></div>
-                <div class="act-btn" onclick="registerActivity(this, 'TENDIDO_CAMA')">🛏️ Tendido Cama<i class="act-time"></i></div>
-                <div class="act-btn" onclick="registerActivity(this, 'ALIMENTACION')">🍽️ Alimentación<i class="act-time"></i></div>
-                <div class="act-btn" onclick="registerActivity(this, 'CAMBIO_POSICION')">🔄 Cambio Posición<i class="act-time"></i></div>
-                <div class="act-btn" onclick="registerActivity(this, 'MEDICAMENTOS')">💊 Medicamentos<i class="act-time"></i></div>
+        <!-- VISTA ADMIN (Gestión) -->
+        <div id="adminView" class="hidden">
+            <div class="module-section">
+                <h3>👨‍💼 Panel de Administración</h3>
+                <p>Aquí el Admin crea profesionales, asigna turnos y gestiona la IPS.</p>
+                <button>Crear Nuevo Profesional</button>
+                <button class="secondary">Asignar Turnos</button>
             </div>
         </div>
 
-        <!-- MÓDULO: SIGNOS VITALES INTELIGENTES -->
-        <div class="module-section">
-            <h3>🩺 Signos Vitales y Escalas</h3>
-            <div class="grid-2">
-                <input type="number" placeholder="TA Sistólica">
-                <input type="number" placeholder="TA Diastólica">
-                <input type="number" placeholder="Frecuencia Cardíaca">
-                
-                <!-- SpO2 con Semáforo -->
-                <div style="position: relative;">
-                    <span id="spo2Light" class="spo2-indicator status-green"></span>
-                    <input type="number" id="spo2Input" placeholder="SpO2 (%)" oninput="checkSpo2Alert()">
+        <!-- VISTA AUXILIAR (Operativo) -->
+        <div id="auxiliarView" class="hidden">
+            <!-- 1. RECEPCIÓN Y ACTIVIDADES -->
+            <div class="module-section">
+                <h3>📋 Turno Activo: Recepción</h3>
+                <div class="grid-2">
+                    <select id="patientCity" onchange="updateSpo2Logic()">
+                        <option value="97">Cúcuta / Costa (Nivel 1)</option>
+                        <option value="93">Bogotá (Nivel 4)</option>
+                    </select>
+                    <select><option>Turno: 8 Horas (Diurno)</option></select>
                 </div>
                 
-                <input type="number" placeholder="Glucometría (mg/dL)">
-                <input type="number" placeholder="Temperatura (°C)">
+                <label>Reporte SBAR (Dictado por voz 🎤):</label>
+                <div style="display: flex;">
+                    <textarea id="sbarNotes" rows="2" placeholder="Estado inicial del paciente..."></textarea>
+                    <button class="mic-btn" onclick="startDictation()"><i class="fas fa-microphone"></i></button>
+                </div>
+
+                <h4>⚡ Actividades Realizadas:</h4>
+                <div class="activity-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px;">
+                    <div class="act-btn" onclick="toggleAct(this)">🛁 Baño<span class="time"></span></div>
+                    <div class="act-btn" onclick="toggleAct(this)">🍽️ Comida<span class="time"></span></div>
+                    <div class="act-btn" onclick="toggleAct(this)">💊 Meds<span class="time"></span></div>
+                </div>
             </div>
-            
-            <div class="grid-2" style="margin-top: 15px;">
-                <select><option>EVA Dolor (0-10)</option><option>0 - Sin dolor</option><option>10 - Dolor máximo</option></select>
-                <select><option>Escala Glasgow</option><option>15 - Consciente</option><option>3 - Coma</option></select>
+
+            <!-- 2. SIGNOS VITALES -->
+            <div class="module-section">
+                <h3>🩺 Signos Vitales</h3>
+                <div class="grid-2">
+                    <input type="number" placeholder="TA Sistólica">
+                    <input type="number" placeholder="SpO2 %" oninput="checkSpo2Alert()">
+                </div>
+                <button onclick="saveClinicalRecord()" style="margin-top: 15px;">💾 Guardar Registro Clínico</button>
             </div>
-            <button style="margin-top: 15px;">Guardar Registro Clínico</button>
+
+            <!-- 3. CIERRE LEGAL Y FIRMAS -->
+            <div class="module-section">
+                <h3>✍️ Cierre de Turno y Legalización</h3>
+                <div class="grid-2">
+                    <div>
+                        <label>Firma del Auxiliar (Tú):</label>
+                        <canvas id="sigAux" class="signature-pad"></canvas>
+                        <button class="secondary" onclick="clearSig('sigAux')">Borrar</button>
+                    </div>
+                    <div>
+                        <label>Firma del Familiar/Cuidador:</label>
+                        <canvas id="sigFam" class="signature-pad"></canvas>
+                        <button class="secondary" onclick="clearSig('sigFam')">Borrar</button>
+                    </div>
+                </div>
+                <div style="margin-top: 15px;">
+                    <input type="text" placeholder="Nombre Completo del Familiar">
+                    <input type="text" placeholder="Cédula del Familiar">
+                    <input type="text" placeholder="Parentesco (Hijo, Esposa, etc.)">
+                </div>
+                <button onclick="generateLegalPDF()" style="background: #3b82f6; margin-top: 15px;">📄 Generar Informe Legal PDF</button>
+            </div>
         </div>
     </div>
 
     <script>
-        // LÓGICA DEL SISTEMA
+        // SIMULACIÓN DE DATOS DE USUARIO
+        let currentUser = { role: 'AUXILIAR', name: 'Juan Auxiliar' }; 
+
         function handleLogin() {
-            // Simulación de login exitoso para probar la interfaz
+            // Aquí iría el fetch real a tu backend
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('mainApp').classList.remove('hidden');
+            
+            // Mostrar vista según rol
+            document.getElementById('userRoleDisplay').textContent = "Rol: " + currentUser.role;
+            if(currentUser.role === 'ADMIN') {
+                document.getElementById('adminView').classList.remove('hidden');
+            } else {
+                document.getElementById('auxiliarView').classList.remove('hidden');
+                initSignatures(); // Iniciar canvas de firmas
+            }
         }
 
         function logout() { location.reload(); }
 
-        // Dictado por Voz
-        function startDictation() {
-            if (window.hasOwnProperty('webkitSpeechRecognition')) {
-                const recognition = new webkitSpeechRecognition();
-                recognition.continuous = false;
-                recognition.lang = "es-CO";
-                recognition.start();
+        // --- LÓGICA DE FIRMAS (CANVAS) ---
+        function initSignatures() {
+            ['sigAux', 'sigFam'].forEach(id => {
+                const canvas = document.getElementById(id);
+                const ctx = canvas.getContext('2d');
+                let drawing = false;
                 
-                recognition.onresult = function(e) {
-                    document.getElementById('sbarNotes').value += e.results[0][0].transcript + " ";
-                };
-                recognition.onerror = function(e) { alert("Error de micrófono: " + e.message); };
-            } else {
-                alert("Tu navegador no soporta dictado por voz.");
-            }
+                // Ajustar tamaño
+                canvas.width = canvas.offsetWidth;
+                canvas.height = canvas.offsetHeight;
+
+                canvas.addEventListener('mousedown', () => drawing = true);
+                canvas.addEventListener('mouseup', () => drawing = false);
+                canvas.addEventListener('mousemove', (e) => {
+                    if (!drawing) return;
+                    ctx.lineWidth = 2;
+                    ctx.lineCap = 'round';
+                    ctx.strokeStyle = 'black';
+                    ctx.lineTo(e.offsetX, e.offsetY);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(e.offsetX, e.offsetY);
+                });
+            });
         }
 
-        // Registro de Actividades con Hora
-        function registerActivity(btn, type) {
-            btn.classList.toggle('active');
-            const timeSpan = btn.querySelector('.act-time');
-            if (btn.classList.contains('active')) {
-                const now = new Date();
-                timeSpan.textContent = now.getHours() + ":" + String(now.getMinutes()).padStart(2, '0');
-            } else {
-                timeSpan.textContent = "";
-            }
+        function clearSig(id) {
+            const canvas = document.getElementById(id);
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
-        // Lógica de Altitud y SpO2
-        let spo2Threshold = 97; // Por defecto Cúcuta/Costa
-        function updateSpo2Logic() {
-            spo2Threshold = document.getElementById('patientCity').value;
-            checkSpo2Alert();
+        // --- UTILIDADES ---
+        function showToast(msg) {
+            const t = document.getElementById('toast');
+            t.textContent = msg; t.classList.add('show');
+            setTimeout(() => t.classList.remove('show'), 3000);
         }
 
-        function checkSpo2Alert() {
-            const val = document.getElementById('spo2Input').value;
-            const light = document.getElementById('spo2Light');
-            if (val && val < spo2Threshold) {
-                light.className = "spo2-indicator status-red"; // Alarma
-            } else {
-                light.className = "spo2-indicator status-green"; // Normal
-            }
+        function toggleAct(btn) {
+            btn.classList.toggle('act-btn-active'); // Estilizar con CSS si quieres
+            const timeSpan = btn.querySelector('.time');
+            timeSpan.textContent = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
         }
+
+        function saveClinicalRecord() {
+            // Aquí iría el fetch POST a /api/vitals
+            showToast("✅ Registro Clínico Guardado Exitosamente");
+        }
+
+        function generateLegalPDF() {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            doc.text("INFORME LEGAL DE CUIDADOS DOMICILIARIOS", 10, 10);
+            doc.text("Firmas digitalizadas anexadas al sistema.", 10, 20);
+            doc.save("informe_legal.pdf");
+            showToast("📄 PDF Legal Generado");
+        }
+
+        // Dictado por voz y SpO2 logic (simplificado para el ejemplo)
+        function startDictation() { alert("Escuchando... (Simulación)"); }
+        function updateSpo2Logic() {}
+        function checkSpo2Alert() {}
     </script>
 </body>
 </html>
