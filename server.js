@@ -18,22 +18,32 @@ app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// LOGIN
+// ==========================================
+// 1. AUTENTICACIÓN
+// ==========================================
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
         if (authError || !authData.user) return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
+        
         const { data: profData } = await supabase.from('professionals').select('*, specialties(name)').eq('user_id', authData.user.id).single();
         if (!profData) return res.status(404).json({ success: false, message: 'Perfil no encontrado.' });
+        if (!profData.is_active) return res.status(403).json({ success: false, message: 'Usuario desactivado.' });
+
         const today = new Date();
-        if (profData.card_expiry_date && new Date(profData.card_expiry_date) < today) return res.status(403).json({ success: false, message: 'Documento profesional vencido.' });
+        if (profData.card_expiry_date && new Date(profData.card_expiry_date) < today) {
+            return res.status(403).json({ success: false, message: 'Documento profesional vencido.' });
+        }
+
         const token = jwt.sign({ id: profData.id, role: profData.specialties?.name }, process.env.JWT_SECRET, { expiresIn: '24h' });
         res.json({ success: true, data: { user: profData, token } });
-    } catch (error) { res.status(500).json({ success: false, message: 'Error interno' }); }
+    } catch (error) { console.error(error); res.status(500).json({ success: false, message: 'Error interno' }); }
 });
 
-// DASHBOARD
+// ==========================================
+// 2. DASHBOARD
+// ==========================================
 app.get('/api/dashboard/stats', async (req, res) => {
     try {
         const { count: patCount } = await supabase.from('patients').select('*', { count: 'exact', head: true }).eq('is_active', true);
@@ -44,7 +54,9 @@ app.get('/api/dashboard/stats', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// PROFESIONALES
+// ==========================================
+// 3. GESTIÓN PROFESIONALES
+// ==========================================
 app.get('/api/professionals', async (req, res) => {
     const { data } = await supabase.from('professionals').select('*, specialties(name)').order('created_at', { ascending: false });
     res.json({ success: true, data });
@@ -69,7 +81,9 @@ app.delete('/api/professionals/:id', async (req, res) => {
     res.json({ success: true, message: 'Eliminado' });
 });
 
-// PACIENTES (Actualizado con datos del familiar)
+// ==========================================
+// 4. GESTIÓN PACIENTES (Con Familiar)
+// ==========================================
 app.get('/api/patients', async (req, res) => {
     const { data } = await supabase.from('patients').select('*').order('created_at', { ascending: false });
     res.json({ success: true, data });
@@ -88,6 +102,20 @@ app.post('/api/patients', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
+// ==========================================
+// 5. GESTIÓN EDUCACIÓN
+// ==========================================
+app.get('/api/education/topics', async (req, res) => {
+    const { data } = await supabase.from('education_topics').select('*').order('created_at', { ascending: false });
+    res.json({ success: true, data });
+});
+app.post('/api/education/topics', async (req, res) => {
+    const { title, description, createdBy } = req.body;
+    await supabase.from('education_topics').insert([{ title, description, created_by: createdBy }]);
+    res.json({ success: true, message: 'Tema creado' });
+});
+
+// Servir Frontend
 app.get('*', (req, res) => { if (!req.path.startsWith('/api')) res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Vital Hogar Pro Vivo en puerto ${PORT}`); });
 export default app;
