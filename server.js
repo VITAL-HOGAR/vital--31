@@ -38,6 +38,12 @@ app.post('/api/auth/login', async (req, res) => {
         if (!profData) return res.status(404).json({ success: false, message: 'Perfil no encontrado.' });
         if (!profData.is_active) return res.status(403).json({ success: false, message: 'Usuario desactivado. Contacte al Admin.' });
 
+        // Validación de vencimiento de RETHUS
+        const today = new Date();
+        if (profData.card_expiry_date && new Date(profData.card_expiry_date) < today) {
+            return res.status(403).json({ success: false, message: 'Su registro profesional (RETHUS/TP) ha vencido.' });
+        }
+
         const token = jwt.sign({ 
             id: profData.id, 
             role: profData.specialties?.name || 'USER',
@@ -71,17 +77,14 @@ app.post('/api/professionals', async (req, res) => {
     try {
         const { email, password, fullName, documentNumber, specialtyName, cardExpiry, signature } = req.body;
         
-        // Buscar ID de especialidad
         const { data: specData } = await supabase.from('specialties').select('id').eq('name', specialtyName).single();
         if (!specData) return res.status(400).json({ success: false, message: 'Especialidad no válida' });
 
-        // Crear usuario en Auth
         const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
             email, password, email_confirm: true
         });
         if (authErr) throw authErr;
 
-        // Guardar perfil
         const { error: dbErr } = await supabase.from('professionals').insert([{
             user_id: authUser.user.id,
             full_name: fullName,
@@ -106,6 +109,50 @@ app.patch('/api/professionals/:id', async (req, res) => {
         const { error } = await supabase.from('professionals').update({ is_active: isActive }).eq('id', req.params.id);
         if (error) throw error;
         res.json({ success: true, message: `Usuario ${isActive ? 'activado' : 'desactivado'}` });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// 4. Editar Profesional (Solo datos, no email/password)
+app.put('/api/professionals/:id', async (req, res) => {
+    try {
+        const { fullName, documentNumber, specialtyName, cardExpiry } = req.body;
+        
+        let specId = null;
+        if (specialtyName) {
+            const { data: specData } = await supabase.from('specialties').select('id').eq('name', specialtyName).single();
+            if (specData) specId = specData.id;
+        }
+
+        const updateData = {
+            full_name: fullName,
+            document_number: documentNumber,
+            card_expiry_date: cardExpiry
+        };
+        if (specId) updateData.specialty_id = specId;
+
+        const { error } = await supabase.from('professionals').update(updateData).eq('id', req.params.id);
+        if (error) throw error;
+        
+        res.json({ success: true, message: 'Datos actualizados' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// 5. Eliminar Profesional (Borra perfil y usuario auth)
+app.delete('/api/professionals/:id', async (req, res) => {
+    try {
+        const { data: prof } = await supabase.from('professionals').select('user_id').eq('id', req.params.id).single();
+        
+        await supabase.from('professionals').delete().eq('id', req.params.id);
+        
+        if (prof && prof.user_id) {
+            await supabase.auth.admin.deleteUser(prof.user_id);
+        }
+
+        res.json({ success: true, message: 'Profesional eliminado del sistema' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
