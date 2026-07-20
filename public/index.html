@@ -175,8 +175,8 @@
                 document.getElementById('adminView').classList.remove('hidden');
                 initCanvas(); 
                 loadDashboard(); 
-                loadProfessionals(); // Esto carga la tabla
-                loadEduProfessionals(); // ESTO CARGA EL SELECTOR DE EDUCACIÓN AL INICIO
+                loadProfessionals(); // Carga inicial
+                loadEduProfessionals(); // Carga inicial para educación
             } else {
                 document.getElementById('auxiliarView').classList.remove('hidden');
                 document.getElementById('auxName').textContent = user.full_name;
@@ -190,7 +190,10 @@
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             event.target.classList.add('active');
             if(id === 'patSection') loadPatients();
-            if(id === 'eduSection') loadTopics();
+            if(id === 'eduSection') {
+                loadTopics();
+                loadEduProfessionals(); // Recargar lista al entrar a la pestaña
+            }
         }
 
         async function loadDashboard() {
@@ -223,14 +226,31 @@
         }
         function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
+        // --- GESTIÓN PROFESIONALES (CORREGIDA) ---
         async function loadProfessionals() {
-            const res = await fetch('/api/professionals');
+            console.log("Cargando profesionales...");
+            const res = await fetch('/api/professionals?t=' + new Date().getTime()); // Forzar no caché
             const data = await res.json();
-            document.getElementById('profListBody').innerHTML = data.data.map(p => 
-                `<tr><td>${p.full_name}</td><td>${p.specialties.name}</td><td>${p.card_expiry_date || 'N/A'}</td>
-                <td><button class="warning" style="width:auto; padding:5px;" onclick="toggleStatus('${p.id}', ${!p.is_active})">${p.is_active ? 'Desactivar' : 'Activar'}</button></td></tr>`
-            ).join('');
+            console.log("Profesionales recibidos:", data);
+            const tbody = document.getElementById('profListBody');
+            tbody.innerHTML = '';
+            
+            if (!data.data || data.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4">No hay profesionales registrados.</td></tr>';
+                return;
+            }
+
+            data.data.forEach(p => {
+                tbody.innerHTML += 
+                    `<tr>
+                        <td>${p.full_name}</td>
+                        <td>${p.specialties ? p.specialties.name : 'Sin rol'}</td>
+                        <td>${p.card_expiry_date || 'N/A'}</td>
+                        <td><button class="warning" style="width:auto; padding:5px;" onclick="toggleStatus('${p.id}', ${!p.is_active})">${p.is_active ? 'Desactivar' : 'Activar'}</button></td>
+                    </tr>`;
+            });
         }
+
         async function createProfessional() {
             const data = {
                 fullName: document.getElementById('newProfName').value,
@@ -241,17 +261,34 @@
                 cardExpiry: document.getElementById('newProfExpiry').value,
                 signature: canvas.toDataURL()
             };
-            if(!data.email) return alert("Faltan datos");
+            if(!data.email || !data.fullName) return alert("Faltan datos obligatorios");
+            
             const res = await fetch('/api/professionals', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
             const result = await res.json();
             alert(result.message);
-            if(result.success) { clearSig(); loadProfessionals(); loadDashboard(); loadEduProfessionals(); }
-        }
-        async function toggleStatus(id, status) {
-            await fetch(`/api/professionals/${id}`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ isActive: status }) });
-            loadProfessionals(); loadDashboard();
+            
+            if(result.success) { 
+                clearSig(); 
+                // Limpiar formulario
+                document.getElementById('newProfName').value = "";
+                document.getElementById('newProfDoc').value = "";
+                document.getElementById('newProfEmail').value = "";
+                document.getElementById('newProfPass').value = "";
+                
+                // RECARGAR TODO
+                loadProfessionals(); 
+                loadDashboard(); 
+                loadEduProfessionals(); 
+            }
         }
 
+        async function toggleStatus(id, status) {
+            await fetch(`/api/professionals/${id}`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ isActive: status }) });
+            loadProfessionals(); 
+            loadDashboard();
+        }
+
+        // --- PACIENTES ---
         async function loadPatients() {
             const res = await fetch('/api/patients');
             const data = await res.json();
@@ -278,7 +315,7 @@
             if(result.success) loadPatients();
         }
 
-        // --- LÓGICA DE EDUCACIÓN (CORREGIDA) ---
+        // --- EDUCACIÓN ---
         async function loadEduProfessionals() {
             const res = await fetch('/api/professionals');
             const data = await res.json();
