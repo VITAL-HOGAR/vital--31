@@ -5,117 +5,110 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
+import multer from 'multer';
 
-// ==========================================
-// CONFIGURACIÓN INICIAL
-// ==========================================
+// Configuración Inicial
 dotenv.config();
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 10000;
+const upload = multer({ dest: 'uploads/' }); // Para futuras fotos
 
-// ==========================================
-// CONEXIÓN A SUPABASE
-// ==========================================
-const supabase = createClient(
-    process.env.SUPABASE_URL,
-    process.env.SUPABASE_SERVICE_ROLE_KEY
-);
+// Conexión a Supabase
+const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-// ==========================================
-// MIDDLEWARE
-// ==========================================
+// Middleware
 app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
-
-// Servir archivos estáticos (Tu Frontend)
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================
-// API DE AUTENTICACIÓN (Lógica Blindada)
+// API DE AUTENTICACIÓN Y ROLES
 // ==========================================
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         
-        // 1. Validar credenciales en Supabase Auth
+        // 1. Auth con Supabase
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-        
-        if (authError || !authData.user) {
-            return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
-        }
+        if (authError || !authData.user) return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
 
-        console.log('✅ Auth exitoso para:', authData.user.email);
-
-        // 2. Buscar perfil en la tabla 'users'
-        let { data: userData } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', authData.user.id)
+        // 2. Buscar Perfil Profesional
+        const { data: profData, error: profError } = await supabase
+            .from('professionals')
+            .select('*, specialties(name)')
+            .eq('user_id', authData.user.id)
             .single();
 
-        // 3. Si no tiene perfil, lo creamos automáticamente (Auto-registro)
-        if (!userData) {
-            console.log('⚠️ Perfil no encontrado. Creando uno nuevo...');
-            
-            const { data: newUser, error: createError } = await supabase
-                .from('users')
-                .insert([{
-                    id: authData.user.id,
-                    email: authData.user.email,
-                    name: 'Administrador', // Nombre por defecto
-                    role: 'ADMIN',         // Rol por defecto
-                    status: 'ACTIVE'
-                }])
-                .select()
-                .single();
+        if (profError || !profData) return res.status(404).json({ success: false, message: 'Perfil no encontrado. Contacte al Admin.' });
 
-            if (createError) {
-                console.error('❌ Error al crear perfil:', createError);
-                return res.status(500).json({ success: false, message: 'Error creando perfil: ' + createError.message });
-            }
-            userData = newUser;
+        // 3. Validaciones de Seguridad (RETHUS y Estado)
+        if (!profData.is_active) return res.status(403).json({ success: false, message: 'Usuario inactivo.' });
+        
+        const today = new Date();
+        if (profData.card_expiry_date && new Date(profData.card_expiry_date) < today) {
+            return res.status(403).json({ success: false, message: 'Su registro profesional (RETHUS/TP) ha vencido.' });
         }
 
-        // 4. Generar Token JWT
-        const token = jwt.sign(
-            { id: userData.id, role: userData.role }, 
-            process.env.JWT_SECRET, 
-            { expiresIn: '24h' }
-        );
+        // 4. Generar Token
+        const token = jwt.sign({ 
+            id: profData.id, 
+            role: profData.specialties?.name || 'USER',
+            specialtyId: profData.specialty_id 
+        }, process.env.JWT_SECRET, { expiresIn: '24h' });
 
-        res.json({ success: true, data: { user: userData, token } });
+        res.json({ success: true, data: { user: profData, token } });
 
     } catch (error) {
-        console.error('❌ Error crítico en login:', error);
-        res.status(500).json({ success: false, message: 'Error interno del servidor' });
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Error interno' });
     }
 });
 
 // ==========================================
-// RUTA DE SALUD (Health Check)
+// API: CREAR PROFESIONAL (Solo Admin)
 // ==========================================
-app.get('/health', (req, res) => {
-    res.json({ status: 'Vivo', timestamp: new Date().toISOString() });
+app.post('/api/professionals', async (req, res) => {
+    try {
+        const { email, password, fullName, documentNumber, specialtyId, cardExpiry, signature } = req.body;
+
+        // 1. Crear usuario en Auth
+        const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
+            email, password, email_confirm: true
+        });
+        if (authErr) throw authErr;
+
+        // 2. Guardar perfil en tabla professionals
+        const { error: dbErr } = await supabase.from('professionals').insert([{
+            user_id: authUser.user.id,
+            full_name: fullName,
+            document_number: documentNumber,
+            specialty_id: specialtyId,
+            card_expiry_date: cardExpiry,
+            signature_data: signature,
+            is_active: true
+        }]);
+
+        if (dbErr) throw dbErr;
+        res.json({ success: true, message: 'Profesional creado exitosamente' });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Error creando profesional' });
+    }
 });
 
-// ==========================================
-// SERVIR FRONTEND (Catch-all)
-// ==========================================
+// Servir Frontend (Catch-all)
 app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) {
         res.sendFile(path.join(__dirname, 'public', 'index.html'));
     }
 });
 
-// ==========================================
-// INICIO DEL SERVIDOR
-// ==========================================
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor Monolítico Vivo en puerto ${PORT}`);
+    console.log(`🚀 Vital Hogar Pro Vivo en puerto ${PORT}`);
 });
 
 export default app;
