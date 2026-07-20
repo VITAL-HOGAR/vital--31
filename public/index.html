@@ -10,38 +10,28 @@
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 0; }
         .app-container { max-width: 1000px; margin: 0 auto; padding: 20px; }
         .hidden { display: none !important; }
-        
-        /* Login */
         .login-wrapper { display: flex; justify-content: center; align-items: center; height: 100vh; }
         .login-card { background: var(--card-bg); padding: 2.5rem; border-radius: 16px; width: 100%; max-width: 400px; text-align: center; }
         .input-group { position: relative; margin-bottom: 15px; }
         input, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
         .toggle-password { position: absolute; right: 15px; top: 12px; cursor: pointer; color: #94a3b8; }
-        
-        /* UI General */
         header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--card-bg); border-radius: 12px; margin-bottom: 20px; }
         button { padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
         button.secondary { background: #334155; }
         button.danger { background: var(--danger); }
-        
-        /* Navegación Admin */
         .admin-nav { display: flex; gap: 10px; margin-bottom: 20px; }
         .nav-btn { background: #334155; width: auto; flex: 1; }
         .nav-btn.active { background: var(--primary); }
-
-        /* Tablas */
         table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #0f172a; border-radius: 8px; overflow: hidden; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #334155; }
         th { background: #1e293b; color: #94a3b8; }
-        
-        /* Canvas de Firma */
         .signature-wrapper { border: 2px dashed #334155; background: white; border-radius: 8px; overflow: hidden; touch-action: none; margin: 10px 0; position: relative; }
         canvas { display: block; width: 100%; height: 200px; cursor: crosshair; }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: var(--card-bg); padding: 20px; border-radius: 12px; width: 90%; max-width: 500px; }
     </style>
 </head>
 <body>
-
-    <!-- LOGIN -->
     <div id="loginScreen" class="login-wrapper">
         <div class="login-card">
             <img src="https://i.imgur.com/01YZxey.jpeg" style="height: 80px;">
@@ -53,20 +43,16 @@
         </div>
     </div>
 
-    <!-- ADMIN VIEW -->
     <div id="adminView" class="app-container hidden">
         <header>
             <div class="logo-area"><img src="https://i.imgur.com/01YZxey.jpeg" style="height: 40px;"><h1>Panel Admin</h1></div>
             <button onclick="logout()" style="width: auto; background: var(--danger);">Salir</button>
         </header>
-
-        <!-- Navegación Interna -->
         <div class="admin-nav">
             <button class="nav-btn active" onclick="showSection('profSection')">👨‍⚕️ Profesionales</button>
             <button class="nav-btn" onclick="showSection('patSection')">🤒 Pacientes</button>
         </div>
 
-        <!-- SECCIÓN PROFESIONALES -->
         <div id="profSection">
             <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px;">
                 <h3>Crear Nuevo Profesional</h3>
@@ -89,14 +75,12 @@
                 <button class="secondary" onclick="clearSig()" style="width: auto;">🗑️ Borrar Firma</button>
                 <button onclick="createProfessional()">💾 Guardar Profesional</button>
             </div>
-            
             <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px; margin-top: 20px;">
                 <h3>Equipo Vital Hogar</h3>
                 <table><thead><tr><th>Nombre</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead><tbody id="profListBody"></tbody></table>
             </div>
         </div>
 
-        <!-- SECCIÓN PACIENTES -->
         <div id="patSection" class="hidden">
             <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px;">
                 <h3>Registrar Nuevo Paciente</h3>
@@ -112,13 +96,12 @@
                         <option value="Medellín">Medellín (Nivel 3)</option>
                         <option value="Bogotá">Bogotá (Nivel 4)</option>
                     </select>
-                    <input type="text" id="patPathology" placeholder="Resumen de Patología (Ej: Post-ACV)">
+                    <input type="text" id="patPathology" placeholder="Resumen de Patología">
                     <input type="text" id="patAddress" placeholder="Dirección Completa">
                     <input type="text" id="patContact" placeholder="Celular Familiar Responsable">
                 </div>
                 <button onclick="createPatient()" style="margin-top: 15px;">💾 Registrar Paciente</button>
             </div>
-
             <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px; margin-top: 20px;">
                 <h3>Cartera de Pacientes</h3>
                 <table><thead><tr><th>Nombre</th><th>Ciudad</th><th>Patología</th><th>Contacto</th></tr></thead><tbody id="patListBody"></tbody></table>
@@ -126,7 +109,6 @@
         </div>
     </div>
 
-    <!-- AUXILIAR VIEW -->
     <div id="auxiliarView" class="app-container hidden">
         <header>
             <div class="logo-area"><img src="https://i.imgur.com/01YZxey.jpeg" style="height: 40px;"><h1>Mi Turno Activo</h1></div>
@@ -139,7 +121,6 @@
     </div>
 
     <script>
-        // --- LÓGICA DE LOGIN Y VISTAS ---
         async function handleLogin() {
             const email = document.getElementById('loginEmail').value;
             const pass = document.getElementById('loginPass').value;
@@ -176,14 +157,11 @@
             document.getElementById('profSection').classList.add('hidden');
             document.getElementById('patSection').classList.add('hidden');
             document.getElementById(id).classList.remove('hidden');
-            
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             event.target.classList.add('active');
-            
             if(id === 'patSection') loadPatients();
         }
 
-        // --- CANVAS FIRMA ---
         let canvas, ctx, drawing = false;
         function initCanvas() {
             canvas = document.getElementById('sigCanvas');
@@ -203,7 +181,6 @@
         function endDraw() { drawing = false; }
         function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
-        // --- GESTIÓN PROFESIONALES ---
         async function loadProfessionals() {
             const res = await fetch('/api/professionals');
             const data = await res.json();
@@ -234,7 +211,6 @@
             loadProfessionals();
         }
 
-        // --- GESTIÓN PACIENTES ---
         async function loadPatients() {
             const res = await fetch('/api/patients');
             const data = await res.json();
