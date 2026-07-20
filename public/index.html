@@ -175,8 +175,8 @@
                 document.getElementById('adminView').classList.remove('hidden');
                 initCanvas(); 
                 loadDashboard(); 
-                loadProfessionals(); // Carga inicial
-                loadEduProfessionals(); // Carga inicial para educación
+                loadProfessionals(); 
+                loadEduProfessionals(); 
             } else {
                 document.getElementById('auxiliarView').classList.remove('hidden');
                 document.getElementById('auxName').textContent = user.full_name;
@@ -192,7 +192,7 @@
             if(id === 'patSection') loadPatients();
             if(id === 'eduSection') {
                 loadTopics();
-                loadEduProfessionals(); // Recargar lista al entrar a la pestaña
+                loadEduProfessionals();
             }
         }
 
@@ -202,11 +202,6 @@
             document.getElementById('statPat').textContent = data.data.patients || 0;
             document.getElementById('statProf').textContent = data.data.professionals || 0;
             document.getElementById('statAlert').textContent = data.data.alerts.length;
-            const alertDiv = document.getElementById('alertList');
-            alertDiv.innerHTML = '';
-            if(data.data.alerts.length > 0) {
-                alertDiv.innerHTML = '<h4>⚠️ Documentos por vencer:</h4>' + data.data.alerts.map(a => `<p>${a.full_name} vence el ${a.card_expiry_date}</p>`).join('');
-            }
         }
 
         let canvas, ctx, drawing = false;
@@ -226,29 +221,34 @@
         }
         function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
-        // --- GESTIÓN PROFESIONALES (CORREGIDA) ---
+        // --- GESTIÓN PROFESIONALES ---
         async function loadProfessionals() {
-            console.log("Cargando profesionales...");
-            const res = await fetch('/api/professionals?t=' + new Date().getTime()); // Forzar no caché
-            const data = await res.json();
-            console.log("Profesionales recibidos:", data);
-            const tbody = document.getElementById('profListBody');
-            tbody.innerHTML = '';
-            
-            if (!data.data || data.data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4">No hay profesionales registrados.</td></tr>';
-                return;
-            }
+            console.log("🔍 Cargando profesionales...");
+            try {
+                const res = await fetch('/api/professionals');
+                const data = await res.json();
+                console.log("✅ Datos recibidos:", data);
+                
+                const tbody = document.getElementById('profListBody');
+                tbody.innerHTML = '';
+                
+                if (!data.success || !data.data) {
+                    tbody.innerHTML = '<tr><td colspan="4">Error cargando datos.</td></tr>';
+                    return;
+                }
 
-            data.data.forEach(p => {
-                tbody.innerHTML += 
-                    `<tr>
-                        <td>${p.full_name}</td>
-                        <td>${p.specialties ? p.specialties.name : 'Sin rol'}</td>
-                        <td>${p.card_expiry_date || 'N/A'}</td>
-                        <td><button class="warning" style="width:auto; padding:5px;" onclick="toggleStatus('${p.id}', ${!p.is_active})">${p.is_active ? 'Desactivar' : 'Activar'}</button></td>
-                    </tr>`;
-            });
+                if (data.data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4">No hay profesionales registrados aún.</td></tr>';
+                    return;
+                }
+
+                data.data.forEach(p => {
+                    const roleName = p.specialties ? p.specialties.name : 'Sin Rol';
+                    tbody.innerHTML += `<tr><td>${p.full_name}</td><td>${roleName}</td><td>${p.card_expiry_date || 'N/A'}</td><td><button class="warning" style="width:auto; padding:5px;" onclick="toggleStatus('${p.id}', ${!p.is_active})">${p.is_active ? 'Desactivar' : 'Activar'}</button></td></tr>`;
+                });
+            } catch (e) {
+                console.error("💥 Error en loadProfessionals:", e);
+            }
         }
 
         async function createProfessional() {
@@ -261,24 +261,36 @@
                 cardExpiry: document.getElementById('newProfExpiry').value,
                 signature: canvas.toDataURL()
             };
+            
             if(!data.email || !data.fullName) return alert("Faltan datos obligatorios");
             
-            const res = await fetch('/api/professionals', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
-            const result = await res.json();
-            alert(result.message);
+            console.log("📤 Enviando profesional:", data);
             
-            if(result.success) { 
-                clearSig(); 
-                // Limpiar formulario
-                document.getElementById('newProfName').value = "";
-                document.getElementById('newProfDoc').value = "";
-                document.getElementById('newProfEmail').value = "";
-                document.getElementById('newProfPass').value = "";
+            try {
+                const res = await fetch('/api/professionals', { 
+                    method: 'POST', 
+                    headers: {'Content-Type': 'application/json'}, 
+                    body: JSON.stringify(data) 
+                });
+                const result = await res.json();
+                console.log("📥 Respuesta creación:", result);
                 
-                // RECARGAR TODO
-                loadProfessionals(); 
-                loadDashboard(); 
-                loadEduProfessionals(); 
+                alert(result.message || "Proceso terminado");
+                
+                if(result.success) { 
+                    clearSig();
+                    document.getElementById('newProfName').value = "";
+                    document.getElementById('newProfDoc').value = "";
+                    document.getElementById('newProfEmail').value = "";
+                    document.getElementById('newProfPass').value = "";
+                    
+                    loadProfessionals(); 
+                    loadDashboard(); 
+                    loadEduProfessionals(); 
+                }
+            } catch (e) {
+                console.error("Error de red:", e);
+                alert("Error de conexión con el servidor");
             }
         }
 
@@ -330,7 +342,7 @@
             const res = await fetch('/api/education/topics');
             const data = await res.json();
             document.getElementById('topicListBody').innerHTML = data.data.map(t => 
-                `<tr><td>${t.title}</td><td>${t.professionals?.full_name || 'N/A'}</td><td>${t.description}</td></tr>`
+                `<tr><td>${t.title}</td><td>${t.created_by || 'N/A'}</td><td>${t.description}</td></tr>`
             ).join('');
         }
 
