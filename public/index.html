@@ -3,154 +3,180 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vital Hogar Pro IPS - Gestión</title>
+    <title>Vital Hogar Pro - Acceso Seguro</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root { --bg-dark: #0f172a; --card-bg: #1e293b; --primary: #22c55e; --text-main: #e2e8f0; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 0; }
         .app-container { max-width: 1000px; margin: 0 auto; padding: 20px; }
+        .hidden { display: none !important; }
         
-        /* Header */
+        /* Login Styles */
+        .login-wrapper { display: flex; justify-content: center; align-items: center; height: 100vh; }
+        .login-card { background: var(--card-bg); padding: 2.5rem; border-radius: 16px; width: 100%; max-width: 400px; text-align: center; box-shadow: 0 10px 25px rgba(0,0,0,0.5); }
+        .input-group { position: relative; margin-bottom: 15px; }
+        input, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
+        .toggle-password { position: absolute; right: 15px; top: 12px; cursor: pointer; color: #94a3b8; }
+        
+        /* General UI */
         header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--card-bg); border-radius: 12px; margin-bottom: 20px; }
         .logo-area img { height: 50px; }
-        
-        /* Formularios Responsive */
-        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 15px; }
-        input, select { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
-        
-        /* Canvas de Firma (Responsive) */
-        .signature-container { background: white; border-radius: 8px; overflow: hidden; touch-action: none; }
-        canvas { width: 100%; height: 200px; cursor: crosshair; }
-        
-        /* Botones */
         button { padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
         button.secondary { background: #334155; }
         
-        /* Login */
-        .login-wrapper { display: flex; justify-content: center; align-items: center; height: 90vh; }
-        .login-card { background: var(--card-bg); padding: 2rem; border-radius: 16px; width: 100%; max-width: 400px; text-align: center; }
+        /* Canvas */
+        .signature-container { background: white; border-radius: 8px; overflow: hidden; touch-action: none; margin: 10px 0; }
+        canvas { width: 100%; height: 150px; cursor: crosshair; }
     </style>
 </head>
 <body>
 
-    <!-- LOGIN SIMPLIFICADO -->
+    <!-- VISTA LOGIN -->
     <div id="loginScreen" class="login-wrapper">
         <div class="login-card">
-            <img src="https://i.imgur.com/01YZxey.jpeg" style="height: 80px;">
+            <img src="https://i.imgur.com/01YZxey.jpeg" style="height: 80px; margin-bottom: 20px;">
             <h2>Acceso Vital Hogar</h2>
-            <input type="email" id="loginEmail" placeholder="Email" value="admin@vitalhogar.com">
-            <input type="password" id="loginPass" placeholder="Contraseña" value="123456">
-            <button onclick="handleLogin()">Ingresar como ADMIN</button>
+            <div class="input-group">
+                <input type="email" id="loginEmail" placeholder="Correo Electrónico">
+            </div>
+            <div class="input-group">
+                <input type="password" id="loginPass" placeholder="Contraseña">
+                <i class="fas fa-eye toggle-password" onclick="togglePass()"></i>
+            </div>
+            <button onclick="handleLogin()">Ingresar al Sistema</button>
+            <p id="loginMsg" style="color: #ef4444; margin-top: 10px;"></p>
         </div>
     </div>
 
-    <!-- PANEL DE ADMINISTRACIÓN -->
-    <div id="adminPanel" class="app-container hidden">
+    <!-- VISTA ADMIN (Gestión) -->
+    <div id="adminView" class="app-container hidden">
         <header>
-            <div class="logo-area">
-                <img src="https://i.imgur.com/01YZxey.jpeg">
-                <div><h1>Gestión de Profesionales</h1><small>Registro y Firmas Digitales</small></div>
-            </div>
+            <div class="logo-area"><img src="https://i.imgur.com/01YZxey.jpeg"><h1>Panel Admin</h1></div>
             <button onclick="logout()" style="width: auto; background: #ef4444;">Salir</button>
         </header>
-
         <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px;">
-            <h3>👨‍⚕️ Nuevo Profesional / Auxiliar</h3>
-            
-            <div class="form-grid">
-                <input type="text" id="profName" placeholder="Nombre Completo">
-                <input type="text" id="profDoc" placeholder="Cédula de Ciudadanía">
-                <select id="profSpecialty">
+            <h3>👨‍⚕️ Crear Nuevo Profesional</h3>
+            <div class="form-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <input type="text" id="newProfName" placeholder="Nombre Completo">
+                <input type="text" id="newProfDoc" placeholder="Cédula">
+                <input type="email" id="newProfEmail" placeholder="Correo Electrónico (Login)">
+                <input type="text" id="newProfPass" placeholder="Contraseña Temporal">
+                <select id="newProfSpec">
                     <option value="">Seleccionar Especialidad...</option>
                     <option value="AUXILIAR_ENFERMERIA">Auxiliar de Enfermería</option>
-                    <option value="ENFERMERIA">Enfermero Jefe</option>
-                    <option value="MEDICINA">Médico General</option>
+                    <option value="ENFERMERIA_JEFE">Enfermero Jefe</option>
+                    <option value="MEDICINA">Médico</option>
                     <option value="FISIOTERAPIA">Fisioterapeuta</option>
-                    <option value="NUTRICION">Nutricionista</option>
                 </select>
-                <input type="text" id="profCard" placeholder="Tarjeta Profesional / RETHUS">
+                <input type="date" id="newProfExpiry" placeholder="Vencimiento RETHUS">
             </div>
-
-            <h4 style="margin-top: 20px;">✍️ Captura de Firma Digital</h4>
-            <p style="font-size: 0.9rem; color: #94a3b8;">Dibuja la firma aquí (funciona con mouse o dedo en tablet/celular):</p>
             
-            <div class="signature-container">
-                <canvas id="sigCanvas"></canvas>
-            </div>
-            <button class="secondary" onclick="clearSignature()" style="width: auto; margin-top: 5px;">🗑️ Borrar Firma</button>
+            <h4 style="margin-top: 20px;">✍️ Firma Digital del Profesional</h4>
+            <div class="signature-container"><canvas id="sigCanvas"></canvas></div>
+            <button class="secondary" onclick="clearSig()" style="width: auto;">🗑️ Borrar</button>
+            <button onclick="createProfessional()">💾 Guardar Profesional</button>
+        </div>
+    </div>
 
-            <button onclick="saveProfessional()" style="margin-top: 20px; font-size: 1.1rem;">💾 Guardar Profesional en Base de Datos</button>
+    <!-- VISTA AUXILIAR (Turno) -->
+    <div id="auxiliarView" class="app-container hidden">
+        <header>
+            <div class="logo-area"><img src="https://i.imgur.com/01YZxey.jpeg"><h1>Mi Turno Activo</h1></div>
+            <button onclick="logout()" style="width: auto; background: #ef4444;">Salir</button>
+        </header>
+        <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px; text-align: center;">
+            <h3>Bienvenido, <span id="auxName"></span></h3>
+            <p>Aquí irá el módulo de signos vitales, actividades y reporte de turno.</p>
+            <button>🩺 Iniciar Toma de Signos</button>
         </div>
     </div>
 
     <script>
-        // --- LÓGICA DE LOGIN ---
-        function handleLogin() {
-            // Simulación: En producción esto valida con Supabase
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('adminPanel').classList.remove('hidden');
-            initCanvas(); // Iniciar el canvas al entrar
+        // --- LÓGICA DE LOGIN Y VISTAS ---
+        async function handleLogin() {
+            const email = document.getElementById('loginEmail').value;
+            const pass = document.getElementById('loginPass').value;
+            const msg = document.getElementById('loginMsg');
+            msg.textContent = "Verificando credenciales...";
+
+            try {
+                const res = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ email, password: pass })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    localStorage.setItem('token', data.data.token);
+                    localStorage.setItem('user', JSON.stringify(data.data.user));
+                    initApp();
+                } else {
+                    msg.textContent = data.message;
+                }
+            } catch (e) { msg.textContent = "Error de conexión con el servidor."; }
         }
 
-        function logout() { location.reload(); }
+        function initApp() {
+            const user = JSON.parse(localStorage.getItem('user'));
+            document.getElementById('loginScreen').classList.add('hidden');
+            
+            if (user.specialties.name === 'ADMINISTRACION') {
+                document.getElementById('adminView').classList.remove('hidden');
+                initCanvas();
+            } else {
+                document.getElementById('auxiliarView').classList.remove('hidden');
+                document.getElementById('auxName').textContent = user.full_name;
+            }
+        }
 
-        // --- LÓGICA DEL CANVAS DE FIRMA (TOUCH & MOUSE) ---
+        function logout() { localStorage.clear(); location.reload(); }
+        function togglePass() {
+            const i = document.getElementById('loginPass');
+            i.type = i.type === 'password' ? 'text' : 'password';
+        }
+
+        // --- LÓGICA DE CREACIÓN DE PROFESIONALES ---
         let canvas, ctx, drawing = false;
-
         function initCanvas() {
             canvas = document.getElementById('sigCanvas');
             ctx = canvas.getContext('2d');
-            
-            // Ajustar tamaño real del canvas
-            canvas.width = canvas.offsetWidth;
-            canvas.height = canvas.offsetHeight;
+            canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
+            canvas.addEventListener('mousedown', () => drawing = true);
+            canvas.addEventListener('mouseup', () => drawing = false);
+            canvas.addEventListener('mousemove', (e) => {
+                if (!drawing) return;
+                ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = 'black';
+                ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY);
+            });
+        }
+        function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
-            // Eventos Mouse
-            canvas.addEventListener('mousedown', startDraw);
-            canvas.addEventListener('mouseup', endDraw);
-            canvas.addEventListener('mousemove', draw);
-            
-            // Eventos Touch (Celulares/Tablets)
-            canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e.touches[0]); });
-            canvas.addEventListener('touchend', (e) => { e.preventDefault(); endDraw(); });
-            canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); });
+        async function createProfessional() {
+            const data = {
+                fullName: document.getElementById('newProfName').value,
+                documentNumber: document.getElementById('newProfDoc').value,
+                email: document.getElementById('newProfEmail').value,
+                password: document.getElementById('newProfPass').value,
+                specialtyId: document.getElementById('newProfSpec').value, // Ojo: Aquí deberías usar el ID real de la tabla specialties
+                cardExpiry: document.getElementById('newProfExpiry').value,
+                signature: canvas.toDataURL()
+            };
+
+            if(!data.email || !data.fullName) return alert("Faltan datos obligatorios");
+
+            const res = await fetch('/api/professionals', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            alert(result.message);
+            if(result.success) { clearSig(); document.getElementById('newProfName').value = ""; }
         }
 
-        function startDraw(e) {
-            drawing = true;
-            ctx.beginPath();
-            const rect = canvas.getBoundingClientRect();
-            ctx.moveTo((e.clientX || e.pageX) - rect.left, (e.clientY || e.pageY) - rect.top);
-        }
-
-        function draw(e) {
-            if (!drawing) return;
-            const rect = canvas.getBoundingClientRect();
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = 'black';
-            ctx.lineTo((e.clientX || e.pageX) - rect.left, (e.clientY || e.pageY) - rect.top);
-            ctx.stroke();
-        }
-
-        function endDraw() { drawing = false; }
-        function clearSignature() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
-
-        // --- GUARDAR PROFESIONAL ---
-        function saveProfessional() {
-            const name = document.getElementById('profName').value;
-            if(!name) return alert("Falta el nombre");
-
-            // Convertir firma a imagen Base64
-            const signatureData = canvas.toDataURL();
-            
-            console.log("Guardando:", { name, signature: signatureData.substring(0, 50) + "..." });
-            alert(`✅ Profesional ${name} guardado exitosamente con firma digital.`);
-            
-            // Aquí iría el fetch a tu backend para guardar en Supabase
-            clearSignature();
-            document.getElementById('profName').value = "";
-        }
+        window.onload = () => { if(localStorage.getItem('token')) initApp(); };
     </script>
 </body>
 </html>
