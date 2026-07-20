@@ -24,28 +24,18 @@ app.post('/api/auth/login', async (req, res) => {
         const { email, password } = req.body;
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
         if (authError || !authData.user) return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
-
         const { data: profData } = await supabase.from('professionals').select('*, specialties(name)').eq('user_id', authData.user.id).single();
         if (!profData) return res.status(404).json({ success: false, message: 'Perfil no encontrado.' });
-        if (!profData.is_active) return res.status(403).json({ success: false, message: 'Usuario desactivado.' });
-
-        const today = new Date();
-        if (profData.card_expiry_date && new Date(profData.card_expiry_date) < today) {
-            return res.status(403).json({ success: false, message: 'RETHUS/TP vencido.' });
-        }
-
         const token = jwt.sign({ id: profData.id, role: profData.specialties?.name }, process.env.JWT_SECRET, { expiresIn: '24h' });
         res.json({ success: true, data: { user: profData, token } });
-    } catch (error) { console.error(error); res.status(500).json({ success: false, message: 'Error interno' }); }
+    } catch (error) { res.status(500).json({ success: false, message: 'Error interno' }); }
 });
 
 // LISTAR PACIENTES
 app.get('/api/patients', async (req, res) => {
     try {
-        console.log('🔍 Buscando pacientes...');
         const { data, error } = await supabase.from('patients').select('*, altitude_profiles(city_name)').order('created_at', { ascending: false });
-        if (error) { console.error('❌ Error DB:', error); throw error; }
-        console.log(`✅ Encontrados ${data.length} pacientes`);
+        if (error) throw error;
         res.json({ success: true, data });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
@@ -53,13 +43,13 @@ app.get('/api/patients', async (req, res) => {
 // CREAR PACIENTE
 app.post('/api/patients', async (req, res) => {
     try {
-        console.log('📥 Recibiendo datos de paciente:', req.body);
         const { fullName, documentNumber, birthDate, cityName, pathology, address, contactPhone } = req.body;
+        console.log("📥 Datos recibidos:", req.body);
         
         const { data: cityData } = await supabase.from('altitude_profiles').select('id').eq('city_name', cityName).single();
-        if (!cityData) return res.status(400).json({ success: false, message: 'Ciudad no encontrada: ' + cityName });
+        if (!cityData) return res.status(400).json({ success: false, message: 'Ciudad no encontrada' });
 
-        const insertData = {
+        const { error } = await supabase.from('patients').insert([{
             full_name: fullName, 
             document_number: documentNumber, 
             birth_date: birthDate,
@@ -68,25 +58,22 @@ app.post('/api/patients', async (req, res) => {
             address: address,
             contact_phone: contactPhone, 
             is_active: true
-        };
-
-        console.log('💾 Intentando guardar:', insertData);
-        const { error } = await supabase.from('patients').insert([insertData]);
+        }]);
         
-        if (error) { 
-            console.error('❌ Error al guardar en DB:', error);
-            throw error; 
+        if (error) {
+            console.error("❌ ERROR SUPABASE:", error);
+            throw error;
         }
         
-        console.log('✅ Paciente guardado exitosamente');
+        console.log("✅ Paciente guardado en DB");
         res.json({ success: true, message: 'Paciente registrado' });
     } catch (error) { 
-        console.error('💥 Error Crítico:', error);
+        console.error("💥 FALLO CRÍTICO:", error);
         res.status(500).json({ success: false, message: error.message }); 
     }
 });
 
-// GESTIÓN PROFESIONALES (Resumida para espacio, asumo que ya funciona)
+// GESTIÓN PROFESIONALES (Resumida)
 app.get('/api/professionals', async (req, res) => {
     const { data } = await supabase.from('professionals').select('*, specialties(name)').order('created_at', { ascending: false });
     res.json({ success: true, data });
