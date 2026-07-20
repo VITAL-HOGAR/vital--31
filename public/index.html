@@ -29,9 +29,22 @@
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #334155; }
         th { background: #1e293b; color: #94a3b8; }
         
-        /* Canvas */
-        .signature-container { background: white; border-radius: 8px; overflow: hidden; touch-action: none; margin: 10px 0; }
-        canvas { width: 100%; height: 150px; cursor: crosshair; }
+        /* Canvas de Firma CORREGIDO */
+        .signature-wrapper { 
+            border: 2px dashed #334155; 
+            background: white; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            touch-action: none; 
+            margin: 10px 0;
+            position: relative;
+        }
+        canvas { 
+            display: block; 
+            width: 100%; 
+            height: 200px; /* Altura fija para evitar deformaciones */
+            cursor: crosshair; 
+        }
     </style>
 </head>
 <body>
@@ -74,11 +87,14 @@
                     <option value="ENFERMERIA_JEFE">Enfermero Jefe</option>
                     <option value="MEDICINA">Médico</option>
                 </select>
-                <input type="date" id="newProfExpiry" placeholder="Vencimiento RETHUS">
+                <!-- CAMBIO: Input de texto simple para la fecha -->
+                <input type="text" id="newProfExpiry" placeholder="Vencimiento RETHUS (Ej: 2026-12-31)">
             </div>
             
-            <h4 style="margin-top: 20px;">✍️ Firma Digital</h4>
-            <div class="signature-container"><canvas id="sigCanvas"></canvas></div>
+            <h4 style="margin-top: 20px;">✍️ Firma Digital (Dibuje dentro del recuadro)</h4>
+            <div class="signature-wrapper">
+                <canvas id="sigCanvas"></canvas>
+            </div>
             <button class="secondary" onclick="clearSig()" style="width: auto;">🗑️ Borrar Firma</button>
             <button onclick="createProfessional()">💾 Guardar Profesional</button>
         </div>
@@ -148,22 +164,54 @@
             i.type = i.type === 'password' ? 'text' : 'password';
         }
 
-        // --- CANVAS FIRMA ---
+        // --- CANVAS FIRMA (CORREGIDO) ---
         let canvas, ctx, drawing = false;
         function initCanvas() {
             canvas = document.getElementById('sigCanvas');
             ctx = canvas.getContext('2d');
-            canvas.width = canvas.offsetWidth; canvas.height = canvas.offsetHeight;
-            canvas.addEventListener('mousedown', () => drawing = true);
-            canvas.addEventListener('mouseup', () => drawing = false);
-            canvas.addEventListener('mousemove', (e) => {
-                if (!drawing) return;
-                ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = 'black';
-                ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY);
-            });
+            
+            // Ajustar tamaño real del canvas al tamaño visual
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = rect.height;
+
+            canvas.addEventListener('mousedown', startDraw);
+            canvas.addEventListener('mouseup', endDraw);
+            canvas.addEventListener('mousemove', draw);
+            
+            // Soporte táctil
+            canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e.touches[0]); });
+            canvas.addEventListener('touchend', (e) => { e.preventDefault(); endDraw(); });
+            canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); });
         }
-        function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+
+        function getPos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+        }
+
+        function startDraw(e) {
+            drawing = true;
+            const pos = getPos(e);
+            ctx.beginPath();
+            ctx.moveTo(pos.x, pos.y);
+        }
+
+        function draw(e) {
+            if (!drawing) return;
+            const pos = getPos(e);
+            ctx.lineWidth = 3;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = 'black';
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        function endDraw() { drawing = false; }
+        function clearSig() { 
+            const rect = canvas.getBoundingClientRect();
+            ctx.clearRect(0, 0, canvas.width, canvas.height); 
+        }
 
         // --- GESTIÓN DE PROFESIONALES ---
         async function loadProfessionals() {
@@ -196,7 +244,7 @@
                 cardExpiry: document.getElementById('newProfExpiry').value,
                 signature: canvas.toDataURL()
             };
-            if(!data.email || !data.fullName) return alert("Faltan datos");
+            if(!data.email || !data.fullName) return alert("Faltan datos obligatorios");
 
             const res = await fetch('/api/professionals', {
                 method: 'POST',
