@@ -139,9 +139,15 @@
                 <h3>Crear Tema Educativo (Catálogo Maestro)</h3>
                 <input type="text" id="eduTitle" placeholder="Título del Tema (Ej: Cuidado de Heridas)">
                 <input type="text" id="eduDesc" placeholder="Descripción breve">
-                <button onclick="createTopic()">💾 Guardar Tema</button>
+                
+                <label style="display:block; margin-top:10px; color:#94a3b8;">Profesional Responsable de impartir:</label>
+                <select id="eduResponsible">
+                    <option value="">Cargando profesionales...</option>
+                </select>
+                
+                <button onclick="createTopic()" style="margin-top: 15px;">💾 Guardar Tema</button>
             </div>
-            <table><thead><tr><th>Tema</th><th>Descripción</th></tr></thead><tbody id="topicListBody"></tbody></table>
+            <table><thead><tr><th>Tema</th><th>Responsable</th><th>Descripción</th></tr></thead><tbody id="topicListBody"></tbody></table>
         </div>
     </div>
 
@@ -167,7 +173,7 @@
             document.getElementById('loginScreen').classList.add('hidden');
             if (user.specialties.name === 'ADMINISTRACION') {
                 document.getElementById('adminView').classList.remove('hidden');
-                initCanvas(); loadDashboard(); loadProfessionals();
+                initCanvas(); loadDashboard(); loadProfessionals(); loadEduProfessionals();
             } else {
                 document.getElementById('auxiliarView').classList.remove('hidden');
                 document.getElementById('auxName').textContent = user.full_name;
@@ -269,18 +275,37 @@
             if(result.success) loadPatients();
         }
 
+        // --- LÓGICA DE EDUCACIÓN ---
+        async function loadEduProfessionals() {
+            const res = await fetch('/api/professionals');
+            const data = await res.json();
+            const select = document.getElementById('eduResponsible');
+            select.innerHTML = '<option value="">Seleccionar Profesional...</option>';
+            data.data.forEach(p => {
+                select.innerHTML += `<option value="${p.id}">${p.full_name} (${p.specialties.name})</option>`;
+            });
+        }
+
         async function loadTopics() {
             const res = await fetch('/api/education/topics');
             const data = await res.json();
             document.getElementById('topicListBody').innerHTML = data.data.map(t => 
-                `<tr><td>${t.title}</td><td>${t.description}</td></tr>`
+                `<tr><td>${t.title}</td><td>${t.professionals?.full_name || 'N/A'}</td><td>${t.description}</td></tr>`
             ).join('');
         }
+
         async function createTopic() {
             const title = document.getElementById('eduTitle').value;
             const desc = document.getElementById('eduDesc').value;
-            if(!title) return alert("El título es obligatorio");
-            const res = await fetch('/api/education/topics', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, description: desc, createdBy: 'admin' }) });
+            const responsibleId = document.getElementById('eduResponsible').value;
+            
+            if(!title || !responsibleId) return alert("Título y Responsable son obligatorios");
+            
+            const res = await fetch('/api/education/topics', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ title, description: desc, responsibleId }) 
+            });
             const result = await res.json();
             alert(result.message);
             if(result.success) loadTopics();
