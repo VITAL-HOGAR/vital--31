@@ -61,8 +61,10 @@
         <div class="admin-nav">
             <button class="nav-btn active" onclick="showSection('profSection')">👨‍⚕️ Profesionales</button>
             <button class="nav-btn" onclick="showSection('patSection')">🤒 Pacientes</button>
+            <button class="nav-btn" onclick="showSection('eduSection')">📚 Educación</button>
         </div>
 
+        <!-- PROFESIONALES -->
         <div id="profSection">
             <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px;">
                 <h3>Registrar Nuevo Profesional</h3>
@@ -95,19 +97,31 @@
             <table><thead><tr><th>Nombre</th><th>Rol</th><th>Vencimiento</th><th>Acciones</th></tr></thead><tbody id="profListBody"></tbody></table>
         </div>
 
+        <!-- PACIENTES -->
         <div id="patSection" class="hidden">
             <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px;">
-                <h3>Registrar Paciente y Responsable</h3>
+                <h3>Registrar Paciente y Responsable Legal</h3>
                 <h4 style="color: var(--primary);">Datos del Paciente</h4>
                 <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
                     <input type="text" id="patName" placeholder="Nombre Completo Paciente">
                     <input type="text" id="patDoc" placeholder="Cédula Paciente">
-                    <select id="patCity"><option value="Cúcuta">Cúcuta</option><option value="Bogotá">Bogotá</option><option value="Medellín">Medellín</option></select>
+                    <select id="patCity">
+                        <option value="">Seleccionar Ciudad...</option>
+                        <option value="Barranquilla">Barranquilla (Nivel 1)</option>
+                        <option value="Cartagena">Cartagena (Nivel 1)</option>
+                        <option value="Cúcuta">Cúcuta (Nivel 1/2)</option>
+                        <option value="Cali">Cali (Nivel 2)</option>
+                        <option value="Bucaramanga">Bucaramanga (Nivel 2)</option>
+                        <option value="Medellín">Medellín (Nivel 3)</option>
+                        <option value="Manizales">Manizales (Nivel 3)</option>
+                        <option value="Bogotá">Bogotá (Nivel 4)</option>
+                        <option value="Pasto">Pasto (Nivel 4)</option>
+                    </select>
                     <input type="text" id="patPathology" placeholder="Patología">
                     <input type="text" id="patAddress" placeholder="Dirección">
                 </div>
                 
-                <h4 style="color: var(--warning); margin-top: 20px;">Datos del Familiar Responsable (Legal)</h4>
+                <h4 style="color: var(--warning); margin-top: 20px;">Datos del Familiar Responsable</h4>
                 <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
                     <input type="text" id="famName" placeholder="Nombre Completo Familiar">
                     <input type="text" id="famId" placeholder="Cédula Familiar">
@@ -116,7 +130,18 @@
                 </div>
                 <button onclick="createPatient()" style="margin-top: 15px;">💾 Registrar Paciente</button>
             </div>
-            <table><thead><tr><th>Paciente</th><th>Responsable</th><th>Celular</th></tr></thead><tbody id="patListBody"></tbody></table>
+            <table><thead><tr><th>Paciente</th><th>Ciudad</th><th>Responsable</th><th>Celular</th></tr></thead><tbody id="patListBody"></tbody></table>
+        </div>
+
+        <!-- EDUCACIÓN -->
+        <div id="eduSection" class="hidden">
+            <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px;">
+                <h3>Crear Tema Educativo (Catálogo Maestro)</h3>
+                <input type="text" id="eduTitle" placeholder="Título del Tema (Ej: Cuidado de Heridas)">
+                <input type="text" id="eduDesc" placeholder="Descripción breve">
+                <button onclick="createTopic()">💾 Guardar Tema</button>
+            </div>
+            <table><thead><tr><th>Tema</th><th>Descripción</th></tr></thead><tbody id="topicListBody"></tbody></table>
         </div>
     </div>
 
@@ -151,11 +176,12 @@
 
         function logout() { localStorage.clear(); location.reload(); }
         function showSection(id) {
-            ['profSection', 'patSection'].forEach(s => document.getElementById(s).classList.add('hidden'));
+            ['profSection', 'patSection', 'eduSection'].forEach(s => document.getElementById(s).classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             event.target.classList.add('active');
             if(id === 'patSection') loadPatients();
+            if(id === 'eduSection') loadTopics();
         }
 
         async function loadDashboard() {
@@ -221,7 +247,7 @@
             const res = await fetch('/api/patients');
             const data = await res.json();
             document.getElementById('patListBody').innerHTML = data.data.map(p => 
-                `<tr><td>${p.full_name}</td><td>${p.family_name} (${p.family_relationship})</td><td>${p.contact_phone}</td></tr>`
+                `<tr><td>${p.full_name}</td><td>${p.city_id ? 'Asignada' : 'N/A'}</td><td>${p.family_name || 'N/A'}</td><td>${p.contact_phone}</td></tr>`
             ).join('');
         }
         async function createPatient() {
@@ -241,6 +267,23 @@
             const result = await res.json();
             alert(result.message);
             if(result.success) loadPatients();
+        }
+
+        async function loadTopics() {
+            const res = await fetch('/api/education/topics');
+            const data = await res.json();
+            document.getElementById('topicListBody').innerHTML = data.data.map(t => 
+                `<tr><td>${t.title}</td><td>${t.description}</td></tr>`
+            ).join('');
+        }
+        async function createTopic() {
+            const title = document.getElementById('eduTitle').value;
+            const desc = document.getElementById('eduDesc').value;
+            if(!title) return alert("El título es obligatorio");
+            const res = await fetch('/api/education/topics', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title, description: desc, createdBy: 'admin' }) });
+            const result = await res.json();
+            alert(result.message);
+            if(result.success) loadTopics();
         }
 
         window.onload = () => { if(localStorage.getItem('user')) initApp(); };
