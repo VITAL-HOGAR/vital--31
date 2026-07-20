@@ -10,37 +10,28 @@
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 0; }
         .app-container { max-width: 1200px; margin: 0 auto; padding: 20px; }
         .hidden { display: none !important; }
-        
-        /* Login */
         .login-wrapper { display: flex; justify-content: center; align-items: center; height: 100vh; }
         .login-card { background: var(--card-bg); padding: 2.5rem; border-radius: 16px; width: 100%; max-width: 400px; text-align: center; }
         input, select { width: 100%; padding: 12px; margin: 8px 0; border-radius: 8px; border: 1px solid #334155; background: #0f172a; color: white; box-sizing: border-box; }
-        
-        /* Dashboard & UI */
         header { display: flex; justify-content: space-between; align-items: center; padding: 15px; background: var(--card-bg); border-radius: 12px; margin-bottom: 20px; }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 30px; }
         .stat-card { background: var(--card-bg); padding: 20px; border-radius: 12px; text-align: center; border-left: 5px solid var(--primary); }
         .stat-number { font-size: 2.5rem; font-weight: bold; color: var(--primary); }
-        
         button { padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
         button.secondary { background: #334155; }
         button.danger { background: var(--danger); }
         button.warning { background: var(--warning); color: black; }
-        
         .admin-nav { display: flex; gap: 10px; margin-bottom: 20px; overflow-x: auto; }
         .nav-btn { background: #334155; width: auto; flex: 1; white-space: nowrap; }
         .nav-btn.active { background: var(--primary); }
-        
         table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #0f172a; border-radius: 8px; overflow: hidden; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #334155; }
         th { background: #1e293b; color: #94a3b8; }
-        
         .signature-wrapper { border: 2px dashed #334155; background: white; border-radius: 8px; overflow: hidden; touch-action: none; margin: 10px 0; position: relative; }
         canvas { display: block; width: 100%; height: 150px; cursor: crosshair; }
     </style>
 </head>
 <body>
-    <!-- LOGIN -->
     <div id="loginScreen" class="login-wrapper">
         <div class="login-card">
             <img src="https://i.imgur.com/01YZxey.jpeg" style="height: 80px;">
@@ -52,14 +43,12 @@
         </div>
     </div>
 
-    <!-- ADMIN VIEW -->
     <div id="adminView" class="app-container hidden">
         <header>
             <div class="logo-area"><img src="https://i.imgur.com/01YZxey.jpeg" style="height: 40px;"><h1>Panel de Control</h1></div>
             <button onclick="logout()" style="width: auto; background: var(--danger);">Salir</button>
         </header>
 
-        <!-- DASHBOARD -->
         <div id="dashboardSection">
             <div class="stats-grid">
                 <div class="stat-card"><h3>Pacientes Activos</h3><div class="stat-number" id="statPat">0</div></div>
@@ -69,14 +58,11 @@
             <div id="alertList" style="background: var(--card-bg); padding: 15px; border-radius: 8px; margin-bottom: 20px;"></div>
         </div>
 
-        <!-- NAVEGACIÓN INTERNA -->
         <div class="admin-nav">
             <button class="nav-btn active" onclick="showSection('profSection')">👨‍⚕️ Profesionales</button>
             <button class="nav-btn" onclick="showSection('patSection')">🤒 Pacientes</button>
-            <button class="nav-btn" onclick="showSection('reportSection')">📄 Informes</button>
         </div>
 
-        <!-- SECCIÓN PROFESIONALES -->
         <div id="profSection">
             <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px;">
                 <h3>Registrar Nuevo Profesional</h3>
@@ -109,51 +95,45 @@
             <table><thead><tr><th>Nombre</th><th>Rol</th><th>Vencimiento</th><th>Acciones</th></tr></thead><tbody id="profListBody"></tbody></table>
         </div>
 
-        <!-- SECCIÓN PACIENTES -->
         <div id="patSection" class="hidden">
             <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px;">
-                <h3>Registrar Paciente</h3>
+                <h3>Registrar Paciente y Responsable</h3>
+                <h4 style="color: var(--primary);">Datos del Paciente</h4>
                 <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                    <input type="text" id="patName" placeholder="Nombre Completo">
-                    <input type="text" id="patDoc" placeholder="Cédula">
+                    <input type="text" id="patName" placeholder="Nombre Completo Paciente">
+                    <input type="text" id="patDoc" placeholder="Cédula Paciente">
                     <select id="patCity"><option value="Cúcuta">Cúcuta</option><option value="Bogotá">Bogotá</option><option value="Medellín">Medellín</option></select>
                     <input type="text" id="patPathology" placeholder="Patología">
-                    <input type="text" id="patContact" placeholder="Celular Familiar">
+                    <input type="text" id="patAddress" placeholder="Dirección">
                 </div>
-                <button onclick="createPatient()">💾 Registrar Paciente</button>
+                
+                <h4 style="color: var(--warning); margin-top: 20px;">Datos del Familiar Responsable (Legal)</h4>
+                <div class="form-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+                    <input type="text" id="famName" placeholder="Nombre Completo Familiar">
+                    <input type="text" id="famId" placeholder="Cédula Familiar">
+                    <input type="text" id="famRel" placeholder="Parentesco (Ej: Hijo)">
+                    <input type="text" id="patContact" placeholder="Celular de Contacto">
+                </div>
+                <button onclick="createPatient()" style="margin-top: 15px;">💾 Registrar Paciente</button>
             </div>
-            <table><thead><tr><th>Nombre</th><th>Ciudad</th><th>Patología</th><th>Contacto</th></tr></thead><tbody id="patListBody"></tbody></table>
-        </div>
-
-        <!-- SECCIÓN INFORMES -->
-        <div id="reportSection" class="hidden">
-            <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px; text-align: center;">
-                <h3>Generación de Informes Mensuales</h3>
-                <p>Seleccione un paciente para generar el reporte de cuidados y enviarlo al familiar.</p>
-                <select id="reportPatientSelect" style="max-width: 300px; margin: 0 auto;"><option>Cargando pacientes...</option></select>
-                <button onclick="generatePDF()" style="max-width: 300px; margin: 10px auto;">📄 Generar PDF Mensual</button>
-            </div>
+            <table><thead><tr><th>Paciente</th><th>Responsable</th><th>Celular</th></tr></thead><tbody id="patListBody"></tbody></table>
         </div>
     </div>
 
-    <!-- AUXILIAR VIEW -->
     <div id="auxiliarView" class="app-container hidden">
         <header><h1>Mi Turno Activo</h1><button onclick="logout()" style="width: auto; background: var(--danger);">Salir</button></header>
         <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px; text-align: center;">
             <h3>Bienvenido, <span id="auxName"></span></h3>
-            <p>Sistema listo para registro clínico y firmas.</p>
+            <p>Sistema listo para registro clínico.</p>
         </div>
     </div>
 
     <script>
-        // --- LÓGICA DE LOGIN Y VISTAS ---
         async function handleLogin() {
             const res = await fetch('/api/auth/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ email: document.getElementById('loginEmail').value, password: document.getElementById('loginPass').value }) });
             const data = await res.json();
-            if (data.success) {
-                localStorage.setItem('user', JSON.stringify(data.data.user));
-                initApp();
-            } else { document.getElementById('loginMsg').textContent = data.message; }
+            if (data.success) { localStorage.setItem('user', JSON.stringify(data.data.user)); initApp(); } 
+            else { document.getElementById('loginMsg').textContent = data.message; }
         }
 
         function initApp() {
@@ -170,24 +150,20 @@
         }
 
         function logout() { localStorage.clear(); location.reload(); }
-        
         function showSection(id) {
-            ['profSection', 'patSection', 'reportSection'].forEach(s => document.getElementById(s).classList.add('hidden'));
+            ['profSection', 'patSection'].forEach(s => document.getElementById(s).classList.add('hidden'));
             document.getElementById(id).classList.remove('hidden');
             document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
             event.target.classList.add('active');
             if(id === 'patSection') loadPatients();
-            if(id === 'reportSection') loadReportPatients();
         }
 
-        // --- DASHBOARD ---
         async function loadDashboard() {
             const res = await fetch('/api/dashboard/stats');
             const data = await res.json();
             document.getElementById('statPat').textContent = data.data.patients || 0;
             document.getElementById('statProf').textContent = data.data.professionals || 0;
             document.getElementById('statAlert').textContent = data.data.alerts.length;
-            
             const alertDiv = document.getElementById('alertList');
             alertDiv.innerHTML = '';
             if(data.data.alerts.length > 0) {
@@ -195,7 +171,6 @@
             }
         }
 
-        // --- CANVAS FIRMA ---
         let canvas, ctx, drawing = false;
         function initCanvas() {
             canvas = document.getElementById('sigCanvas');
@@ -213,7 +188,6 @@
         }
         function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
-        // --- GESTIÓN PROFESIONALES ---
         async function loadProfessionals() {
             const res = await fetch('/api/professionals');
             const data = await res.json();
@@ -243,12 +217,11 @@
             loadProfessionals(); loadDashboard();
         }
 
-        // --- GESTIÓN PACIENTES ---
         async function loadPatients() {
             const res = await fetch('/api/patients');
             const data = await res.json();
             document.getElementById('patListBody').innerHTML = data.data.map(p => 
-                `<tr><td>${p.full_name}</td><td>${p.altitude_profiles?.city_name}</td><td>${p.pathology_summary}</td><td>${p.contact_phone}</td></tr>`
+                `<tr><td>${p.full_name}</td><td>${p.family_name} (${p.family_relationship})</td><td>${p.contact_phone}</td></tr>`
             ).join('');
         }
         async function createPatient() {
@@ -257,20 +230,18 @@
                 documentNumber: document.getElementById('patDoc').value,
                 cityName: document.getElementById('patCity').value,
                 pathology: document.getElementById('patPathology').value,
-                contactPhone: document.getElementById('patContact').value
+                address: document.getElementById('patAddress').value,
+                contactPhone: document.getElementById('patContact').value,
+                familyName: document.getElementById('famName').value,
+                familyId: document.getElementById('famId').value,
+                familyRel: document.getElementById('famRel').value
             };
+            if(!data.fullName || !data.familyName) return alert("Paciente y Familiar son obligatorios");
             const res = await fetch('/api/patients', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
             const result = await res.json();
             alert(result.message);
             if(result.success) loadPatients();
         }
-
-        async function loadReportPatients() {
-            const res = await fetch('/api/patients');
-            const data = await res.json();
-            document.getElementById('reportPatientSelect').innerHTML = data.data.map(p => `<option value="${p.id}">${p.full_name}</option>`).join('');
-        }
-        function generatePDF() { alert("Función de generación de PDF en desarrollo. Se activará en el siguiente módulo."); }
 
         window.onload = () => { if(localStorage.getItem('user')) initApp(); };
     </script>
