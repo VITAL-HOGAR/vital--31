@@ -19,6 +19,7 @@
         button { padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
         button.secondary { background: #334155; }
         button.danger { background: var(--danger); }
+        button.warning { background: var(--warning); color: black; }
         .admin-nav { display: flex; gap: 10px; margin-bottom: 20px; }
         .nav-btn { background: #334155; width: auto; flex: 1; }
         .nav-btn.active { background: var(--primary); }
@@ -53,6 +54,7 @@
             <button class="nav-btn" onclick="showSection('patSection')">🤒 Pacientes</button>
         </div>
 
+        <!-- SECCIÓN PROFESIONALES -->
         <div id="profSection">
             <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px;">
                 <h3>Crear Nuevo Profesional</h3>
@@ -81,6 +83,7 @@
             </div>
         </div>
 
+        <!-- SECCIÓN PACIENTES -->
         <div id="patSection" class="hidden">
             <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px;">
                 <h3>Registrar Nuevo Paciente</h3>
@@ -106,6 +109,25 @@
                 <h3>Cartera de Pacientes</h3>
                 <table><thead><tr><th>Nombre</th><th>Ciudad</th><th>Patología</th><th>Contacto</th></tr></thead><tbody id="patListBody"></tbody></table>
             </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE EDICIÓN PROFESIONAL -->
+    <div id="editModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>✏️ Editar Profesional</h3>
+            <input type="hidden" id="editId">
+            <input type="text" id="editName" placeholder="Nombre Completo">
+            <input type="text" id="editDoc" placeholder="Cédula">
+            <select id="editSpec">
+                <option value="ADMINISTRACION">Administración</option>
+                <option value="AUXILIAR_ENFERMERIA">Auxiliar de Enfermería</option>
+                <option value="ENFERMERIA_JEFE">Enfermero Jefe</option>
+                <option value="MEDICINA">Médico</option>
+            </select>
+            <input type="text" id="editExpiry" placeholder="Vencimiento RETHUS (AAAA-MM-DD)">
+            <button onclick="saveEdit()">Guardar Cambios</button>
+            <button class="secondary" onclick="closeModal()">Cancelar</button>
         </div>
     </div>
 
@@ -162,6 +184,7 @@
             if(id === 'patSection') loadPatients();
         }
 
+        // --- CANVAS FIRMA ---
         let canvas, ctx, drawing = false;
         function initCanvas() {
             canvas = document.getElementById('sigCanvas');
@@ -181,13 +204,24 @@
         function endDraw() { drawing = false; }
         function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
+        // --- GESTIÓN PROFESIONALES ---
         async function loadProfessionals() {
             const res = await fetch('/api/professionals');
             const data = await res.json();
             const tbody = document.getElementById('profListBody');
             tbody.innerHTML = '';
             data.data.forEach(p => {
-                tbody.innerHTML += `<tr><td>${p.full_name}</td><td>${p.specialties.name}</td><td>${p.is_active ? '✅' : '❌'}</td><td><button class="secondary" style="width:auto; padding:5px;" onclick="toggleStatus('${p.id}', ${!p.is_active})">${p.is_active ? 'Desactivar' : 'Activar'}</button></td></tr>`;
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${p.full_name}</td>
+                        <td>${p.specialties.name}</td>
+                        <td>${p.is_active ? '✅' : '❌'}</td>
+                        <td>
+                            <button class="warning" style="width:auto; padding:5px;" onclick="openEdit('${p.id}', '${p.full_name}', '${p.document_number}', '${p.specialties.name}', '${p.card_expiry_date || ''}')">✏️</button>
+                            <button class="secondary" style="width:auto; padding:5px;" onclick="toggleStatus('${p.id}', ${!p.is_active})">${p.is_active ? 'Desactivar' : 'Activar'}</button>
+                            <button class="danger" style="width:auto; padding:5px;" onclick="deleteProf('${p.id}')">🗑️</button>
+                        </td>
+                    </tr>`;
             });
         }
         async function createProfessional() {
@@ -210,12 +244,44 @@
             await fetch(`/api/professionals/${id}`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ isActive: newStatus }) });
             loadProfessionals();
         }
+        async function deleteProf(id) {
+            if(confirm("¿Eliminar profesional permanentemente?")) {
+                await fetch(`/api/professionals/${id}`, { method: 'DELETE' });
+                loadProfessionals();
+            }
+        }
+        function openEdit(id, name, doc, spec, expiry) {
+            document.getElementById('editId').value = id;
+            document.getElementById('editName').value = name;
+            document.getElementById('editDoc').value = doc;
+            document.getElementById('editSpec').value = spec;
+            document.getElementById('editExpiry').value = expiry;
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+        function closeModal() { document.getElementById('editModal').classList.add('hidden'); }
+        async function saveEdit() {
+            const id = document.getElementById('editId').value;
+            const data = {
+                fullName: document.getElementById('editName').value,
+                documentNumber: document.getElementById('editDoc').value,
+                specialtyName: document.getElementById('editSpec').value,
+                cardExpiry: document.getElementById('editExpiry').value
+            };
+            await fetch(`/api/professionals/${id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+            closeModal();
+            loadProfessionals();
+        }
 
+        // --- GESTIÓN PACIENTES ---
         async function loadPatients() {
             const res = await fetch('/api/patients');
             const data = await res.json();
             const tbody = document.getElementById('patListBody');
             tbody.innerHTML = '';
+            if (!data.data || data.data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay pacientes registrados aún.</td></tr>';
+                return;
+            }
             data.data.forEach(p => {
                 tbody.innerHTML += `<tr><td>${p.full_name}</td><td>${p.altitude_profiles.city_name}</td><td>${p.pathology_summary || 'N/A'}</td><td>${p.contact_phone}</td></tr>`;
             });
