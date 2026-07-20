@@ -37,10 +37,10 @@
             <img src="https://i.imgur.com/01YZxey.jpeg" style="height: 80px; margin-bottom: 20px;">
             <h2>Acceso Vital Hogar</h2>
             <div class="input-group">
-                <input type="email" id="loginEmail" placeholder="Correo Electrónico">
+                <input type="email" id="loginEmail" placeholder="Correo Electrónico" value="admin@vitalhogar.com">
             </div>
             <div class="input-group">
-                <input type="password" id="loginPass" placeholder="Contraseña">
+                <input type="password" id="loginPass" placeholder="Contraseña" value="123456">
                 <i class="fas fa-eye toggle-password" onclick="togglePass()"></i>
             </div>
             <button onclick="handleLogin()">Ingresar al Sistema</button>
@@ -63,10 +63,10 @@
                 <input type="text" id="newProfPass" placeholder="Contraseña Temporal">
                 <select id="newProfSpec">
                     <option value="">Seleccionar Especialidad...</option>
+                    <option value="ADMINISTRACION">Administración</option>
                     <option value="AUXILIAR_ENFERMERIA">Auxiliar de Enfermería</option>
                     <option value="ENFERMERIA_JEFE">Enfermero Jefe</option>
                     <option value="MEDICINA">Médico</option>
-                    <option value="FISIOTERAPIA">Fisioterapeuta</option>
                 </select>
                 <input type="date" id="newProfExpiry" placeholder="Vencimiento RETHUS">
             </div>
@@ -86,8 +86,7 @@
         </header>
         <div class="module-section" style="background: var(--card-bg); padding: 20px; border-radius: 12px; text-align: center;">
             <h3>Bienvenido, <span id="auxName"></span></h3>
-            <p>Aquí irá el módulo de signos vitales, actividades y reporte de turno.</p>
-            <button>🩺 Iniciar Toma de Signos</button>
+            <p>Sistema listo para registro clínico.</p>
         </div>
     </div>
 
@@ -97,7 +96,7 @@
             const email = document.getElementById('loginEmail').value;
             const pass = document.getElementById('loginPass').value;
             const msg = document.getElementById('loginMsg');
-            msg.textContent = "Verificando credenciales...";
+            msg.textContent = "Conectando...";
 
             try {
                 const res = await fetch('/api/auth/login', {
@@ -105,23 +104,31 @@
                     headers: {'Content-Type': 'application/json'},
                     body: JSON.stringify({ email, password: pass })
                 });
+                
                 const data = await res.json();
+                console.log("Respuesta del servidor:", data); // Para depurar en F12
 
                 if (data.success) {
                     localStorage.setItem('token', data.data.token);
                     localStorage.setItem('user', JSON.stringify(data.data.user));
                     initApp();
                 } else {
-                    msg.textContent = data.message;
+                    msg.textContent = data.message || "Error desconocido";
                 }
-            } catch (e) { msg.textContent = "Error de conexión con el servidor."; }
+            } catch (e) { 
+                console.error(e);
+                msg.textContent = "Error de conexión. Revisa los logs de Render."; 
+            }
         }
 
         function initApp() {
             const user = JSON.parse(localStorage.getItem('user'));
+            if (!user) return;
+
             document.getElementById('loginScreen').classList.add('hidden');
             
-            if (user.specialties.name === 'ADMINISTRACION') {
+            // Lógica de Roles
+            if (user.specialties && user.specialties.name === 'ADMINISTRACION') {
                 document.getElementById('adminView').classList.remove('hidden');
                 initCanvas();
             } else {
@@ -159,7 +166,7 @@
                 documentNumber: document.getElementById('newProfDoc').value,
                 email: document.getElementById('newProfEmail').value,
                 password: document.getElementById('newProfPass').value,
-                specialtyName: document.getElementById('newProfSpec').value, // Ojo: Aquí deberías usar el ID real de la tabla specialties
+                specialtyName: document.getElementById('newProfSpec').value,
                 cardExpiry: document.getElementById('newProfExpiry').value,
                 signature: canvas.toDataURL()
             };
