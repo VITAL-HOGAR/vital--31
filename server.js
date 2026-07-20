@@ -5,7 +5,6 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import { createClient } from '@supabase/supabase-js';
 import jwt from 'jsonwebtoken';
-import multer from 'multer';
 
 // Configuración Inicial
 dotenv.config();
@@ -14,7 +13,6 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 10000;
-const upload = multer({ dest: 'uploads/' }); // Para futuras fotos
 
 // Conexión a Supabase
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
@@ -72,20 +70,24 @@ app.post('/api/auth/login', async (req, res) => {
 // ==========================================
 app.post('/api/professionals', async (req, res) => {
     try {
-        const { email, password, fullName, documentNumber, specialtyId, cardExpiry, signature } = req.body;
+        const { email, password, fullName, documentNumber, specialtyName, cardExpiry, signature } = req.body;
 
-        // 1. Crear usuario en Auth
+        // 1. Buscar el ID de la especialidad basado en el nombre
+        const { data: specData } = await supabase.from('specialties').select('id').eq('name', specialtyName).single();
+        if (!specData) return res.status(400).json({ success: false, message: 'Especialidad no válida' });
+
+        // 2. Crear usuario en Auth
         const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
             email, password, email_confirm: true
         });
         if (authErr) throw authErr;
 
-        // 2. Guardar perfil en tabla professionals
+        // 3. Guardar perfil en tabla professionals
         const { error: dbErr } = await supabase.from('professionals').insert([{
             user_id: authUser.user.id,
             full_name: fullName,
             document_number: documentNumber,
-            specialty_id: specialtyId,
+            specialty_id: specData.id, // Usamos el ID real encontrado
             card_expiry_date: cardExpiry,
             signature_data: signature,
             is_active: true
@@ -96,7 +98,7 @@ app.post('/api/professionals', async (req, res) => {
 
     } catch (error) {
         console.error(error);
-        res.status(500).json({ success: false, message: 'Error creando profesional' });
+        res.status(500).json({ success: false, message: 'Error creando profesional: ' + error.message });
     }
 });
 
