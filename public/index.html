@@ -272,20 +272,31 @@
             loadProfessionals();
         }
 
-        // --- GESTIÓN PACIENTES ---
+        // --- GESTIÓN PACIENTES (CORREGIDA) ---
         async function loadPatients() {
-            const res = await fetch('/api/patients');
+            // Forzamos que no use caché agregando un timestamp único
+            const res = await fetch('/api/patients?t=' + new Date().getTime());
             const data = await res.json();
             const tbody = document.getElementById('patListBody');
             tbody.innerHTML = '';
+            
             if (!data.data || data.data.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;">No hay pacientes registrados aún.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding: 20px;">No hay pacientes registrados aún.</td></tr>';
                 return;
             }
+
             data.data.forEach(p => {
-                tbody.innerHTML += `<tr><td>${p.full_name}</td><td>${p.altitude_profiles.city_name}</td><td>${p.pathology_summary || 'N/A'}</td><td>${p.contact_phone}</td></tr>`;
+                // Verificamos que exista la relación con la ciudad antes de mostrarla
+                const cityName = p.altitude_profiles ? p.altitude_profiles.city_name : 'Sin asignar';
+                tbody.innerHTML += `<tr>
+                    <td>${p.full_name}</td>
+                    <td>${cityName}</td>
+                    <td>${p.pathology_summary || 'N/A'}</td>
+                    <td>${p.contact_phone}</td>
+                </tr>`;
             });
         }
+
         async function createPatient() {
             const data = {
                 fullName: document.getElementById('patName').value,
@@ -297,10 +308,20 @@
                 contactPhone: document.getElementById('patContact').value
             };
             if(!data.fullName || !data.cityName) return alert("Nombre y Ciudad son obligatorios");
+            
             const res = await fetch('/api/patients', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
             const result = await res.json();
             alert(result.message);
-            if(result.success) loadPatients();
+            
+            if(result.success) {
+                // Limpiamos formulario y forzamos recarga de lista
+                document.getElementById('patName').value = "";
+                document.getElementById('patDoc').value = "";
+                document.getElementById('patPathology').value = "";
+                document.getElementById('patAddress').value = "";
+                document.getElementById('patContact').value = "";
+                loadPatients(); 
+            }
         }
 
         window.onload = () => { if(localStorage.getItem('token')) initApp(); };
