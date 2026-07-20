@@ -6,7 +6,7 @@
     <title>Vital Hogar Pro - Acceso Seguro</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --bg-dark: #0f172a; --card-bg: #1e293b; --primary: #22c55e; --danger: #ef4444; --text-main: #e2e8f0; }
+        :root { --bg-dark: #0f172a; --card-bg: #1e293b; --primary: #22c55e; --danger: #ef4444; --warning: #f59e0b; --text-main: #e2e8f0; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 0; }
         .app-container { max-width: 1000px; margin: 0 auto; padding: 20px; }
         .hidden { display: none !important; }
@@ -23,28 +23,20 @@
         button { padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; margin-top: 10px; }
         button.secondary { background: #334155; }
         button.danger { background: var(--danger); }
+        button.warning { background: var(--warning); color: black; }
         
         /* Tabla de Profesionales */
         table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #0f172a; border-radius: 8px; overflow: hidden; }
         th, td { padding: 12px; text-align: left; border-bottom: 1px solid #334155; }
         th { background: #1e293b; color: #94a3b8; }
         
-        /* Canvas de Firma CORREGIDO */
-        .signature-wrapper { 
-            border: 2px dashed #334155; 
-            background: white; 
-            border-radius: 8px; 
-            overflow: hidden; 
-            touch-action: none; 
-            margin: 10px 0;
-            position: relative;
-        }
-        canvas { 
-            display: block; 
-            width: 100%; 
-            height: 200px; /* Altura fija para evitar deformaciones */
-            cursor: crosshair; 
-        }
+        /* Canvas de Firma */
+        .signature-wrapper { border: 2px dashed #334155; background: white; border-radius: 8px; overflow: hidden; touch-action: none; margin: 10px 0; position: relative; }
+        canvas { display: block; width: 100%; height: 200px; cursor: crosshair; }
+        
+        /* Modal de Edición */
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .modal-content { background: var(--card-bg); padding: 20px; border-radius: 12px; width: 90%; max-width: 500px; }
     </style>
 </head>
 <body>
@@ -54,13 +46,8 @@
         <div class="login-card">
             <img src="https://i.imgur.com/01YZxey.jpeg" style="height: 80px;">
             <h2>Acceso Vital Hogar</h2>
-            <div class="input-group">
-                <input type="email" id="loginEmail" placeholder="Correo Electrónico">
-            </div>
-            <div class="input-group">
-                <input type="password" id="loginPass" placeholder="Contraseña">
-                <i class="fas fa-eye toggle-password" onclick="togglePass()"></i>
-            </div>
+            <div class="input-group"><input type="email" id="loginEmail" placeholder="Correo Electrónico"></div>
+            <div class="input-group"><input type="password" id="loginPass" placeholder="Contraseña"><i class="fas fa-eye toggle-password" onclick="togglePass()"></i></div>
             <button onclick="handleLogin()">Ingresar</button>
             <p id="loginMsg" style="color: var(--danger); margin-top: 10px;"></p>
         </div>
@@ -87,14 +74,14 @@
                     <option value="ENFERMERIA_JEFE">Enfermero Jefe</option>
                     <option value="MEDICINA">Médico</option>
                 </select>
-                <!-- CAMBIO: Input de texto simple para la fecha -->
-                <input type="text" id="newProfExpiry" placeholder="Vencimiento RETHUS (Ej: 2026-12-31)">
+                <div>
+                    <input type="text" id="newProfExpiry" placeholder="AAAA-MM-DD">
+                    <small style="color: #94a3b8; font-size: 0.8rem;">Fecha Vencimiento Tarjeta Profesional / RETHUS</small>
+                </div>
             </div>
             
-            <h4 style="margin-top: 20px;">✍️ Firma Digital (Dibuje dentro del recuadro)</h4>
-            <div class="signature-wrapper">
-                <canvas id="sigCanvas"></canvas>
-            </div>
+            <h4 style="margin-top: 20px;">✍️ Firma Digital</h4>
+            <div class="signature-wrapper"><canvas id="sigCanvas"></canvas></div>
             <button class="secondary" onclick="clearSig()" style="width: auto;">🗑️ Borrar Firma</button>
             <button onclick="createProfessional()">💾 Guardar Profesional</button>
         </div>
@@ -105,6 +92,25 @@
                 <thead><tr><th>Nombre</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead>
                 <tbody id="profListBody"></tbody>
             </table>
+        </div>
+    </div>
+
+    <!-- MODAL DE EDICIÓN -->
+    <div id="editModal" class="modal hidden">
+        <div class="modal-content">
+            <h3>✏️ Editar Profesional</h3>
+            <input type="hidden" id="editId">
+            <input type="text" id="editName" placeholder="Nombre Completo">
+            <input type="text" id="editDoc" placeholder="Cédula">
+            <select id="editSpec">
+                <option value="ADMINISTRACION">Administración</option>
+                <option value="AUXILIAR_ENFERMERIA">Auxiliar de Enfermería</option>
+                <option value="ENFERMERIA_JEFE">Enfermero Jefe</option>
+                <option value="MEDICINA">Médico</option>
+            </select>
+            <input type="text" id="editExpiry" placeholder="Vencimiento RETHUS (AAAA-MM-DD)">
+            <button onclick="saveEdit()">Guardar Cambios</button>
+            <button class="secondary" onclick="closeModal()">Cancelar</button>
         </div>
     </div>
 
@@ -127,13 +133,8 @@
             const pass = document.getElementById('loginPass').value;
             const msg = document.getElementById('loginMsg');
             msg.textContent = "Conectando...";
-
             try {
-                const res = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ email, password: pass })
-                });
+                const res = await fetch('/api/auth/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ email, password: pass }) });
                 const data = await res.json();
                 if (data.success) {
                     localStorage.setItem('token', data.data.token);
@@ -147,11 +148,9 @@
             const user = JSON.parse(localStorage.getItem('user'));
             if (!user) return;
             document.getElementById('loginScreen').classList.add('hidden');
-            
             if (user.specialties.name === 'ADMINISTRACION') {
                 document.getElementById('adminView').classList.remove('hidden');
-                initCanvas();
-                loadProfessionals();
+                initCanvas(); loadProfessionals();
             } else {
                 document.getElementById('auxiliarView').classList.remove('hidden');
                 document.getElementById('auxName').textContent = user.full_name;
@@ -159,59 +158,27 @@
         }
 
         function logout() { localStorage.clear(); location.reload(); }
-        function togglePass() {
-            const i = document.getElementById('loginPass');
-            i.type = i.type === 'password' ? 'text' : 'password';
-        }
+        function togglePass() { const i = document.getElementById('loginPass'); i.type = i.type === 'password' ? 'text' : 'password'; }
 
-        // --- CANVAS FIRMA (CORREGIDO) ---
+        // --- CANVAS FIRMA ---
         let canvas, ctx, drawing = false;
         function initCanvas() {
             canvas = document.getElementById('sigCanvas');
             ctx = canvas.getContext('2d');
-            
-            // Ajustar tamaño real del canvas al tamaño visual
             const rect = canvas.getBoundingClientRect();
-            canvas.width = rect.width;
-            canvas.height = rect.height;
-
+            canvas.width = rect.width; canvas.height = rect.height;
             canvas.addEventListener('mousedown', startDraw);
             canvas.addEventListener('mouseup', endDraw);
             canvas.addEventListener('mousemove', draw);
-            
-            // Soporte táctil
             canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e.touches[0]); });
             canvas.addEventListener('touchend', (e) => { e.preventDefault(); endDraw(); });
             canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e.touches[0]); });
         }
-
-        function getPos(e) {
-            const rect = canvas.getBoundingClientRect();
-            return { x: e.clientX - rect.left, y: e.clientY - rect.top };
-        }
-
-        function startDraw(e) {
-            drawing = true;
-            const pos = getPos(e);
-            ctx.beginPath();
-            ctx.moveTo(pos.x, pos.y);
-        }
-
-        function draw(e) {
-            if (!drawing) return;
-            const pos = getPos(e);
-            ctx.lineWidth = 3;
-            ctx.lineCap = 'round';
-            ctx.strokeStyle = 'black';
-            ctx.lineTo(pos.x, pos.y);
-            ctx.stroke();
-        }
-
+        function getPos(e) { const rect = canvas.getBoundingClientRect(); return { x: e.clientX - rect.left, y: e.clientY - rect.top }; }
+        function startDraw(e) { drawing = true; const pos = getPos(e); ctx.beginPath(); ctx.moveTo(pos.x, pos.y); }
+        function draw(e) { if (!drawing) return; const pos = getPos(e); ctx.lineWidth = 3; ctx.lineCap = 'round'; ctx.strokeStyle = 'black'; ctx.lineTo(pos.x, pos.y); ctx.stroke(); }
         function endDraw() { drawing = false; }
-        function clearSig() { 
-            const rect = canvas.getBoundingClientRect();
-            ctx.clearRect(0, 0, canvas.width, canvas.height); 
-        }
+        function clearSig() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
 
         // --- GESTIÓN DE PROFESIONALES ---
         async function loadProfessionals() {
@@ -226,9 +193,9 @@
                         <td>${p.specialties.name}</td>
                         <td>${p.is_active ? '✅ Activo' : '❌ Inactivo'}</td>
                         <td>
-                            <button class="secondary" style="width:auto; padding:5px 10px;" onclick="toggleStatus('${p.id}', ${!p.is_active})">
-                                ${p.is_active ? 'Desactivar' : 'Activar'}
-                            </button>
+                            <button class="warning" style="width:auto; padding:5px 10px;" onclick="openEdit('${p.id}', '${p.full_name}', '${p.document_number}', '${p.specialties.name}', '${p.card_expiry_date || ''}')">✏️</button>
+                            <button class="secondary" style="width:auto; padding:5px 10px;" onclick="toggleStatus('${p.id}', ${!p.is_active})">${p.is_active ? 'Desactivar' : 'Activar'}</button>
+                            <button class="danger" style="width:auto; padding:5px 10px;" onclick="deleteProf('${p.id}')">🗑️</button>
                         </td>
                     </tr>`;
             });
@@ -245,23 +212,45 @@
                 signature: canvas.toDataURL()
             };
             if(!data.email || !data.fullName) return alert("Faltan datos obligatorios");
-
-            const res = await fetch('/api/professionals', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify(data)
-            });
+            const res = await fetch('/api/professionals', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
             const result = await res.json();
             alert(result.message);
             if(result.success) { clearSig(); loadProfessionals(); }
         }
 
         async function toggleStatus(id, newStatus) {
-            await fetch(`/api/professionals/${id}`, {
-                method: 'PATCH',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ isActive: newStatus })
-            });
+            await fetch(`/api/professionals/${id}`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ isActive: newStatus }) });
+            loadProfessionals();
+        }
+
+        async function deleteProf(id) {
+            if(confirm("¿Estás seguro de eliminar este profesional? Se borrará su acceso permanentemente.")) {
+                await fetch(`/api/professionals/${id}`, { method: 'DELETE' });
+                loadProfessionals();
+            }
+        }
+
+        // --- EDICIÓN ---
+        function openEdit(id, name, doc, spec, expiry) {
+            document.getElementById('editId').value = id;
+            document.getElementById('editName').value = name;
+            document.getElementById('editDoc').value = doc;
+            document.getElementById('editSpec').value = spec;
+            document.getElementById('editExpiry').value = expiry;
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+        function closeModal() { document.getElementById('editModal').classList.add('hidden'); }
+        
+        async function saveEdit() {
+            const id = document.getElementById('editId').value;
+            const data = {
+                fullName: document.getElementById('editName').value,
+                documentNumber: document.getElementById('editDoc').value,
+                specialtyName: document.getElementById('editSpec').value,
+                cardExpiry: document.getElementById('editExpiry').value
+            };
+            await fetch(`/api/professionals/${id}`, { method: 'PUT', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
+            closeModal();
             loadProfessionals();
         }
 
