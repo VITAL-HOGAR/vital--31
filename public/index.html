@@ -142,7 +142,7 @@
                 
                 <label style="display:block; margin-top:10px; color:#94a3b8;">Profesional Responsable de impartir:</label>
                 <select id="eduResponsible">
-                    <option value="">Cargando profesionales...</option>
+                    <option value="">Cargando lista...</option>
                 </select>
                 
                 <button onclick="createTopic()" style="margin-top: 15px;">💾 Guardar Tema</button>
@@ -173,7 +173,10 @@
             document.getElementById('loginScreen').classList.add('hidden');
             if (user.specialties.name === 'ADMINISTRACION') {
                 document.getElementById('adminView').classList.remove('hidden');
-                initCanvas(); loadDashboard(); loadProfessionals(); loadEduProfessionals();
+                initCanvas(); 
+                loadDashboard(); 
+                loadProfessionals(); // Esto carga la tabla
+                loadEduProfessionals(); // ESTO CARGA EL SELECTOR DE EDUCACIÓN AL INICIO
             } else {
                 document.getElementById('auxiliarView').classList.remove('hidden');
                 document.getElementById('auxName').textContent = user.full_name;
@@ -242,7 +245,7 @@
             const res = await fetch('/api/professionals', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(data) });
             const result = await res.json();
             alert(result.message);
-            if(result.success) { clearSig(); loadProfessionals(); loadDashboard(); }
+            if(result.success) { clearSig(); loadProfessionals(); loadDashboard(); loadEduProfessionals(); }
         }
         async function toggleStatus(id, status) {
             await fetch(`/api/professionals/${id}`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ isActive: status }) });
@@ -275,7 +278,7 @@
             if(result.success) loadPatients();
         }
 
-        // --- LÓGICA DE EDUCACIÓN ---
+        // --- LÓGICA DE EDUCACIÓN (CORREGIDA) ---
         async function loadEduProfessionals() {
             const res = await fetch('/api/professionals');
             const data = await res.json();
@@ -299,7 +302,8 @@
             const desc = document.getElementById('eduDesc').value;
             const responsibleId = document.getElementById('eduResponsible').value;
             
-            if(!title || !responsibleId) return alert("Título y Responsable son obligatorios");
+            if(!title) return alert("El título es obligatorio");
+            if(!responsibleId) return alert("Debes seleccionar un profesional responsable");
             
             const res = await fetch('/api/education/topics', { 
                 method: 'POST', 
