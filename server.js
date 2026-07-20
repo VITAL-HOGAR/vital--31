@@ -28,20 +28,18 @@ app.post('/api/auth/login', async (req, res) => {
         
         if (authError || !authData.user) return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
 
-        // Buscar perfil con la relación de especialidad
-        const { data: profData, error: profError } = await supabase
+        const { data: profData } = await supabase
             .from('professionals')
             .select('*, specialties(name)')
             .eq('user_id', authData.user.id)
             .single();
 
         if (!profData) return res.status(404).json({ success: false, message: 'Perfil no encontrado.' });
-        if (!profData.is_active) return res.status(403).json({ success: false, message: 'Usuario desactivado. Contacte al Admin.' });
+        if (!profData.is_active) return res.status(403).json({ success: false, message: 'Usuario desactivado.' });
 
-        // Validación de vencimiento de RETHUS
         const today = new Date();
         if (profData.card_expiry_date && new Date(profData.card_expiry_date) < today) {
-            return res.status(403).json({ success: false, message: 'Su registro profesional (RETHUS/TP) ha vencido.' });
+            return res.status(403).json({ success: false, message: 'RETHUS/TP vencido.' });
         }
 
         const token = jwt.sign({ 
@@ -58,111 +56,92 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // ==========================================
-// API: GESTIÓN DE PROFESIONALES (ADMIN)
+// API: GESTIÓN DE PROFESIONALES
 // ==========================================
-
-// 1. Listar Profesionales
 app.get('/api/professionals', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('professionals').select('*, specialties(name)').order('created_at', { ascending: false });
-        if (error) throw error;
+        const { data } = await supabase.from('professionals').select('*, specialties(name)').order('created_at', { ascending: false });
         res.json({ success: true, data });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// 2. Crear Profesional
 app.post('/api/professionals', async (req, res) => {
     try {
         const { email, password, fullName, documentNumber, specialtyName, cardExpiry, signature } = req.body;
-        
         const { data: specData } = await supabase.from('specialties').select('id').eq('name', specialtyName).single();
         if (!specData) return res.status(400).json({ success: false, message: 'Especialidad no válida' });
 
-        const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({
-            email, password, email_confirm: true
-        });
+        const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
         if (authErr) throw authErr;
 
-        const { error: dbErr } = await supabase.from('professionals').insert([{
-            user_id: authUser.user.id,
-            full_name: fullName,
-            document_number: documentNumber,
-            specialty_id: specData.id,
-            card_expiry_date: cardExpiry,
-            signature_data: signature,
-            is_active: true
+        await supabase.from('professionals').insert([{
+            user_id: authUser.user.id, full_name: fullName, document_number: documentNumber,
+            specialty_id: specData.id, card_expiry_date: cardExpiry, signature_data: signature, is_active: true
         }]);
-        if (dbErr) throw dbErr;
-
-        res.json({ success: true, message: 'Profesional creado exitosamente' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+        res.json({ success: true, message: 'Profesional creado' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// 3. Cambiar Estado (Activar/Desactivar)
 app.patch('/api/professionals/:id', async (req, res) => {
     try {
-        const { isActive } = req.body;
-        const { error } = await supabase.from('professionals').update({ is_active: isActive }).eq('id', req.params.id);
-        if (error) throw error;
-        res.json({ success: true, message: `Usuario ${isActive ? 'activado' : 'desactivado'}` });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+        await supabase.from('professionals').update({ is_active: req.body.isActive }).eq('id', req.params.id);
+        res.json({ success: true });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// 4. Editar Profesional (Solo datos, no email/password)
 app.put('/api/professionals/:id', async (req, res) => {
     try {
         const { fullName, documentNumber, specialtyName, cardExpiry } = req.body;
-        
         let specId = null;
         if (specialtyName) {
-            const { data: specData } = await supabase.from('specialties').select('id').eq('name', specialtyName).single();
-            if (specData) specId = specData.id;
+            const { data: s } = await supabase.from('specialties').select('id').eq('name', specialtyName).single();
+            if (s) specId = s.id;
         }
-
-        const updateData = {
-            full_name: fullName,
-            document_number: documentNumber,
-            card_expiry_date: cardExpiry
-        };
+        const updateData = { full_name: fullName, document_number: documentNumber, card_expiry_date: cardExpiry };
         if (specId) updateData.specialty_id = specId;
-
-        const { error } = await supabase.from('professionals').update(updateData).eq('id', req.params.id);
-        if (error) throw error;
         
+        await supabase.from('professionals').update(updateData).eq('id', req.params.id);
         res.json({ success: true, message: 'Datos actualizados' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// 5. Eliminar Profesional (Borra perfil y usuario auth)
 app.delete('/api/professionals/:id', async (req, res) => {
     try {
         const { data: prof } = await supabase.from('professionals').select('user_id').eq('id', req.params.id).single();
-        
         await supabase.from('professionals').delete().eq('id', req.params.id);
-        
-        if (prof && prof.user_id) {
-            await supabase.auth.admin.deleteUser(prof.user_id);
-        }
+        if (prof && prof.user_id) await supabase.auth.admin.deleteUser(prof.user_id);
+        res.json({ success: true, message: 'Eliminado' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
 
-        res.json({ success: true, message: 'Profesional eliminado del sistema' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+// ==========================================
+// API: GESTIÓN DE PACIENTES
+// ==========================================
+app.get('/api/patients', async (req, res) => {
+    try {
+        const { data } = await supabase.from('patients').select('*, altitude_profiles(city_name)').order('created_at', { ascending: false });
+        res.json({ success: true, data });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.post('/api/patients', async (req, res) => {
+    try {
+        const { fullName, documentNumber, birthDate, cityName, pathology, address, contactPhone } = req.body;
+        const { data: cityData } = await supabase.from('altitude_profiles').select('id').eq('city_name', cityName).single();
+        if (!cityData) return res.status(400).json({ success: false, message: 'Ciudad no encontrada' });
+
+        await supabase.from('patients').insert([{
+            full_name: fullName, document_number: documentNumber, birth_date: birthDate,
+            city_id: cityData.id, pathology_summary: pathology, address: address,
+            contact_phone: contactPhone, is_active: true
+        }]);
+        res.json({ success: true, message: 'Paciente registrado' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
 // Servir Frontend
 app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api')) {
-        res.sendFile(path.join(__dirname, 'public', 'index.html'));
-    }
+    if (!req.path.startsWith('/api')) res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, '0.0.0.0', () => {
