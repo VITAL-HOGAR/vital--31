@@ -18,86 +18,112 @@ app.use(cors({ origin: '*' }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// LOGIN
+// ==========================================
+// 1. AUTENTICACIÓN Y SEGURIDAD
+// ==========================================
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+        
         if (authError || !authData.user) return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
-        const { data: profData } = await supabase.from('professionals').select('*, specialties(name)').eq('user_id', authData.user.id).single();
+
+        const { data: profData } = await supabase
+            .from('professionals')
+            .select('*, specialties(name)')
+            .eq('user_id', authData.user.id)
+            .single();
+
         if (!profData) return res.status(404).json({ success: false, message: 'Perfil no encontrado.' });
-        const token = jwt.sign({ id: profData.id, role: profData.specialties?.name }, process.env.JWT_SECRET, { expiresIn: '24h' });
-        res.json({ success: true, data: { user: profData, token } });
-    } catch (error) { res.status(500).json({ success: false, message: 'Error interno' }); }
-});
+        if (!profData.is_active) return res.status(403).json({ success: false, message: 'Usuario desactivado.' });
 
-// LISTAR PACIENTES
-app.get('/api/patients', async (req, res) => {
-    try {
-        const { data, error } = await supabase.from('patients').select('*, altitude_profiles(city_name)').order('created_at', { ascending: false });
-        if (error) throw error;
-        res.json({ success: true, data });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-// CREAR PACIENTE
-app.post('/api/patients', async (req, res) => {
-    try {
-        const { fullName, documentNumber, birthDate, cityName, pathology, address, contactPhone } = req.body;
-        console.log("📥 Datos recibidos:", req.body);
-        
-        const { data: cityData } = await supabase.from('altitude_profiles').select('id').eq('city_name', cityName).single();
-        if (!cityData) return res.status(400).json({ success: false, message: 'Ciudad no encontrada' });
-
-        const { error } = await supabase.from('patients').insert([{
-            full_name: fullName, 
-            document_number: documentNumber, 
-            birth_date: birthDate,
-            city_id: cityData.id, 
-            pathology_summary: pathology, 
-            address: address,
-            contact_phone: contactPhone, 
-            is_active: true
-        }]);
-        
-        if (error) {
-            console.error("❌ ERROR SUPABASE:", error);
-            throw error;
+        // Validación de vencimiento de Tarjeta/Certificado
+        const today = new Date();
+        if (profData.card_expiry_date && new Date(profData.card_expiry_date) < today) {
+            return res.status(403).json({ success: false, message: 'Su documento profesional ha vencido.' });
         }
-        
-        console.log("✅ Paciente guardado en DB");
-        res.json({ success: true, message: 'Paciente registrado' });
-    } catch (error) { 
-        console.error("💥 FALLO CRÍTICO:", error);
-        res.status(500).json({ success: false, message: error.message }); 
+
+        const token = jwt.sign({ 
+            id: profData.id, 
+            role: profData.specialties?.name || 'USER',
+            specialtyId: profData.specialty_id 
+        }, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+        res.json({ success: true, data: { user: profData, token } });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Error interno' });
     }
 });
 
-// GESTIÓN PROFESIONALES (Resumida)
+// ==========================================
+// 2. DASHBOARD ADMIN (Métricas)
+// ==========================================
+app.get('/api/dashboard/stats', async (req, res) => {
+    try {
+        // Conteos básicos
+        const { count: patCount } = await supabase.from('patients').select('*', { count: 'exact', head: true }).eq('is_active', true);
+        const { count: profCount } = await supabase.from('professionals').select('*', { count: 'exact', head: true }).eq('is_active', true);
+        
+        // Alertas de vencimiento (próximos 30 días)
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+        
+        const { data: alerts } = await supabase
+            .from('professionals')
+            .select('full_name, card_expiry_date')
+            .lte('card_expiry_date', thirtyDaysFromNow.toISOString().split('T')[0])
+            .gt('card_expiry_date', new Date().toISOString().split('T')[0]);
+
+        res.json({ success: true, data: { patients: patCount, professionals: profCount, alerts: alerts || [] } });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ==========================================
+// 3. GESTIÓN DE PROFESIONALES (Todos los Roles)
+// ==========================================
 app.get('/api/professionals', async (req, res) => {
     const { data } = await supabase.from('professionals').select('*, specialties(name)').order('created_at', { ascending: false });
     res.json({ success: true, data });
 });
+
 app.post('/api/professionals', async (req, res) => {
-    const { email, password, fullName, documentNumber, specialtyName, cardExpiry, signature } = req.body;
-    const { data: specData } = await supabase.from('specialties').select('id').eq('name', specialtyName).single();
-    const { data: authUser } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
-    await supabase.from('professionals').insert([{ user_id: authUser.user.id, full_name: fullName, document_number: documentNumber, specialty_id: specData.id, card_expiry_date: cardExpiry, signature_data: signature, is_active: true }]);
-    res.json({ success: true, message: 'Profesional creado' });
+    try {
+        const { email, password, fullName, documentNumber, specialtyName, cardExpiry, signature } = req.body;
+        const { data: specData } = await supabase.from('specialties').select('id').eq('name', specialtyName).single();
+        if (!specData) return res.status(400).json({ success: false, message: 'Especialidad no válida' });
+
+        const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
+        if (authErr) throw authErr;
+
+        await supabase.from('professionals').insert([{
+            user_id: authUser.user.id, full_name: fullName, document_number: documentNumber,
+            specialty_id: specData.id, card_expiry_date: cardExpiry, signature_data: signature, is_active: true
+        }]);
+        res.json({ success: true, message: 'Profesional registrado exitosamente' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
+
 app.patch('/api/professionals/:id', async (req, res) => {
     await supabase.from('professionals').update({ is_active: req.body.isActive }).eq('id', req.params.id);
     res.json({ success: true });
 });
+
 app.put('/api/professionals/:id', async (req, res) => {
     const { fullName, documentNumber, specialtyName, cardExpiry } = req.body;
     let specId = null;
-    if (specialtyName) { const { data: s } = await supabase.from('specialties').select('id').eq('name', specialtyName).single(); if (s) specId = s.id; }
+    if (specialtyName) {
+        const { data: s } = await supabase.from('specialties').select('id').eq('name', specialtyName).single();
+        if (s) specId = s.id;
+    }
     const updateData = { full_name: fullName, document_number: documentNumber, card_expiry_date: cardExpiry };
     if (specId) updateData.specialty_id = specId;
     await supabase.from('professionals').update(updateData).eq('id', req.params.id);
     res.json({ success: true, message: 'Datos actualizados' });
 });
+
 app.delete('/api/professionals/:id', async (req, res) => {
     const { data: prof } = await supabase.from('professionals').select('user_id').eq('id', req.params.id).single();
     await supabase.from('professionals').delete().eq('id', req.params.id);
@@ -105,6 +131,36 @@ app.delete('/api/professionals/:id', async (req, res) => {
     res.json({ success: true, message: 'Eliminado' });
 });
 
-app.get('*', (req, res) => { if (!req.path.startsWith('/api')) res.sendFile(path.join(__dirname, 'public', 'index.html')); });
-app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Vital Hogar Pro Vivo en puerto ${PORT}`); });
+// ==========================================
+// 4. GESTIÓN DE PACIENTES
+// ==========================================
+app.get('/api/patients', async (req, res) => {
+    const { data } = await supabase.from('patients').select('*, altitude_profiles(city_name)').order('created_at', { ascending: false });
+    res.json({ success: true, data });
+});
+
+app.post('/api/patients', async (req, res) => {
+    try {
+        const { fullName, documentNumber, birthDate, cityName, pathology, address, contactPhone } = req.body;
+        const { data: cityData } = await supabase.from('altitude_profiles').select('id').eq('city_name', cityName).single();
+        if (!cityData) return res.status(400).json({ success: false, message: 'Ciudad no encontrada' });
+
+        await supabase.from('patients').insert([{
+            full_name: fullName, document_number: documentNumber, birth_date: birthDate,
+            city_id: cityData.id, pathology_summary: pathology, address: address,
+            contact_phone: contactPhone, is_active: true
+        }]);
+        res.json({ success: true, message: 'Paciente registrado' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// Servir Frontend
+app.get('*', (req, res) => {
+    if (!req.path.startsWith('/api')) res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Vital Hogar Pro Vivo en puerto ${PORT}`);
+});
+
 export default app;
