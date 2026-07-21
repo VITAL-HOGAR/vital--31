@@ -30,14 +30,6 @@
         .stat-card.info { border-left-color: var(--info); }
         .stat-card.info h2 { color: var(--info); }
         
-        .quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
-        .action-btn { padding: 20px; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 10px; }
-        .action-btn i { font-size: 1.5rem; }
-        
-        .alert-box { background: #7f1d1d; border-left: 4px solid var(--danger); padding: 15px; border-radius: 6px; margin-bottom: 15px; }
-        .alert-box h4 { margin: 0 0 10px 0; color: #fecaca; }
-        .alert-box p { margin: 5px 0; font-size: 0.9rem; }
-        
         .password-wrapper { position: relative; }
         .toggle-password { position: absolute; right: 10px; top: 15px; cursor: pointer; color: #94a3b8; background: none; border: none; margin: 0; width: auto; padding: 0; }
         
@@ -53,6 +45,7 @@
         
         .spo2-alert { background: var(--danger); color: white; padding: 10px; border-radius: 6px; margin: 10px 0; font-weight: bold; }
         .spo2-warning { background: var(--warning); color: black; padding: 10px; border-radius: 6px; margin: 10px 0; font-weight: bold; }
+        .spo2-normal { background: var(--primary); color: white; padding: 10px; border-radius: 6px; margin: 10px 0; }
         
         .signature-canvas { background: white; border: 2px dashed #334155; border-radius: 6px; width: 100%; height: 150px; cursor: crosshair; }
         
@@ -75,12 +68,17 @@
         <p id="msg" style="color: var(--danger); margin-top: 10px;"></p>
     </div>
 
-    <!-- PANEL ADMIN -->
+    <!-- ========================================== -->
+    <!-- PANEL ADMIN (Solo para ADMINISTRACION) -->
+    <!-- ========================================== -->
     <div id="adminPanel" class="hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
             <div style="display:flex; align-items:center; gap: 15px;">
                 <img src="https://i.imgur.com/01YZxey.jpeg" alt="Logo" style="height: 50px; border-radius: 8px;">
-                <h1 style="margin:0;">Panel de Control</h1>
+                <div>
+                    <h1 style="margin:0;">Panel de Control</h1>
+                    <small style="color: #94a3b8;" id="adminUserName">Administrador</small>
+                </div>
             </div>
             <button onclick="logout()" style="background:var(--danger); width:auto; margin:0;"><i class="fas fa-sign-out-alt"></i> Salir</button>
         </div>
@@ -93,190 +91,139 @@
                 <div class="card stat-card danger"><h3><i class="fas fa-file-medical"></i> Informes Pendientes</h3><h2 id="statReports">0</h2></div>
             </div>
 
-            <div id="alertBox" class="alert-box hidden">
-                <h4><i class="fas fa-exclamation-triangle"></i> Documentos por Vencer</h4>
-                <div id="alertList"></div>
+            <div class="nav">
+                <button class="active" onclick="show('prof')"><i class="fas fa-user-md"></i> Profesionales</button>
+                <button onclick="show('pat')"><i class="fas fa-user-injured"></i> Pacientes</button>
+                <button onclick="show('edu')"><i class="fas fa-graduation-cap"></i> Educación</button>
             </div>
 
-            <div class="quick-actions">
-                <button class="action-btn" onclick="show('pat')" style="background: var(--info);"><i class="fas fa-calendar-plus"></i> Asignar Turno</button>
-                <button class="action-btn" onclick="show('reports')" style="background: var(--warning); color: black;"><i class="fas fa-file-pdf"></i> Generar Informe</button>
-                <button class="action-btn" onclick="alert('Función en desarrollo')" style="background: var(--danger);"><i class="fas fa-exclamation-circle"></i> Novedad Urgente</button>
-            </div>
-        </div>
-
-        <div class="nav">
-            <button class="active" onclick="show('dashboard')"><i class="fas fa-home"></i> Dashboard</button>
-            <button onclick="show('prof')"><i class="fas fa-user-md"></i> Profesionales</button>
-            <button onclick="show('pat')"><i class="fas fa-user-injured"></i> Pacientes</button>
-            <button onclick="show('edu')"><i class="fas fa-graduation-cap"></i> Educación</button>
-            <button onclick="show('reports')"><i class="fas fa-file-medical"></i> Informes</button>
-        </div>
-
-        <div id="profSection" class="hidden">
-            <div class="card">
-                <h3><i class="fas fa-user-plus"></i> Nuevo Profesional</h3>
-                <div class="grid">
-                    <input type="text" id="pName" placeholder="Nombre Completo">
-                    <input type="text" id="pDoc" placeholder="Cédula">
-                    <input type="email" id="pEmail" placeholder="Correo">
-                    <input type="password" id="pPass" placeholder="Contraseña">
-                    <select id="pSpec">
-                        <option value="ADMINISTRACION">Administración</option>
-                        <option value="AUXILIAR_ENFERMERIA">Auxiliar de Enfermería</option>
-                        <option value="ENFERMERIA_JEFE">Enfermero Jefe</option>
-                        <option value="MEDICINA">Médico</option>
-                        <option value="FISIOTERAPIA">Fisioterapeuta</option>
-                        <option value="NUTRICION">Nutricionista</option>
-                        <option value="PSICOLOGIA">Psicólogo</option>
-                        <option value="TERAPIA_OCUPACIONAL">Terapista Ocupacional</option>
-                        <option value="TERAPIA_RESPIRATORIA">Terapista Respiratorio</option>
-                        <option value="FONOAUDIOLOGIA">Fonoaudiólogo</option>
-                        <option value="TRABAJO_SOCIAL">Trabajador Social</option>
-                    </select>
-                </div>
-                <p style="margin: 10px 0 5px; color: #94a3b8;">Firma Digital:</p>
-                <canvas id="sigCanvas" class="signature-canvas"></canvas>
-                <button onclick="clearSig()" style="background: #334155; width: auto;"><i class="fas fa-eraser"></i> Borrar</button>
-                <button onclick="createProf()" style="width: 100%;"><i class="fas fa-save"></i> Guardar</button>
-            </div>
-            <table id="profTable"><thead><tr><th>Nombre</th><th>Cédula</th><th>Rol</th><th>Estado</th></tr></thead><tbody></tbody></table>
-        </div>
-
-        <div id="patSection" class="hidden">
-            <div class="card">
-                <h3><i class="fas fa-user-plus"></i> Nuevo Paciente</h3>
-                <h4 style="color: var(--primary);">Datos del Paciente</h4>
-                <div class="grid">
-                    <input type="text" id="patName" placeholder="Nombre Completo">
-                    <input type="text" id="patDoc" placeholder="Cédula">
-                    <select id="patCity">
-                        <optgroup label="🌊 NIVEL 1 - SpO2 97%">
-                            <option value="Barranquilla">Barranquilla</option>
-                            <option value="Cartagena">Cartagena</option>
-                            <option value="Santa Marta">Santa Marta</option>
-                            <option value="Riohacha">Riohacha</option>
-                            <option value="Montería">Montería</option>
-                            <option value="Valledupar">Valledupar</option>
-                            <option value="Sincelejo">Sincelejo</option>
-                            <option value="Quibdó">Quibdó</option>
-                            <option value="Florencia">Florencia</option>
-                            <option value="Mocoa">Mocoa</option>
-                            <option value="Leticia">Leticia</option>
-                            <option value="San Andrés">San Andrés</option>
-                            <option value="Arauca">Arauca</option>
-                            <option value="Yopal">Yopal</option>
-                        </optgroup>
-                        <optgroup label="🏔️ NIVEL 2 - SpO2 96%">
-                            <option value="Cali">Cali</option>
-                            <option value="Bucaramanga">Bucaramanga</option>
-                            <option value="Cúcuta">Cúcuta</option>
-                            <option value="Neiva">Neiva</option>
-                            <option value="Ibagué">Ibagué</option>
-                            <option value="Villavicencio">Villavicencio</option>
-                            <option value="Pereira">Pereira</option>
-                            <option value="Armenia">Armenia</option>
-                            <option value="Manizales">Manizales</option>
-                            <option value="Palmira">Palmira</option>
-                            <option value="Girardot">Girardot</option>
-                            <option value="Tuluá">Tuluá</option>
-                            <option value="Popayán">Popayán</option>
-                        </optgroup>
-                        <optgroup label="⛰️ NIVEL 3 - SpO2 95%">
-                            <option value="Medellín">Medellín</option>
-                            <option value="Envigado">Envigado</option>
-                            <option value="Itagüí">Itagüí</option>
-                            <option value="Rionegro">Rionegro</option>
-                            <option value="Tunja">Tunja</option>
-                            <option value="Duitama">Duitama</option>
-                            <option value="Sogamoso">Sogamoso</option>
-                            <option value="Chía">Chía</option>
-                            <option value="Zipaquirá">Zipaquirá</option>
-                            <option value="Facatativá">Facatativá</option>
-                            <option value="Dosquebradas">Dosquebradas</option>
-                        </optgroup>
-                        <optgroup label="🏔️ NIVEL 4 - SpO2 93%">
-                            <option value="Bogotá">Bogotá</option>
-                            <option value="Soacha">Soacha</option>
-                            <option value="Funza">Funza</option>
-                            <option value="Mosquera">Mosquera</option>
-                            <option value="Pasto">Pasto</option>
-                            <option value="Ipiales">Ipiales</option>
-                        </optgroup>
-                    </select>
-                    <div class="mic-wrapper">
-                        <input type="text" id="patPath" placeholder="Patología">
-                        <button class="mic-btn" onclick="startDictation('patPath')"><i class="fas fa-microphone"></i></button>
+            <!-- PROFESIONALES -->
+            <div id="profSection">
+                <div class="card">
+                    <h3><i class="fas fa-user-plus"></i> Nuevo Profesional</h3>
+                    <div class="grid">
+                        <input type="text" id="pName" placeholder="Nombre Completo">
+                        <input type="text" id="pDoc" placeholder="Cédula">
+                        <input type="email" id="pEmail" placeholder="Correo">
+                        <input type="password" id="pPass" placeholder="Contraseña">
+                        <select id="pSpec">
+                            <option value="ADMINISTRACION">Administración</option>
+                            <option value="AUXILIAR_ENFERMERIA">Auxiliar de Enfermería</option>
+                            <option value="ENFERMERIA_JEFE">Enfermero Jefe</option>
+                            <option value="MEDICINA">Médico</option>
+                            <option value="FISIOTERAPIA">Fisioterapeuta</option>
+                            <option value="NUTRICION">Nutricionista</option>
+                            <option value="PSICOLOGIA">Psicólogo</option>
+                            <option value="TERAPIA_OCUPACIONAL">Terapista Ocupacional</option>
+                            <option value="TERAPIA_RESPIRATORIA">Terapista Respiratorio</option>
+                            <option value="FONOAUDIOLOGIA">Fonoaudiólogo</option>
+                            <option value="TRABAJO_SOCIAL">Trabajador Social</option>
+                        </select>
                     </div>
-                    <input type="text" id="patAddr" placeholder="Dirección">
+                    <p style="margin: 10px 0 5px; color: #94a3b8;">Firma Digital:</p>
+                    <canvas id="sigCanvas" class="signature-canvas"></canvas>
+                    <button onclick="clearSig()" style="background: #334155; width: auto;"><i class="fas fa-eraser"></i> Borrar</button>
+                    <button onclick="createProf()" style="width: 100%;"><i class="fas fa-save"></i> Guardar</button>
                 </div>
-                <h4 style="color: var(--danger); margin: 20px 0 10px;">Familiar Responsable</h4>
-                <div class="grid">
-                    <input type="text" id="famName" placeholder="Nombre del Familiar">
-                    <input type="text" id="famId" placeholder="Cédula">
-                    <input type="text" id="famRel" placeholder="Parentesco">
-                    <input type="tel" id="famCel" placeholder="Celular">
-                </div>
-                <button onclick="createPat()" style="width: 100%;"><i class="fas fa-save"></i> Guardar</button>
+                <table id="profTable"><thead><tr><th>Nombre</th><th>Cédula</th><th>Rol</th><th>Estado</th></tr></thead><tbody></tbody></table>
             </div>
-            <table id="patTable"><thead><tr><th>Paciente</th><th>Ciudad</th><th>Familiar</th><th>Celular</th></tr></thead><tbody></tbody></table>
-        </div>
 
-        <div id="eduSection" class="hidden">
-            <div class="card">
-                <h3><i class="fas fa-book"></i> Nuevo Tema Educativo</h3>
-                <input type="text" id="eduTitle" placeholder="Título">
-                <div class="mic-wrapper">
-                    <textarea id="eduDesc" rows="3" placeholder="Descripción"></textarea>
-                    <button class="mic-btn" onclick="startDictation('eduDesc')"><i class="fas fa-microphone"></i></button>
+            <!-- PACIENTES -->
+            <div id="patSection" class="hidden">
+                <div class="card">
+                    <h3><i class="fas fa-user-plus"></i> Nuevo Paciente</h3>
+                    <h4 style="color: var(--primary);">Datos del Paciente</h4>
+                    <div class="grid">
+                        <input type="text" id="patName" placeholder="Nombre Completo">
+                        <input type="text" id="patDoc" placeholder="Cédula">
+                        <select id="patCity">
+                            <optgroup label="🌊 NIVEL 1 - SpO2 97%">
+                                <option value="Barranquilla">Barranquilla</option>
+                                <option value="Cartagena">Cartagena</option>
+                                <option value="Santa Marta">Santa Marta</option>
+                                <option value="Cúcuta">Cúcuta</option>
+                            </optgroup>
+                            <optgroup label="🏔️ NIVEL 2 - SpO2 96%">
+                                <option value="Cali">Cali</option>
+                                <option value="Bucaramanga">Bucaramanga</option>
+                                <option value="Pereira">Pereira</option>
+                                <option value="Manizales">Manizales</option>
+                            </optgroup>
+                            <optgroup label="⛰️ NIVEL 3 - SpO2 95%">
+                                <option value="Medellín">Medellín</option>
+                                <option value="Tunja">Tunja</option>
+                            </optgroup>
+                            <optgroup label="🏔️ NIVEL 4 - SpO2 93%">
+                                <option value="Bogotá">Bogotá</option>
+                                <option value="Pasto">Pasto</option>
+                            </optgroup>
+                        </select>
+                        <div class="mic-wrapper">
+                            <input type="text" id="patPath" placeholder="Patología">
+                            <button class="mic-btn" onclick="startDictation('patPath')"><i class="fas fa-microphone"></i></button>
+                        </div>
+                        <input type="text" id="patAddr" placeholder="Dirección">
+                    </div>
+                    <h4 style="color: var(--danger); margin: 20px 0 10px;">Familiar Responsable</h4>
+                    <div class="grid">
+                        <input type="text" id="famName" placeholder="Nombre del Familiar">
+                        <input type="text" id="famId" placeholder="Cédula">
+                        <input type="text" id="famRel" placeholder="Parentesco">
+                        <input type="tel" id="famCel" placeholder="Celular">
+                    </div>
+                    <button onclick="createPat()" style="width: 100%;"><i class="fas fa-save"></i> Guardar</button>
                 </div>
-                <select id="eduResp" style="margin-top: 10px;"></select>
-                <button onclick="createEdu()" style="width: 100%;"><i class="fas fa-save"></i> Guardar</button>
+                <table id="patTable"><thead><tr><th>Paciente</th><th>Ciudad</th><th>Familiar</th><th>Celular</th></tr></thead><tbody></tbody></table>
             </div>
-            <table id="eduTable"><thead><tr><th>Tema</th><th>Responsable</th></tr></thead><tbody></tbody></table>
-        </div>
 
-        <div id="reportsSection" class="hidden">
-            <div class="card">
-                <h3><i class="fas fa-file-medical"></i> Generar Informe Mensual</h3>
-                <select id="reportPatient"><option value="">Seleccionar paciente...</option></select>
-                <div class="grid">
-                    <select id="reportMonth">
-                        <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
-                        <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
-                        <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
-                        <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
-                    </select>
-                    <input type="number" id="reportYear" value="2026">
+            <!-- EDUCACIÓN -->
+            <div id="eduSection" class="hidden">
+                <div class="card">
+                    <h3><i class="fas fa-book"></i> Nuevo Tema Educativo</h3>
+                    <input type="text" id="eduTitle" placeholder="Título">
+                    <div class="mic-wrapper">
+                        <textarea id="eduDesc" rows="3" placeholder="Descripción"></textarea>
+                        <button class="mic-btn" onclick="startDictation('eduDesc')"><i class="fas fa-microphone"></i></button>
+                    </div>
+                    <select id="eduResp" style="margin-top: 10px;"></select>
+                    <button onclick="createEdu()" style="width: 100%;"><i class="fas fa-save"></i> Guardar</button>
                 </div>
-                <button onclick="generateReport()" style="width: 100%;"><i class="fas fa-file-pdf"></i> Generar</button>
+                <table id="eduTable"><thead><tr><th>Tema</th><th>Responsable</th></tr></thead><tbody></tbody></table>
             </div>
         </div>
     </div>
 
-    <!-- VISTA DEL AUXILIAR -->
+    <!-- ========================================== -->
+    <!-- VISTA DEL AUXILIAR (Para otros roles) -->
+    <!-- ========================================== -->
     <div id="auxiliarPanel" class="hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
             <div style="display:flex; align-items:center; gap: 15px;">
                 <img src="https://i.imgur.com/01YZxey.jpeg" alt="Logo" style="height: 50px; border-radius: 8px;">
-                <h1 style="margin:0;">Mi Turno Activo</h1>
+                <div>
+                    <h1 style="margin:0;">Mi Turno Activo</h1>
+                    <small style="color: #94a3b8;" id="auxUserName">Auxiliar</small>
+                </div>
             </div>
             <button onclick="logout()" style="background:var(--danger); width:auto; margin:0;"><i class="fas fa-sign-out-alt"></i> Salir</button>
         </div>
 
         <div class="card">
             <h3><i class="fas fa-user-injured"></i> Pacientes Asignados</h3>
+            <p style="color: #94a3b8;">Selecciona un paciente para iniciar el registro clínico</p>
             <div id="auxPatientList"></div>
         </div>
 
+        <!-- FORMULARIO CLÍNICO (aparece al seleccionar paciente) -->
         <div id="clinicalForm" class="hidden">
             <div class="card">
-                <h3><i class="fas fa-heartbeat"></i> Signos Vitales - <span id="selectedPatientName"></span></h3>
+                <h3><i class="fas fa-heartbeat"></i> Signos Vitales - <span id="selectedPatientName" style="color: var(--primary);"></span></h3>
                 <div id="spo2Alert"></div>
+                
                 <div class="grid">
                     <input type="text" id="bloodPressure" placeholder="Presión Arterial (Ej: 120/80)">
                     <input type="number" id="heartRate" placeholder="Frecuencia Cardíaca (lpm)">
-                    <input type="number" id="respiratoryRate" placeholder="Frecuencia Respiratoria (rpm)">
+                    <input type="number" id="respiratoryRate" placeholder="Frec. Respiratoria (rpm)">
                     <input type="number" step="0.1" id="temperature" placeholder="Temperatura (°C)">
                     <input type="number" id="spo2" placeholder="SpO2 (%)" oninput="checkSpO2()">
                     <input type="number" id="glucose" placeholder="Glucosa (mg/dL)">
@@ -284,12 +231,12 @@
 
                 <h4 style="margin-top: 20px;"><i class="fas fa-tasks"></i> Actividades Realizadas</h4>
                 <div class="checkbox-grid">
-                    <div class="checkbox-item"><input type="checkbox" id="actBath"><label for="actBath">Baño</label></div>
-                    <div class="checkbox-item"><input type="checkbox" id="actFeeding"><label for="actFeeding">Alimentación</label></div>
-                    <div class="checkbox-item"><input type="checkbox" id="actMedication"><label for="actMedication">Medicamentos</label></div>
-                    <div class="checkbox-item"><input type="checkbox" id="actMobility"><label for="actMobility">Movilización</label></div>
-                    <div class="checkbox-item"><input type="checkbox" id="actVitals"><label for="actVitals">Signos Vitales</label></div>
-                    <div class="checkbox-item"><input type="checkbox" id="actHygiene"><label for="actHygiene">Higiene</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="actBath"><label for="actBath">🛁 Baño</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="actFeeding"><label for="actFeeding">🍽️ Alimentación</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="actMedication"><label for="actMedication">💊 Medicamentos</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="actMobility"><label for="actMobility">🚶 Movilización</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="actVitals"><label for="actVitals">❤️ Signos Vitales</label></div>
+                    <div class="checkbox-item"><input type="checkbox" id="actHygiene"><label for="actHygiene">🧼 Higiene</label></div>
                 </div>
 
                 <h4 style="margin-top: 20px;"><i class="fas fa-notes-medical"></i> Novedades</h4>
@@ -301,34 +248,43 @@
                 <button onclick="saveClinicalRecord()" style="width: 100%; margin-top: 20px;"><i class="fas fa-save"></i> Guardar Registro Clínico</button>
             </div>
 
+            <!-- SECCIÓN DE FIRMAS (aparece después de guardar el registro) -->
             <div id="signatureSection" class="hidden">
                 <div class="card">
                     <h3><i class="fas fa-signature"></i> Cierre de Turno - Doble Firma</h3>
                     
-                    <h4>Firma del Auxiliar</h4>
+                    <h4>✍️ Firma del Auxiliar</h4>
+                    <p style="color: #94a3b8; font-size: 0.9rem;">Yo, <strong id="auxSignName"></strong>, CC <strong id="auxSignDoc"></strong>, entrego el paciente en el estado registrado.</p>
                     <canvas id="auxSigCanvas" class="signature-canvas"></canvas>
                     <button onclick="clearAuxSig()" style="background: #334155; width: auto;"><i class="fas fa-eraser"></i> Borrar</button>
 
-                    <h4 style="margin-top: 20px;">Firma del Familiar</h4>
-                    <input type="text" id="familySignName" placeholder="Nombre del Familiar que recibe">
-                    <input type="text" id="familySignId" placeholder="Cédula del Familiar">
+                    <h4 style="margin-top: 20px;">✍️ Firma del Familiar que Recibe</h4>
+                    <input type="text" id="familySignName" placeholder="Nombre completo del familiar">
+                    <input type="text" id="familySignId" placeholder="Cédula del familiar">
                     <canvas id="famSigCanvas" class="signature-canvas"></canvas>
                     <button onclick="clearFamSig()" style="background: #334155; width: auto;"><i class="fas fa-eraser"></i> Borrar</button>
 
-                    <button onclick="closeShift()" style="width: 100%; margin-top: 20px; background: var(--info);"><i class="fas fa-check-circle"></i> Cerrar Turno</button>
+                    <button onclick="closeShift()" style="width: 100%; margin-top: 20px; background: var(--info);">
+                        <i class="fas fa-check-circle"></i> Cerrar Turno con Doble Firma
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
     <script>
-        // Variables globales
+        // ==========================================
+        // VARIABLES GLOBALES
+        // ==========================================
         let currentUser = null;
         let selectedPatient = null;
-        let clinicalRecordId = null;
+        let lastClinicalRecordId = null;
+        let adminCanvas, adminCtx;
         let auxCanvas, auxCtx, famCanvas, famCtx;
 
-        // LOGIN
+        // ==========================================
+        // LOGIN Y ROUTING POR ROL
+        // ==========================================
         function togglePass() {
             const input = document.getElementById('pass');
             const icon = document.querySelector('.toggle-password i');
@@ -353,7 +309,16 @@
             });
             const data = await res.json();
             if (data.success) {
-                currentUser = data.data.user;
+                // Obtener el nombre de la especialidad
+                const specRes = await fetch('/api/professionals');
+                const specData = await specRes.json();
+                const prof = specData.data.find(p => p.id === data.data.user.id);
+                
+                currentUser = {
+                    ...data.data.user,
+                    specialty_name: prof?.specialties?.name || 'DESCONOCIDO'
+                };
+                
                 localStorage.setItem('user', JSON.stringify(currentUser));
                 initApp();
             } else { 
@@ -367,95 +332,71 @@
             
             document.getElementById('loginScreen').classList.add('hidden');
             
-            // Determinar si es Admin o Auxiliar
-            const specialtyId = currentUser.specialty_id;
-            // Por ahora, todos entran como Admin. En producción, verificar el rol aquí
+            console.log('👤 Usuario logueado:', currentUser);
+            console.log('🏷️ Rol detectado:', currentUser.specialty_name);
             
-            document.getElementById('adminPanel').classList.remove('hidden');
-            initCanvas(); 
-            loadDashboard(); 
-            loadProfs(); 
-            loadEduResps();
+            // ROUTING POR ROL
+            if (currentUser.specialty_name === 'ADMINISTRACION') {
+                // Es Admin → Mostrar Panel de Administración
+                document.getElementById('adminPanel').classList.remove('hidden');
+                document.getElementById('adminUserName').innerText = currentUser.full_name;
+                initAdminCanvas();
+                loadDashboard();
+                loadProfs();
+                loadEduResps();
+            } else {
+                // Es Auxiliar u otro profesional → Mostrar Vista del Auxiliar
+                document.getElementById('auxiliarPanel').classList.remove('hidden');
+                document.getElementById('auxUserName').innerText = `${currentUser.full_name} - ${currentUser.specialty_name}`;
+                document.getElementById('auxSignName').innerText = currentUser.full_name;
+                document.getElementById('auxSignDoc').innerText = currentUser.document_number;
+                loadAuxPatients();
+            }
         }
 
         function logout() { 
             localStorage.clear(); 
             location.reload(); 
         }
-        
+
+        // ==========================================
+        // PANEL ADMIN
+        // ==========================================
         function show(id) {
-            ['dashboardSection', 'profSection', 'patSection', 'eduSection', 'reportsSection'].forEach(s => 
+            ['profSection', 'patSection', 'eduSection'].forEach(s => 
                 document.getElementById(s).classList.add('hidden')
             );
-            const sectionMap = {
-                'dashboard': 'dashboardSection',
-                'prof': 'profSection',
-                'pat': 'patSection',
-                'edu': 'eduSection',
-                'reports': 'reportsSection'
-            };
-            document.getElementById(sectionMap[id]).classList.remove('hidden');
-            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-            event.target.closest('button').classList.add('active');
-            
+            document.getElementById(id + 'Section').classList.remove('hidden');
             if(id === 'pat') loadPats();
             if(id === 'edu') loadEdus();
-            if(id === 'reports') loadPendingReports();
         }
 
-        // FIRMA DIGITAL (Admin)
-        let canvas, ctx, drawing = false;
-        function initCanvas() {
-            canvas = document.getElementById('sigCanvas');
-            ctx = canvas.getContext('2d');
-            canvas.width = canvas.offsetWidth;
-            canvas.height = 150;
-            ctx.fillStyle = 'white';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        function initAdminCanvas() {
+            adminCanvas = document.getElementById('sigCanvas');
+            adminCtx = adminCanvas.getContext('2d');
+            adminCanvas.width = adminCanvas.offsetWidth;
+            adminCanvas.height = 150;
+            adminCtx.fillStyle = 'white';
+            adminCtx.fillRect(0, 0, adminCanvas.width, adminCanvas.height);
             
-            canvas.addEventListener('mousedown', () => drawing = true);
-            canvas.addEventListener('mouseup', () => drawing = false);
-            canvas.addEventListener('mousemove', (e) => {
+            let drawing = false;
+            adminCanvas.addEventListener('mousedown', () => drawing = true);
+            adminCanvas.addEventListener('mouseup', () => drawing = false);
+            adminCanvas.addEventListener('mousemove', (e) => {
                 if (!drawing) return;
-                const rect = canvas.getBoundingClientRect();
-                ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.strokeStyle = 'black';
-                ctx.lineTo(e.clientX - rect.left, e.clientY - rect.top); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
+                const rect = adminCanvas.getBoundingClientRect();
+                adminCtx.lineWidth = 2; adminCtx.lineCap = 'round'; adminCtx.strokeStyle = 'black';
+                adminCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top); adminCtx.stroke();
+                adminCtx.beginPath(); adminCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
             });
         }
+
         function clearSig() { 
-            ctx.fillStyle = 'white'; ctx.fillRect(0, 0, canvas.width, canvas.height); 
-            ctx.beginPath();
+            adminCtx.fillStyle = 'white'; 
+            adminCtx.fillRect(0, 0, adminCanvas.width, adminCanvas.height); 
+            adminCtx.beginPath();
         }
 
-        // MICRÓFONO
-        function startDictation(elementId) {
-            if (window.hasOwnProperty('webkitSpeechRecognition')) {
-                const recognition = new webkitSpeechRecognition();
-                recognition.continuous = false;
-                recognition.interimResults = false;
-                recognition.lang = 'es-CO';
-                
-                const btn = document.querySelector(`button[onclick="startDictation('${elementId}')"]`);
-                btn.classList.add('recording');
-                recognition.start();
-
-                recognition.onresult = function(e) {
-                    const input = document.getElementById(elementId);
-                    input.value += (input.value ? ' ' : '') + e.results[0][0].transcript;
-                    btn.classList.remove('recording');
-                };
-                recognition.onerror = function(e) {
-                    btn.classList.remove('recording');
-                    alert("Error de voz.");
-                };
-                recognition.onend = function() { btn.classList.remove('recording'); };
-            } else {
-                alert("Navegador no soporta voz. Usa Chrome.");
-            }
-        }
-
-        // DASHBOARD
         async function loadDashboard() {
             const res = await fetch('/api/dashboard/stats');
             const d = await res.json();
@@ -467,7 +408,6 @@
             }
         }
 
-        // PROFESIONALES
         async function loadProfs() {
             const res = await fetch('/api/professionals');
             const d = await res.json();
@@ -483,7 +423,7 @@
                 email: document.getElementById('pEmail').value,
                 password: document.getElementById('pPass').value,
                 specialtyName: document.getElementById('pSpec').value,
-                signature: canvas.toDataURL()
+                signature: adminCanvas.toDataURL()
             };
             const res = await fetch('/api/professionals', { 
                 method: 'POST', 
@@ -495,7 +435,6 @@
             if(d.success) { clearSig(); loadProfs(); loadDashboard(); loadEduResps(); }
         }
 
-        // PACIENTES
         async function loadPats() {
             const res = await fetch('/api/patients');
             const d = await res.json();
@@ -526,12 +465,11 @@
             if(d.success) { loadPats(); loadDashboard(); }
         }
 
-        // EDUCACIÓN
         async function loadEduResps() {
             const res = await fetch('/api/professionals');
             const d = await res.json();
             document.getElementById('eduResp').innerHTML = d.data.map(p => 
-                `<option value="${p.id}">${p.full_name}</option>`
+                `<option value="${p.id}">${p.full_name} (${p.specialties?.name})</option>`
             ).join('');
         }
 
@@ -559,32 +497,33 @@
             if(d.success) loadEdus();
         }
 
-        // INFORMES
-        async function loadPendingReports() {
-            const res = await fetch('/api/reports/pending');
-            const d = await res.json();
-            const patientSelect = document.getElementById('reportPatient');
-            patientSelect.innerHTML = '<option value="">Seleccionar...</option>';
-            if(d.data) {
-                d.data.forEach(p => {
-                    patientSelect.innerHTML += `<option value="${p.id}">${p.full_name}</option>`;
-                });
-            }
-        }
+        // ==========================================
+        // MICRÓFONO (Dictado por voz)
+        // ==========================================
+        function startDictation(elementId) {
+            if (window.hasOwnProperty('webkitSpeechRecognition')) {
+                const recognition = new webkitSpeechRecognition();
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                recognition.lang = 'es-CO';
+                
+                const btn = document.querySelector(`button[onclick="startDictation('${elementId}')"]`);
+                btn.classList.add('recording');
+                recognition.start();
 
-        async function generateReport() {
-            const patientId = document.getElementById('reportPatient').value;
-            const month = document.getElementById('reportMonth').value;
-            const year = document.getElementById('reportYear').value;
-            if(!patientId) return alert('Selecciona un paciente');
-            
-            const res = await fetch('/api/reports/generate', { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({ patientId, month, year }) 
-            });
-            const d = await res.json();
-            alert(d.message);
+                recognition.onresult = function(e) {
+                    const input = document.getElementById(elementId);
+                    input.value += (input.value ? ' ' : '') + e.results[0][0].transcript;
+                    btn.classList.remove('recording');
+                };
+                recognition.onerror = function(e) {
+                    btn.classList.remove('recording');
+                    alert("Error de voz. Verifica el micrófono.");
+                };
+                recognition.onend = function() { btn.classList.remove('recording'); };
+            } else {
+                alert("Tu navegador no soporta reconocimiento de voz. Usa Chrome.");
+            }
         }
 
         // ==========================================
@@ -598,13 +537,17 @@
             
             if(d.data && d.data.length > 0) {
                 container.innerHTML = d.data.map(p => `
-                    <div class="patient-card" onclick="selectPatient(${JSON.stringify(p).replace(/"/g, '&quot;')})">
-                        <strong>${p.full_name}</strong> - ${p.altitude_profiles?.city_name || 'N/A'}<br>
-                        <small>${p.pathology_summary || 'Sin patología registrada'}</small>
+                    <div class="patient-card" onclick='selectPatient(${JSON.stringify(p)})'>
+                        <strong>${p.full_name}</strong> - ${p.altitude_profiles?.city_name || 'Ciudad no asignada'}<br>
+                        <small style="color: #94a3b8;">${p.pathology_summary || 'Sin patología registrada'}</small><br>
+                        <small style="color: var(--info);">
+                            <i class="fas fa-user"></i> Familiar: ${p.family_name || 'N/A'} | 
+                            <i class="fas fa-phone"></i> ${p.contact_phone || 'N/A'}
+                        </small>
                     </div>
                 `).join('');
             } else {
-                container.innerHTML = '<p>No hay pacientes asignados</p>';
+                container.innerHTML = '<p style="color: #94a3b8; text-align: center; padding: 20px;">No hay pacientes registrados. Contacta al administrador.</p>';
             }
         }
 
@@ -612,42 +555,44 @@
             selectedPatient = patient;
             document.getElementById('selectedPatientName').innerText = patient.full_name;
             document.getElementById('clinicalForm').classList.remove('hidden');
+            document.getElementById('signatureSection').classList.add('hidden');
             
             // Mostrar alerta de SpO2 según la ciudad
             const spo2Min = patient.altitude_profiles?.spo2_min_normal || 95;
+            const cityName = patient.altitude_profiles?.city_name || 'Ciudad desconocida';
             document.getElementById('spo2Alert').innerHTML = `
                 <div class="spo2-warning">
-                    <i class="fas fa-info-circle"></i> SpO2 mínimo esperado en ${patient.altitude_profiles?.city_name}: <strong>${spo2Min}%</strong>
+                    <i class="fas fa-info-circle"></i> SpO2 mínimo esperado en <strong>${cityName}</strong>: <strong>${spo2Min}%</strong>
                 </div>
             `;
             
-            // Inicializar canvases de firma
-            initSignatureCanvases();
-            
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            window.scrollTo({ top: document.getElementById('clinicalForm').offsetTop, behavior: 'smooth' });
         }
 
         function checkSpO2() {
             const spo2 = parseInt(document.getElementById('spo2').value);
             const spo2Min = selectedPatient.altitude_profiles?.spo2_min_normal || 95;
+            const cityName = selectedPatient.altitude_profiles?.city_name || 'Ciudad desconocida';
             const alertDiv = document.getElementById('spo2Alert');
             
             if(spo2 && spo2 < spo2Min) {
                 alertDiv.innerHTML = `
                     <div class="spo2-alert">
-                        <i class="fas fa-exclamation-triangle"></i> ¡ALERTA! SpO2 ${spo2}% está por debajo del mínimo esperado (${spo2Min}%) para esta ciudad.
+                        <i class="fas fa-exclamation-triangle"></i> ¡ALERTA! SpO2 ${spo2}% está por debajo del mínimo esperado (${spo2Min}%) para ${cityName}.
                     </div>
                 `;
             } else if(spo2 && spo2 >= spo2Min) {
                 alertDiv.innerHTML = `
-                    <div style="background: var(--primary); color: white; padding: 10px; border-radius: 6px; margin: 10px 0;">
-                        <i class="fas fa-check-circle"></i> SpO2 ${spo2}% - Dentro del rango normal para esta ciudad.
+                    <div class="spo2-normal">
+                        <i class="fas fa-check-circle"></i> SpO2 ${spo2}% - Dentro del rango normal para ${cityName} (mínimo: ${spo2Min}%).
                     </div>
                 `;
             }
         }
 
         async function saveClinicalRecord() {
+            if(!selectedPatient) return alert('Selecciona un paciente primero');
+            
             const activities = {
                 bath: document.getElementById('actBath').checked,
                 feeding: document.getElementById('actFeeding').checked,
@@ -670,6 +615,8 @@
                 notes: document.getElementById('clinicalNotes').value
             };
 
+            console.log('📤 Enviando registro clínico:', payload);
+
             const res = await fetch('/api/clinical-records', { 
                 method: 'POST', 
                 headers: {'Content-Type': 'application/json'}, 
@@ -678,8 +625,10 @@
             const d = await res.json();
             
             if(d.success) {
+                lastClinicalRecordId = d.data.id;
                 alert('✅ Registro clínico guardado. Ahora procede con la doble firma.');
                 document.getElementById('signatureSection').classList.remove('hidden');
+                initSignatureCanvases();
                 window.scrollTo({ top: document.getElementById('signatureSection').offsetTop, behavior: 'smooth' });
             } else {
                 alert('❌ Error: ' + d.message);
@@ -696,15 +645,15 @@
             auxCtx.fillRect(0, 0, auxCanvas.width, auxCanvas.height);
             
             let auxDrawing = false;
-            auxCanvas.addEventListener('mousedown', () => auxDrawing = true);
-            auxCanvas.addEventListener('mouseup', () => auxDrawing = false);
-            auxCanvas.addEventListener('mousemove', (e) => {
+            auxCanvas.onmousedown = () => auxDrawing = true;
+            auxCanvas.onmouseup = () => auxDrawing = false;
+            auxCanvas.onmousemove = (e) => {
                 if (!auxDrawing) return;
                 const rect = auxCanvas.getBoundingClientRect();
                 auxCtx.lineWidth = 2; auxCtx.lineCap = 'round'; auxCtx.strokeStyle = 'black';
                 auxCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top); auxCtx.stroke();
                 auxCtx.beginPath(); auxCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-            });
+            };
 
             // Canvas del Familiar
             famCanvas = document.getElementById('famSigCanvas');
@@ -715,15 +664,15 @@
             famCtx.fillRect(0, 0, famCanvas.width, famCanvas.height);
             
             let famDrawing = false;
-            famCanvas.addEventListener('mousedown', () => famDrawing = true);
-            famCanvas.addEventListener('mouseup', () => famDrawing = false);
-            famCanvas.addEventListener('mousemove', (e) => {
+            famCanvas.onmousedown = () => famDrawing = true;
+            famCanvas.onmouseup = () => famDrawing = false;
+            famCanvas.onmousemove = (e) => {
                 if (!famDrawing) return;
                 const rect = famCanvas.getBoundingClientRect();
                 famCtx.lineWidth = 2; famCtx.lineCap = 'round'; famCtx.strokeStyle = 'black';
                 famCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top); famCtx.stroke();
                 famCtx.beginPath(); famCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-            });
+            };
         }
 
         function clearAuxSig() {
@@ -743,11 +692,15 @@
             const familyId = document.getElementById('familySignId').value;
             
             if(!familyName || !familyId) {
-                return alert('Completa los datos del familiar que recibe');
+                return alert('⚠️ Completa los datos del familiar que recibe');
+            }
+
+            if(!lastClinicalRecordId) {
+                return alert('⚠️ Primero debes guardar el registro clínico');
             }
 
             const payload = {
-                clinicalRecordId: clinicalRecordId, // Esto debería venir del saveClinicalRecord
+                clinicalRecordId: lastClinicalRecordId,
                 auxiliarySignature: auxCanvas.toDataURL(),
                 auxiliaryName: currentUser.full_name,
                 auxiliaryIdNumber: currentUser.document_number,
@@ -755,6 +708,8 @@
                 familyName: familyName,
                 familyIdNumber: familyId
             };
+
+            console.log('📤 Enviando cierre de turno:', payload);
 
             const res = await fetch('/api/shifts/close', { 
                 method: 'POST', 
@@ -764,18 +719,19 @@
             const d = await res.json();
             
             if(d.success) {
-                alert('✅ Turno cerrado exitosamente con doble firma');
+                alert('✅ Turno cerrado exitosamente con doble firma.\n\nPaciente: ' + selectedPatient.full_name + '\nFamiliar que recibe: ' + familyName);
                 location.reload();
             } else {
                 alert('❌ Error: ' + d.message);
             }
         }
 
+        // ==========================================
+        // INICIALIZACIÓN AL CARGAR
+        // ==========================================
         window.onload = () => { 
             if(localStorage.getItem('user')) {
                 initApp();
-                // Si es auxiliar, cargar pacientes
-                // Esto se puede mejorar verificando el rol
             }
         };
     </script>
