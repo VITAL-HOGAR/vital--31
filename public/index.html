@@ -5,13 +5,13 @@
     <title>Vital Hogar Pro - Admin</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        :root { --bg-dark: #0f172a; --card-bg: #1e293b; --primary: #22c55e; --danger: #ef4444; --text-main: #e2e8f0; }
+        :root { --bg-dark: #0f172a; --card-bg: #1e293b; --primary: #22c55e; --danger: #ef4444; --warning: #f59e0b; --info: #3b82f6; --text-main: #e2e8f0; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 20px; }
         .hidden { display: none; }
         input, select, textarea { width: 100%; padding: 10px; margin: 5px 0; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; box-sizing: border-box; }
         button { padding: 10px; background: var(--primary); color: white; border: none; cursor: pointer; margin-top: 10px; border-radius: 6px; font-weight: bold; }
         button:hover { opacity: 0.9; }
-        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .card { background: var(--card-bg); padding: 20px; border-radius: 10px; margin-bottom: 20px; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #0f172a; border-radius: 8px; overflow: hidden; }
         th, td { padding: 12px; border-bottom: 1px solid #334155; text-align: left; }
@@ -20,13 +20,40 @@
         .nav button { background: #334155; width: auto; margin-top: 0; }
         .nav button.active { background: var(--primary); }
         
-        /* Estilos para el ojo de la contraseña */
+        /* Dashboard mejorado */
+        .stat-card { text-align: center; border-left: 5px solid var(--primary); }
+        .stat-card h3 { color: #94a3b8; font-size: 0.9rem; margin-bottom: 10px; }
+        .stat-card h2 { font-size: 2.5rem; margin: 0; color: var(--primary); }
+        .stat-card.warning { border-left-color: var(--warning); }
+        .stat-card.warning h2 { color: var(--warning); }
+        .stat-card.danger { border-left-color: var(--danger); }
+        .stat-card.danger h2 { color: var(--danger); }
+        .stat-card.info { border-left-color: var(--info); }
+        .stat-card.info h2 { color: var(--info); }
+        
+        /* Quick Actions */
+        .quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .action-btn { padding: 20px; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 10px; }
+        .action-btn i { font-size: 1.5rem; }
+        
+        /* Semáforo */
+        .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
+        .status-stable { background: var(--primary); color: white; }
+        .status-followup { background: var(--warning); color: black; }
+        .status-urgent { background: var(--danger); color: white; }
+        
+        /* Alertas */
+        .alert-box { background: #7f1d1d; border-left: 4px solid var(--danger); padding: 15px; border-radius: 6px; margin-bottom: 15px; }
+        .alert-box h4 { margin: 0 0 10px 0; color: #fecaca; }
+        .alert-box p { margin: 5px 0; font-size: 0.9rem; }
+        
+        /* Login */
         .password-wrapper { position: relative; }
         .toggle-password { position: absolute; right: 10px; top: 15px; cursor: pointer; color: #94a3b8; background: none; border: none; margin: 0; width: auto; padding: 0; }
         
-        /* Estilos para el micrófono */
+        /* Micrófono */
         .mic-wrapper { position: relative; display: flex; align-items: center; gap: 5px; }
-        .mic-btn { background: #3b82f6; width: 40px; height: 40px; padding: 0; margin: 5px 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; }
+        .mic-btn { background: var(--info); width: 40px; height: 40px; padding: 0; margin: 5px 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; }
         .mic-btn.recording { background: var(--danger); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
     </style>
@@ -34,7 +61,6 @@
 <body>
     <!-- LOGIN -->
     <div id="loginScreen" class="card" style="max-width: 400px; margin: 50px auto; text-align: center;">
-        <!-- REEMPLAZA ESTE SRC CON EL LINK DIRECTO DE TU IMAGEN EN IMGUR (terminado en .jpg o .png) -->
         <img src="https://i.imgur.com/01YZxey.jpeg" alt="Logo Vital Hogar" style="height: 100px; margin-bottom: 20px; border-radius: 10px;">
         <h2>Acceso al Sistema</h2>
         <input type="email" id="email" placeholder="Correo electrónico">
@@ -53,22 +79,61 @@
                 <img src="https://i.imgur.com/01YZxey.jpeg" alt="Logo" style="height: 50px; border-radius: 8px;">
                 <h1 style="margin:0;">Panel de Control</h1>
             </div>
-            <button onclick="logout()" style="background:var(--danger); width:auto; margin:0;">Salir</button>
+            <button onclick="logout()" style="background:var(--danger); width:auto; margin:0;"><i class="fas fa-sign-out-alt"></i> Salir</button>
         </div>
 
-        <div class="grid">
-            <div class="card" style="text-align: center; border-left: 5px solid var(--primary);"><h3>Pacientes Activos</h3><h2 id="statPat" style="font-size: 2.5rem; color: var(--primary);">0</h2></div>
-            <div class="card" style="text-align: center; border-left: 5px solid #3b82f6;"><h3>Profesionales</h3><h2 id="statProf" style="font-size: 2.5rem; color: #3b82f6;">0</h2></div>
+        <!-- DASHBOARD MEJORADO -->
+        <div id="dashboardSection">
+            <div class="grid">
+                <div class="card stat-card">
+                    <h3><i class="fas fa-user-injured"></i> Pacientes Activos</h3>
+                    <h2 id="statPat">0</h2>
+                </div>
+                <div class="card stat-card info">
+                    <h3><i class="fas fa-user-md"></i> Profesionales</h3>
+                    <h2 id="statProf">0</h2>
+                </div>
+                <div class="card stat-card" style="border-left-color: #8b5cf6;">
+                    <h3><i class="fas fa-graduation-cap"></i> Educación (Mes)</h3>
+                    <h2 id="statEdu" style="color: #8b5cf6;">0</h2>
+                </div>
+                <div class="card stat-card danger">
+                    <h3><i class="fas fa-file-medical"></i> Informes Pendientes</h3>
+                    <h2 id="statReports">0</h2>
+                </div>
+            </div>
+
+            <!-- Alertas de Vencimiento -->
+            <div id="alertBox" class="alert-box hidden">
+                <h4><i class="fas fa-exclamation-triangle"></i> Documentos por Vencer (Próximos 30 días)</h4>
+                <div id="alertList"></div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div class="quick-actions">
+                <button class="action-btn" onclick="show('pat')" style="background: var(--info);">
+                    <i class="fas fa-calendar-plus"></i> Asignar Turno
+                </button>
+                <button class="action-btn" onclick="show('reports')" style="background: var(--warning); color: black;">
+                    <i class="fas fa-file-pdf"></i> Generar Informe
+                </button>
+                <button class="action-btn" onclick="alert('Función en desarrollo - Fase 4')" style="background: var(--danger);">
+                    <i class="fas fa-exclamation-circle"></i> Novedad Urgente
+                </button>
+            </div>
         </div>
 
+        <!-- NAVEGACIÓN -->
         <div class="nav">
-            <button class="active" onclick="show('prof')"><i class="fas fa-user-md"></i> Profesionales</button>
+            <button class="active" onclick="show('dashboard')"><i class="fas fa-home"></i> Dashboard</button>
+            <button onclick="show('prof')"><i class="fas fa-user-md"></i> Profesionales</button>
             <button onclick="show('pat')"><i class="fas fa-user-injured"></i> Pacientes</button>
             <button onclick="show('edu')"><i class="fas fa-graduation-cap"></i> Educación</button>
+            <button onclick="show('reports')"><i class="fas fa-file-medical"></i> Informes</button>
         </div>
 
         <!-- PROFESIONALES -->
-        <div id="profSection">
+        <div id="profSection" class="hidden">
             <div class="card">
                 <h3><i class="fas fa-user-plus"></i> Nuevo Profesional</h3>
                 <div class="grid">
@@ -124,27 +189,65 @@
                 </div>
                 <button onclick="createPat()" style="width: 100%;"><i class="fas fa-save"></i> Guardar Paciente</button>
             </div>
-            <table id="patTable"><thead><tr><th>Paciente</th><th>Ciudad</th><th>Familiar Responsable</th><th>Celular</th></tr></thead><tbody></tbody></table>
+            <table id="patTable"><thead><tr><th>Paciente</th><th>Ciudad</th><th>Familiar</th><th>Celular</th><th>Estado</th></tr></thead><tbody></tbody></table>
         </div>
 
         <!-- EDUCACIÓN -->
         <div id="eduSection" class="hidden">
             <div class="card">
                 <h3><i class="fas fa-book"></i> Nuevo Tema Educativo</h3>
-                <input type="text" id="eduTitle" placeholder="Título del Tema (Ej: Manejo de Sonda Nasogástrica)">
+                <input type="text" id="eduTitle" placeholder="Título del Tema">
                 <div class="mic-wrapper">
-                    <textarea id="eduDesc" rows="3" placeholder="Descripción breve o instrucciones para el auxiliar..."></textarea>
+                    <textarea id="eduDesc" rows="3" placeholder="Descripción o instrucciones..."></textarea>
                     <button class="mic-btn" onclick="startDictation('eduDesc')"><i class="fas fa-microphone"></i></button>
                 </div>
                 <select id="eduResp" style="margin-top: 10px;"><option>Cargando profesionales...</option></select>
                 <button onclick="createEdu()" style="width: 100%;"><i class="fas fa-save"></i> Guardar Tema</button>
             </div>
-            <table id="eduTable"><thead><tr><th>Tema</th><th>Responsable Asignado</th></tr></thead><tbody></tbody></table>
+            <table id="eduTable"><thead><tr><th>Tema</th><th>Responsable</th></tr></thead><tbody></tbody></table>
+        </div>
+
+        <!-- INFORMES -->
+        <div id="reportsSection" class="hidden">
+            <div class="card">
+                <h3><i class="fas fa-file-medical"></i> Generar Informe Mensual</h3>
+                <p style="color: #94a3b8;">Selecciona un paciente para generar su informe mensual con signos vitales, actividades y novedades.</p>
+                <select id="reportPatient">
+                    <option value="">Cargando pacientes...</option>
+                </select>
+                <div class="grid" style="margin-top: 15px;">
+                    <select id="reportMonth">
+                        <option value="01">Enero</option>
+                        <option value="02">Febrero</option>
+                        <option value="03">Marzo</option>
+                        <option value="04">Abril</option>
+                        <option value="05">Mayo</option>
+                        <option value="06">Junio</option>
+                        <option value="07">Julio</option>
+                        <option value="08">Agosto</option>
+                        <option value="09">Septiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+                    <input type="number" id="reportYear" placeholder="Año" value="2026">
+                </div>
+                <button onclick="generateReport()" style="width: 100%; margin-top: 15px;">
+                    <i class="fas fa-file-pdf"></i> Generar Informe PDF
+                </button>
+                <p style="color: var(--warning); font-size: 0.9rem; margin-top: 10px;">
+                    <i class="fas fa-info-circle"></i> El informe incluirá firma del auxiliar y espacio para firma del familiar.
+                </p>
+            </div>
+            <div class="card">
+                <h4>Pacientes Pendientes de Informe</h4>
+                <table id="pendingReportsTable"><thead><tr><th>Paciente</th><th>Familiar</th><th>Acción</th></tr></thead><tbody></tbody></table>
+            </div>
         </div>
     </div>
 
     <script>
-        // --- 1. LÓGICA DE LOGIN Y UI ---
+        // --- LOGIN ---
         function togglePass() {
             const input = document.getElementById('pass');
             const icon = document.querySelector('.toggle-password i');
@@ -174,26 +277,34 @@
             if (!localStorage.getItem('user')) return;
             document.getElementById('loginScreen').classList.add('hidden');
             document.getElementById('adminPanel').classList.remove('hidden');
-            initCanvas(); loadStats(); loadProfs(); loadEduResps();
+            initCanvas(); loadDashboard(); loadProfs(); loadEduResps();
         }
 
         function logout() { localStorage.clear(); location.reload(); }
         
         function show(id) {
-            ['profSection', 'patSection', 'eduSection'].forEach(s => document.getElementById(s).classList.add('hidden'));
-            document.getElementById(id + 'Section').classList.remove('hidden');
+            ['dashboardSection', 'profSection', 'patSection', 'eduSection', 'reportsSection'].forEach(s => document.getElementById(s).classList.add('hidden'));
+            const sectionMap = {
+                'dashboard': 'dashboardSection',
+                'prof': 'profSection',
+                'pat': 'patSection',
+                'edu': 'eduSection',
+                'reports': 'reportsSection'
+            };
+            document.getElementById(sectionMap[id]).classList.remove('hidden');
             document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
             event.target.closest('button').classList.add('active');
+            
             if(id === 'pat') loadPats();
             if(id === 'edu') loadEdus();
+            if(id === 'reports') loadPendingReports();
         }
 
-        // --- 2. FIRMA DIGITAL ---
+        // --- FIRMA DIGITAL ---
         let canvas, ctx, drawing = false;
         function initCanvas() {
             canvas = document.getElementById('sigCanvas');
             ctx = canvas.getContext('2d');
-            // Ajustar tamaño real del canvas
             canvas.width = canvas.offsetWidth;
             canvas.height = 150;
             ctx.fillStyle = 'white';
@@ -214,7 +325,7 @@
             ctx.beginPath();
         }
 
-        // --- 3. RECONOCIMIENTO DE VOZ ---
+        // --- MICRÓFONO ---
         function startDictation(elementId) {
             if (window.hasOwnProperty('webkitSpeechRecognition')) {
                 const recognition = new webkitSpeechRecognition();
@@ -224,40 +335,44 @@
                 
                 const btn = document.querySelector(`button[onclick="startDictation('${elementId}')"]`);
                 btn.classList.add('recording');
-
                 recognition.start();
 
                 recognition.onresult = function(e) {
                     const input = document.getElementById(elementId);
-                    // Agrega el texto dictado al valor existente
                     input.value += (input.value ? ' ' : '') + e.results[0][0].transcript;
                     btn.classList.remove('recording');
                 };
-
                 recognition.onerror = function(e) {
-                    console.error("Error de voz:", e);
                     btn.classList.remove('recording');
-                    alert("No se pudo reconocer la voz. Verifica el micrófono.");
+                    alert("Error de voz. Verifica el micrófono.");
                 };
-                
-                recognition.onend = function() {
-                    btn.classList.remove('recording');
-                };
+                recognition.onend = function() { btn.classList.remove('recording'); };
             } else {
                 alert("Tu navegador no soporta reconocimiento de voz. Usa Chrome.");
             }
         }
 
-        // --- 4. GESTIÓN DE DATOS ---
-        async function loadStats() {
+        // --- DASHBOARD MEJORADO ---
+        async function loadDashboard() {
             const res = await fetch('/api/dashboard/stats');
             const d = await res.json();
             if(d.success) {
                 document.getElementById('statPat').innerText = d.data.patients || 0;
                 document.getElementById('statProf').innerText = d.data.professionals || 0;
+                document.getElementById('statEdu').innerText = d.data.educationSessions || 0;
+                document.getElementById('statReports').innerText = d.data.pendingReports || 0;
+
+                // Alertas de vencimiento
+                if(d.data.expiryAlerts && d.data.expiryAlerts.length > 0) {
+                    document.getElementById('alertBox').classList.remove('hidden');
+                    document.getElementById('alertList').innerHTML = d.data.expiryAlerts.map(a => 
+                        `<p><strong>${a.full_name}</strong> - Vence: ${a.card_expiry_date}</p>`
+                    ).join('');
+                }
             }
         }
 
+        // --- PROFESIONALES ---
         async function loadProfs() {
             const res = await fetch('/api/professionals');
             const d = await res.json();
@@ -278,14 +393,21 @@
             const res = await fetch('/api/professionals', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
             const d = await res.json();
             alert(d.message);
-            if(d.success) { clearSig(); loadProfs(); loadStats(); loadEduResps(); }
+            if(d.success) { clearSig(); loadProfs(); loadDashboard(); loadEduResps(); }
         }
 
+        // --- PACIENTES ---
         async function loadPats() {
             const res = await fetch('/api/patients');
             const d = await res.json();
             document.querySelector('#patTable tbody').innerHTML = d.data.map(p => 
-                `<tr><td>${p.full_name}</td><td>${p.city_id ? 'Asignada' : 'N/A'}</td><td>${p.family_name} (${p.family_relationship})</td><td>${p.contact_phone}</td></tr>`
+                `<tr>
+                    <td>${p.full_name}</td>
+                    <td>${p.city_id ? 'Asignada' : 'N/A'}</td>
+                    <td>${p.family_name} (${p.family_relationship || 'N/A'})</td>
+                    <td>${p.contact_phone || 'N/A'}</td>
+                    <td><span class="status-badge status-stable">🟢 Estable</span></td>
+                </tr>`
             ).join('');
         }
 
@@ -304,9 +426,10 @@
             const res = await fetch('/api/patients', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
             const d = await res.json();
             alert(d.message);
-            if(d.success) { loadPats(); loadStats(); }
+            if(d.success) { loadPats(); loadDashboard(); }
         }
 
+        // --- EDUCACIÓN ---
         async function loadEduResps() {
             const res = await fetch('/api/professionals');
             const d = await res.json();
@@ -328,7 +451,52 @@
             const res = await fetch('/api/education/topics', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
             const d = await res.json();
             alert(d.message);
-            if(d.success) loadEdus();
+            if(d.success) { loadEdus(); loadDashboard(); }
+        }
+
+        // --- INFORMES ---
+        async function loadPendingReports() {
+            const res = await fetch('/api/reports/pending');
+            const d = await res.json();
+            const patientSelect = document.getElementById('reportPatient');
+            patientSelect.innerHTML = '<option value="">Seleccionar paciente...</option>';
+            
+            if(d.data && d.data.length > 0) {
+                d.data.forEach(p => {
+                    patientSelect.innerHTML += `<option value="${p.id}">${p.full_name}</option>`;
+                });
+                
+                document.querySelector('#pendingReportsTable tbody').innerHTML = d.data.map(p => 
+                    `<tr>
+                        <td>${p.full_name}</td>
+                        <td>${p.family_name || 'N/A'}</td>
+                        <td><button onclick="selectPatientForReport('${p.id}')" style="width:auto; padding:5px 10px; font-size:0.8rem;">Generar</button></td>
+                    </tr>`
+                ).join('');
+            } else {
+                document.querySelector('#pendingReportsTable tbody').innerHTML = '<tr><td colspan="3">No hay pacientes pendientes</td></tr>';
+            }
+        }
+
+        function selectPatientForReport(patientId) {
+            document.getElementById('reportPatient').value = patientId;
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        async function generateReport() {
+            const patientId = document.getElementById('reportPatient').value;
+            const month = document.getElementById('reportMonth').value;
+            const year = document.getElementById('reportYear').value;
+            
+            if(!patientId) return alert('Selecciona un paciente');
+            
+            const res = await fetch('/api/reports/generate', { 
+                method: 'POST', 
+                headers: {'Content-Type': 'application/json'}, 
+                body: JSON.stringify({ patientId, month, year }) 
+            });
+            const d = await res.json();
+            alert(d.message);
         }
 
         window.onload = initApp;
