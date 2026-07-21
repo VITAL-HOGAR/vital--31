@@ -15,29 +15,54 @@ const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SER
 
 app.use(cors());
 app.use(express.json());
-
-// ESTA LÍNEA SIRVE TU CARPETA PUBLIC (DONDE ESTÁ EL INDEX.HTML)
 app.use(express.static(path.join(__dirname, 'public')));
 
-// RUTA DE LOGIN
 app.post('/api/auth/login', async (req, res) => {
-    console.log('🔍 Login recibido');
-    const { email, password } = req.body;
-    
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) return res.json({ success: false, message: 'Error Auth: ' + error.message });
-    
-    const { data: profile } = await supabase.from('professionals').select('*').eq('user_id', data.user.id).single();
-    if (!profile) return res.json({ success: false, message: 'Perfil no encontrado en DB' });
-    
-    res.json({ success: true, user: profile });
+    try {
+        const { email, password } = req.body;
+        console.log(`🔍 Login intentado por: ${email}`);
+
+        // 1. Autenticar
+        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
+        if (authError) {
+            console.error('❌ Error Auth:', authError.message);
+            return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
+        }
+
+        console.log('✅ Auth exitoso. UID:', authData.user.id);
+
+        // 2. Buscar perfil (Sin relaciones complejas primero)
+        const { data: profile, error: profileError } = await supabase
+            .from('professionals')
+            .select('*')
+            .eq('user_id', authData.user.id)
+            .single();
+
+        if (profileError) {
+            console.error('❌ Error buscando perfil:', profileError.message);
+            return res.status(404).json({ success: false, message: 'Error de base de datos al buscar perfil.' });
+        }
+
+        if (!profile) {
+            console.error('❌ No se encontró fila en professionals para este UID.');
+            return res.status(404).json({ success: false, message: 'Perfil no encontrado en DB' });
+        }
+
+        console.log('✅ Perfil encontrado:', profile.full_name);
+        res.json({ success: true, user: profile });
+
+    } catch (err) {
+        console.error('💥 Error crítico:', err);
+        res.status(500).json({ success: false, message: 'Error interno' });
+    }
 });
 
-// SI NO ES UNA API, MUESTRA EL INDEX.HTML
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    if (!req.path.startsWith('/api')) {
+        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    }
 });
 
 app.listen(PORT, () => {
-    console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+    console.log(`🚀 Servidor Vivo en puerto ${PORT}`);
 });
