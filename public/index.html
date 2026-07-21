@@ -2,157 +2,27 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Vital Hogar Pro</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <style>
-        :root { --bg-dark: #0f172a; --card-bg: #1e293b; --primary: #22c55e; --text-main: #e2e8f0; }
-        body { font-family: sans-serif; background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 20px; }
-        .hidden { display: none; }
-        input, select { width: 100%; padding: 10px; margin: 5px 0; background: #0f172a; color: white; border: 1px solid #334155; }
-        button { padding: 10px; background: var(--primary); color: white; border: none; cursor: pointer; width: 100%; margin-top: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; background: #0f172a; }
-        th, td { padding: 10px; border-bottom: 1px solid #334155; text-align: left; }
-    </style>
+    <title>Vital Hogar - Prueba</title>
+    <style>body { background: #0f172a; color: white; font-family: sans-serif; text-align: center; padding: 50px; } input { padding: 10px; margin: 5px; } button { padding: 10px; background: #22c55e; color: white; border: none; }</style>
 </head>
 <body>
-    <div id="loginScreen">
-        <h2>Acceso Vital Hogar</h2>
-        <input type="email" id="loginEmail" placeholder="Email">
-        <input type="password" id="loginPass" placeholder="Password">
-        <button onclick="handleLogin()">Ingresar</button>
-        <p id="loginMsg" style="color:red"></p>
-    </div>
-
-    <div id="adminView" class="hidden">
-        <h1>Panel Admin</h1>
-        <button onclick="logout()" style="background:red; width:auto;">Salir</button>
-        
-        <div style="margin: 20px 0;">
-            <button onclick="showSection('prof')" style="width:auto;">Profesionales</button>
-            <button onclick="showSection('edu')" style="width:auto;">Educación</button>
-        </div>
-
-        <div id="profSection">
-            <h3>Crear Profesional</h3>
-            <input type="text" id="newProfName" placeholder="Nombre">
-            <input type="email" id="newProfEmail" placeholder="Email">
-            <input type="text" id="newProfPass" placeholder="Clave">
-            <select id="newProfSpec"><option value="AUXILIAR_ENFERMERIA">Auxiliar</option><option value="MEDICINA">Médico</option></select>
-            <button onclick="createProfessional()">Guardar</button>
-            
-            <h3>Lista de Profesionales</h3>
-            <table id="profTable"><thead><tr><th>Nombre</th><th>Rol</th></tr></thead><tbody id="profList"></tbody></table>
-        </div>
-
-        <div id="eduSection" class="hidden">
-            <h3>Crear Tema Educativo</h3>
-            <input type="text" id="eduTitle" placeholder="Título">
-            <label>Responsable:</label>
-            <select id="eduResponsible"><option>Cargando...</option></select>
-            <button onclick="createTopic()">Guardar Tema</button>
-            <table id="topicTable"><thead><tr><th>Tema</th><th>Responsable</th></tr></thead><tbody id="topicList"></tbody></table>
-        </div>
-    </div>
+    <img src="https://i.imgur.com/01YZxey.jpeg" style="height:80px;">
+    <h2>Prueba de Acceso</h2>
+    <input type="email" id="e" value="admin@vitalhogar.com"><br>
+    <input type="password" id="p" value="123456"><br><br>
+    <button onclick="test()">Probar Login</button>
+    <p id="r"></p>
 
     <script>
-        async function handleLogin() {
+        async function test() {
             const res = await fetch('/api/auth/login', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ email: document.getElementById('loginEmail').value, password: document.getElementById('loginPass').value })
+                body: JSON.stringify({ email: document.getElementById('e').value, password: document.getElementById('p').value })
             });
             const data = await res.json();
-            if (data.success) {
-                localStorage.setItem('token', data.data.token);
-                localStorage.setItem('user', JSON.stringify(data.data.user));
-                initApp();
-            } else { document.getElementById('loginMsg').innerText = data.message; }
+            document.getElementById('r').innerText = JSON.stringify(data);
         }
-
-        function initApp() {
-            if (!localStorage.getItem('user')) return;
-            document.getElementById('loginScreen').classList.add('hidden');
-            document.getElementById('adminView').classList.remove('hidden');
-            loadProfessionals(); // Cargar al inicio
-        }
-
-        function logout() { localStorage.clear(); location.reload(); }
-        function showSection(id) {
-            document.getElementById('profSection').classList.add('hidden');
-            document.getElementById('eduSection').classList.add('hidden');
-            document.getElementById(id + 'Section').classList.remove('hidden');
-            if (id === 'edu') loadEduData();
-        }
-
-        async function loadProfessionals() {
-            console.log("🔄 Frontend: Cargando profesionales...");
-            const res = await fetch('/api/professionals');
-            const data = await res.json();
-            console.log("📦 Frontend Data:", data);
-            
-            const tbody = document.getElementById('profList');
-            tbody.innerHTML = '';
-            if (data.data && data.data.length > 0) {
-                data.data.forEach(p => {
-                    tbody.innerHTML += `<tr><td>${p.full_name}</td><td>${p.specialties?.name || 'Sin Rol'}</td></tr>`;
-                });
-            } else {
-                tbody.innerHTML = '<tr><td colspan="2">No hay datos o error de conexión.</td></tr>';
-            }
-        }
-
-        async function createProfessional() {
-            const res = await fetch('/api/professionals', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    fullName: document.getElementById('newProfName').value,
-                    email: document.getElementById('newProfEmail').value,
-                    password: document.getElementById('newProfPass').value,
-                    specialtyName: document.getElementById('newProfSpec').value,
-                    signature: 'temp'
-                })
-            });
-            const result = await res.json();
-            alert(result.message);
-            if (result.success) loadProfessionals();
-        }
-
-        async function loadEduData() {
-            // Cargar profesionales para el select
-            const resProf = await fetch('/api/professionals');
-            const dataProf = await resProf.json();
-            const select = document.getElementById('eduResponsible');
-            select.innerHTML = '';
-            dataProf.data.forEach(p => {
-                select.innerHTML += `<option value="${p.id}">${p.full_name}</option>`;
-            });
-
-            // Cargar temas
-            const resTop = await fetch('/api/education/topics');
-            const dataTop = await resTop.json();
-            const tbody = document.getElementById('topicList');
-            tbody.innerHTML = '';
-            dataTop.data.forEach(t => {
-                tbody.innerHTML += `<tr><td>${t.title}</td><td>${t.professionals?.full_name || 'N/A'}</td></tr>`;
-            });
-        }
-
-        async function createTopic() {
-            const res = await fetch('/api/education/topics', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({
-                    title: document.getElementById('eduTitle').value,
-                    responsibleId: document.getElementById('eduResponsible').value
-                })
-            });
-            const result = await res.json();
-            alert(result.message);
-            if (result.success) loadEduData();
-        }
-
-        window.onload = initApp;
     </script>
 </body>
 </html>
