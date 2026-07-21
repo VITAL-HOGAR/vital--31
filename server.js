@@ -178,7 +178,6 @@ app.post('/api/shifts/start', async (req, res) => {
     }
 });
 
-// ✅ REGISTRO CLÍNICO CON NUEVAS COLUMNAS
 app.post('/api/clinical-records', async (req, res) => {
     try {
         console.log("📥 Backend: Recibiendo registro clínico");
@@ -292,7 +291,65 @@ app.post('/api/shifts/close', async (req, res) => {
 });
 
 // ==========================================
-// INFORMES
+// 7. BAJAS Y DESACTIVACIONES
+// ==========================================
+
+app.patch('/api/professionals/:id/deactivate', async (req, res) => {
+    try {
+        const { isActive } = req.body;
+        const { error } = await supabase
+            .from('professionals')
+            .update({ is_active: isActive === false ? false : true })
+            .eq('id', req.params.id);
+        
+        if (error) throw error;
+        res.json({ success: true, message: isActive === false ? 'Profesional desactivado' : 'Profesional reactivado' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.patch('/api/patients/:id/discharge', async (req, res) => {
+    try {
+        const { reason, notes } = req.body;
+        const { error } = await supabase
+            .from('patients')
+            .update({ 
+                is_active: false,
+                discharge_date: new Date().toISOString(),
+                discharge_reason: reason,
+                discharge_notes: notes || null
+            })
+            .eq('id', req.params.id);
+        
+        if (error) throw error;
+        res.json({ success: true, message: 'Paciente dado de baja' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.patch('/api/patients/:id/reactivate', async (req, res) => {
+    try {
+        const { error } = await supabase
+            .from('patients')
+            .update({ 
+                is_active: true,
+                discharge_date: null,
+                discharge_reason: null,
+                discharge_notes: null
+            })
+            .eq('id', req.params.id);
+        
+        if (error) throw error;
+        res.json({ success: true, message: 'Paciente reactivado' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ==========================================
+// 8. INFORMES
 // ==========================================
 app.get('/api/reports/pending', async (req, res) => {
     try {
@@ -326,7 +383,7 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => { 
-    console.log(`🚀 Vital Hogar Pro Vivo en puerto ${PORT}`); 
+    console.log(` Vital Hogar Pro Vivo en puerto ${PORT}`); 
 });
 
 export default app;
