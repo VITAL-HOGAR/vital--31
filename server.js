@@ -36,26 +36,18 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // ==========================================
-// 2. DASHBOARD & MÉTRICAS
+// 2. DASHBOARD
 // ==========================================
 app.get('/api/dashboard/stats', async (req, res) => {
     try {
         const { count: patCount } = await supabase.from('patients').select('*', { count: 'exact', head: true }).eq('is_active', true);
         const { count: profCount } = await supabase.from('professionals').select('*', { count: 'exact', head: true }).eq('is_active', true);
-        
-        // Alertas de vencimiento (próximos 30 días)
-        const thirtyDaysFromNow = new Date(); thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-        const { data: alerts } = await supabase.from('professionals')
-            .select('full_name, card_expiry_date')
-            .lte('card_expiry_date', thirtyDaysFromNow.toISOString().split('T')[0])
-            .gt('card_expiry_date', new Date().toISOString().split('T')[0]);
-
-        res.json({ success: true, data: { patients: patCount, professionals: profCount, alerts: alerts || [] } });
+        res.json({ success: true, data: { patients: patCount, professionals: profCount, alerts: [] } });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
 // ==========================================
-// 3. GESTIÓN PROFESIONALES
+// 3. PROFESIONALES (Sin fecha de tarjeta)
 // ==========================================
 app.get('/api/professionals', async (req, res) => {
     const { data } = await supabase.from('professionals').select('*, specialties(name)').order('created_at', { ascending: false });
@@ -64,17 +56,30 @@ app.get('/api/professionals', async (req, res) => {
 
 app.post('/api/professionals', async (req, res) => {
     try {
-        const { email, password, fullName, documentNumber, specialtyName, cardExpiry, signature } = req.body;
+        console.log("📥 Backend: Recibiendo datos de profesional:", req.body);
+        const { email, password, fullName, documentNumber, specialtyName, signature } = req.body;
+        
         const { data: specData } = await supabase.from('specialties').select('id').eq('name', specialtyName).single();
         if (!specData) return res.status(400).json({ success: false, message: 'Especialidad no válida' });
 
         const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
         if (authErr) throw authErr;
 
-        await supabase.from('professionals').insert([{
-            user_id: authUser.user.id, full_name: fullName, document_number: documentNumber,
-            specialty_id: specData.id, card_expiry_date: cardExpiry, signature_data: signature, is_active: true
+        const { error: dbErr } = await supabase.from('professionals').insert([{
+            user_id: authUser.user.id, 
+            full_name: fullName, 
+            document_number: documentNumber,
+            specialty_id: specData.id, 
+            signature_data: signature, 
+            is_active: true
         }]);
+        
+        if (dbErr) {
+            console.error("❌ Backend: Error al guardar en Supabase:", dbErr);
+            throw dbErr;
+        }
+        
+        console.log("✅ Backend: Profesional guardado exitosamente");
         res.json({ success: true, message: 'Profesional registrado' });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
@@ -85,7 +90,7 @@ app.patch('/api/professionals/:id', async (req, res) => {
 });
 
 // ==========================================
-// 4. GESTIÓN PACIENTES
+// 4. PACIENTES
 // ==========================================
 app.get('/api/patients', async (req, res) => {
     const { data } = await supabase.from('patients').select('*').order('created_at', { ascending: false });
@@ -94,21 +99,36 @@ app.get('/api/patients', async (req, res) => {
 
 app.post('/api/patients', async (req, res) => {
     try {
-        const { fullName, documentNumber, birthDate, cityName, pathology, address, contactPhone, familyName, familyId, familyRel } = req.body;
+        console.log("📥 Backend: Recibiendo datos de paciente:", req.body);
+        const { fullName, documentNumber, cityName, pathology, address, contactPhone, familyName, familyId, familyRel } = req.body;
+        
         const { data: cityData } = await supabase.from('altitude_profiles').select('id').eq('city_name', cityName).single();
         
-        await supabase.from('patients').insert([{
-            full_name: fullName, document_number: documentNumber, birth_date: birthDate,
-            city_id: cityData?.id, pathology_summary: pathology, address: address,
-            contact_phone: contactPhone, family_name: familyName, family_id_number: familyId,
-            family_relationship: familyRel, is_active: true
+        const { error: dbErr } = await supabase.from('patients').insert([{
+            full_name: fullName, 
+            document_number: documentNumber, 
+            city_id: cityData?.id, 
+            pathology_summary: pathology, 
+            address: address,
+            contact_phone: contactPhone, 
+            family_name: familyName, 
+            family_id_number: familyId,
+            family_relationship: familyRel, 
+            is_active: true
         }]);
+
+        if (dbErr) {
+            console.error("❌ Backend: Error al guardar paciente en Supabase:", dbErr);
+            throw dbErr;
+        }
+
+        console.log("✅ Backend: Paciente guardado exitosamente");
         res.json({ success: true, message: 'Paciente registrado' });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
 // ==========================================
-// 5. GESTIÓN EDUCACIÓN
+// 5. EDUCACIÓN
 // ==========================================
 app.get('/api/education/topics', async (req, res) => {
     const { data } = await supabase.from('education_topics').select('*, professionals(full_name)').order('created_at', { ascending: false });
@@ -121,7 +141,6 @@ app.post('/api/education/topics', async (req, res) => {
     res.json({ success: true, message: 'Tema creado' });
 });
 
-// Servir Frontend
 app.get('*', (req, res) => { if (!req.path.startsWith('/api')) res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Vital Hogar Pro Vivo en puerto ${PORT}`); });
 export default app;
