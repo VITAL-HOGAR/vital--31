@@ -26,10 +26,8 @@ app.post('/api/auth/login', async (req, res) => {
         const { email, password } = req.body;
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
         if (authError || !authData.user) return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
-        
         const { data: profData } = await supabase.from('professionals').select('*').eq('user_id', authData.user.id).single();
         if (!profData) return res.status(404).json({ success: false, message: 'Perfil no encontrado.' });
-        
         const token = jwt.sign({ id: profData.id, role: profData.specialty_id }, process.env.JWT_SECRET || 'secreto_vital', { expiresIn: '24h' });
         res.json({ success: true, data: { user: profData, token } });
     } catch (error) { console.error(error); res.status(500).json({ success: false, message: 'Error interno' }); }
@@ -45,7 +43,6 @@ app.get('/api/dashboard/stats', async (req, res) => {
         const firstDayOfMonth = new Date(); firstDayOfMonth.setDate(1);
         const { count: eduCount } = await supabase.from('education_topics').select('*', { count: 'exact', head: true }).gte('created_at', firstDayOfMonth.toISOString());
         const { data: patientsWithReports } = await supabase.from('patients').select('id').eq('is_active', true);
-        
         res.json({ success: true, data: { patients: patCount, professionals: profCount, educationSessions: eduCount || 0, pendingReports: patientsWithReports?.length || 0 } });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
@@ -164,17 +161,13 @@ app.post('/api/clinical-records', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// HISTORIAL DIARIO (Actualizado para incluir firmas del turno)
 app.get('/api/patients/:id/daily-history', async (req, res) => {
     try {
         const today = new Date(); today.setHours(0, 0, 0, 0);
         const { data: records, error: err1 } = await supabase.from('clinical_records').select('*, professionals(full_name)').eq('patient_id', req.params.id).gte('created_at', today.toISOString()).order('created_at', { ascending: true });
         if (err1) throw err1;
-        
-        // Obtener firmas de los turnos de hoy
         const { data: signatures, error: err2 } = await supabase.from('shift_signatures').select('*').gte('created_at', today.toISOString());
         if (err2) throw err2;
-
         res.json({ success: true, data: { records: records || [], signatures: signatures || [] } });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
@@ -224,10 +217,7 @@ app.get('/api/reports/:patientId/:month/:year', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// ==========================================
-// SERVIDOR DE ARCHIVOS
-// ==========================================
 app.get('*', (req, res) => { if (!req.path.startsWith('/api')) res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 
-app.listen(PORT, '0.0.0.0', () => { console.log(` Vital Hogar Pro Vivo en puerto ${PORT}`); });
+app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Vital Hogar Pro Vivo en puerto ${PORT}`); });
 export default app;
