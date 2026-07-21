@@ -36,18 +36,56 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // ==========================================
-// 2. DASHBOARD
+// 2. DASHBOARD MEJORADO (Con semáforo y alertas)
 // ==========================================
 app.get('/api/dashboard/stats', async (req, res) => {
     try {
+        // Métricas básicas
         const { count: patCount } = await supabase.from('patients').select('*', { count: 'exact', head: true }).eq('is_active', true);
         const { count: profCount } = await supabase.from('professionals').select('*', { count: 'exact', head: true }).eq('is_active', true);
-        res.json({ success: true, data: { patients: patCount, professionals: profCount, alerts: [] } });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+        
+        // Sesiones educativas del mes actual
+        const firstDayOfMonth = new Date();
+        firstDayOfMonth.setDate(1);
+        const { count: eduCount } = await supabase.from('education_topics')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', firstDayOfMonth.toISOString());
+
+        // Alertas de vencimiento (próximos 30 días)
+        const thirtyDaysFromNow = new Date();
+        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
+        const { data: expiryAlerts } = await supabase.from('professionals')
+            .select('full_name, card_expiry_date')
+            .lte('card_expiry_date', thirtyDaysFromNow.toISOString().split('T')[0])
+            .gt('card_expiry_date', new Date().toISOString().split('T')[0]);
+
+        // Informes pendientes (pacientes sin informe este mes)
+        const { data: patientsWithReports } = await supabase
+            .from('patients')
+            .select('id')
+            .eq('is_active', true);
+
+        // Por ahora, todos los pacientes están "pendientes" de informe hasta Fase 4
+        const pendingReports = patientsWithReports?.length || 0;
+
+        res.json({ 
+            success: true, 
+            data: { 
+                patients: patCount, 
+                professionals: profCount,
+                educationSessions: eduCount || 0,
+                pendingReports: pendingReports,
+                expiryAlerts: expiryAlerts || []
+            } 
+        });
+    } catch (error) { 
+        console.error('Error dashboard:', error);
+        res.status(500).json({ success: false, message: error.message }); 
+    }
 });
 
 // ==========================================
-// 3. PROFESIONALES (Sin fecha de tarjeta)
+// 3. GESTIÓN PROFESIONALES
 // ==========================================
 app.get('/api/professionals', async (req, res) => {
     const { data } = await supabase.from('professionals').select('*, specialties(name)').order('created_at', { ascending: false });
@@ -90,7 +128,7 @@ app.patch('/api/professionals/:id', async (req, res) => {
 });
 
 // ==========================================
-// 4. PACIENTES
+// 4. GESTIÓN PACIENTES
 // ==========================================
 app.get('/api/patients', async (req, res) => {
     const { data } = await supabase.from('patients').select('*').order('created_at', { ascending: false });
@@ -128,7 +166,7 @@ app.post('/api/patients', async (req, res) => {
 });
 
 // ==========================================
-// 5. EDUCACIÓN
+// 5. GESTIÓN EDUCACIÓN
 // ==========================================
 app.get('/api/education/topics', async (req, res) => {
     const { data } = await supabase.from('education_topics').select('*, professionals(full_name)').order('created_at', { ascending: false });
@@ -139,6 +177,40 @@ app.post('/api/education/topics', async (req, res) => {
     const { title, description, responsibleId } = req.body;
     await supabase.from('education_topics').insert([{ title, description, created_by: responsibleId }]);
     res.json({ success: true, message: 'Tema creado' });
+});
+
+// ==========================================
+// 6. INFORMES MENSUALES (Esqueleto para Fase 4)
+// ==========================================
+app.get('/api/reports/pending', async (req, res) => {
+    try {
+        const { data: patients } = await supabase.from('patients').select('id, full_name, family_name').eq('is_active', true);
+        // Por ahora, todos están pendientes. En Fase 4 filtraremos los que ya tienen informe del mes
+        res.json({ success: true, data: patients || [] });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.post('/api/reports/generate', async (req, res) => {
+    try {
+        const { patientId, month, year } = req.body;
+        console.log(`📄 Generando informe para paciente ${patientId} - ${month}/${year}`);
+        
+        // En Fase 4 aquí recolectaremos:
+        // - Signos vitales del mes
+        // - Actividades realizadas
+        // - Novedades
+        // - Firmas
+        
+        res.json({ 
+            success: true, 
+            message: 'Informe generado (simulación - pendiente Fase 4)',
+            data: { patientId, month, year, status: 'pending_implementation' }
+        });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
 });
 
 app.get('*', (req, res) => { if (!req.path.startsWith('/api')) res.sendFile(path.join(__dirname, 'public', 'index.html')); });
