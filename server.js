@@ -143,7 +143,6 @@ app.post('/api/education/topics', async (req, res) => {
 // 6. AUXILIAR - TURNOS Y REGISTROS
 // ==========================================
 
-// Obtener pacientes con datos de altitud
 app.get('/api/auxiliar/patients', async (req, res) => {
     try {
         const { data } = await supabase
@@ -157,7 +156,6 @@ app.get('/api/auxiliar/patients', async (req, res) => {
     }
 });
 
-// Iniciar turno
 app.post('/api/shifts/start', async (req, res) => {
     try {
         const { patientId, professionalId, shiftType, patientStatus, patientNotes } = req.body;
@@ -180,14 +178,21 @@ app.post('/api/shifts/start', async (req, res) => {
     }
 });
 
-// Guardar registro clínico
+// ✅ REGISTRO CLÍNICO CON NUEVAS COLUMNAS
 app.post('/api/clinical-records', async (req, res) => {
     try {
+        console.log("📥 Backend: Recibiendo registro clínico");
+        
         const { 
-            shiftId, patientId, professionalId, bloodPressure, heartRate, 
-            respiratoryRate, temperature, spo2, glucose, evaScore,
-            glasgowEyes, glasgowVerbal, glasgowMotor, consciousnessLevel,
-            activitiesCompleted, sbarSituation, sbarBackground, sbarAssessment, sbarRecommendation, notes 
+            shiftId, patientId, professionalId, 
+            bloodPressure, heartRate, respiratoryRate, temperature, spo2, glucose, 
+            evaScore, consciousnessLevel,
+            glasgowEyes, glasgowVerbal, glasgowMotor,
+            bradenScore, bristolType,
+            ppeUsed, wasteManagement, externalAccompaniment,
+            activitiesCompleted,
+            sbarSituation, sbarBackground, sbarAssessment, sbarRecommendation, 
+            notes 
         } = req.body;
 
         const { data, error } = await supabase.from('clinical_records').insert([{
@@ -201,10 +206,15 @@ app.post('/api/clinical-records', async (req, res) => {
             spo2: spo2,
             glucose: glucose,
             eva_score: evaScore,
+            consciousness_level: consciousnessLevel,
             glasgow_eyes: glasgowEyes,
             glasgow_verbal: glasgowVerbal,
             glasgow_motor: glasgowMotor,
-            consciousness_level: consciousnessLevel,
+            braden_score: bradenScore,
+            bristol_type: bristolType,
+            ppe_used: ppeUsed,
+            waste_management: wasteManagement,
+            external_accompaniment: externalAccompaniment,
             activities_completed: activitiesCompleted,
             sbar_situation: sbarSituation,
             sbar_background: sbarBackground,
@@ -213,15 +223,18 @@ app.post('/api/clinical-records', async (req, res) => {
             notes: notes
         }]).select().single();
 
-        if (error) throw error;
+        if (error) {
+            console.error("❌ Error guardando registro:", error);
+            throw error;
+        }
         
+        console.log("✅ Registro guardado, ID:", data.id);
         res.json({ success: true, message: 'Registro guardado', data: { id: data.id } });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
-// Obtener historial del día (todos los registros del paciente)
 app.get('/api/patients/:id/daily-history', async (req, res) => {
     try {
         const today = new Date();
@@ -241,7 +254,6 @@ app.get('/api/patients/:id/daily-history', async (req, res) => {
     }
 });
 
-// Cerrar turno con doble firma
 app.post('/api/shifts/close', async (req, res) => {
     try {
         const { 
@@ -252,7 +264,6 @@ app.post('/api/shifts/close', async (req, res) => {
             familySignature, familyName, familyIdNumber 
         } = req.body;
 
-        // Actualizar turno
         await supabase.from('shifts').update({
             end_time: new Date().toISOString(),
             patient_delivered_status: patientDeliveredStatus,
@@ -262,9 +273,8 @@ app.post('/api/shifts/close', async (req, res) => {
             is_closed: true
         }).eq('id', shiftId);
 
-        // Guardar firmas
         await supabase.from('shift_signatures').insert([{
-            clinical_record_id: null, // Ya no está vinculado a un solo registro
+            clinical_record_id: null,
             auxiliary_signature: auxiliarySignature,
             auxiliary_name: auxiliaryName,
             auxiliary_id_number: auxiliaryIdNumber,
@@ -276,6 +286,31 @@ app.post('/api/shifts/close', async (req, res) => {
         }]);
 
         res.json({ success: true, message: 'Turno cerrado exitosamente' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ==========================================
+// INFORMES
+// ==========================================
+app.get('/api/reports/pending', async (req, res) => {
+    try {
+        const { data: patients } = await supabase.from('patients').select('id, full_name, family_name').eq('is_active', true);
+        res.json({ success: true, data: patients || [] });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.post('/api/reports/generate', async (req, res) => {
+    try {
+        const { patientId, month, year } = req.body;
+        res.json({ 
+            success: true, 
+            message: 'Informe generado (simulación)',
+            data: { patientId, month, year, status: 'pending_implementation' }
+        });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
