@@ -95,6 +95,21 @@ app.post('/api/professionals', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
+app.patch('/api/professionals/:id/deactivate', async (req, res) => {
+    try {
+        const { isActive } = req.body;
+        const { error } = await supabase
+            .from('professionals')
+            .update({ is_active: isActive === false ? false : true })
+            .eq('id', req.params.id);
+        
+        if (error) throw error;
+        res.json({ success: true, message: isActive === false ? 'Profesional desactivado' : 'Profesional reactivado' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // ==========================================
 // 4. PACIENTES
 // ==========================================
@@ -125,6 +140,45 @@ app.post('/api/patients', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
+app.patch('/api/patients/:id/discharge', async (req, res) => {
+    try {
+        const { reason, notes } = req.body;
+        const { error } = await supabase
+            .from('patients')
+            .update({ 
+                is_active: false,
+                discharge_date: new Date().toISOString(),
+                discharge_reason: reason,
+                discharge_notes: notes || null
+            })
+            .eq('id', req.params.id);
+        
+        if (error) throw error;
+        res.json({ success: true, message: 'Paciente dado de baja' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.patch('/api/patients/:id/reactivate', async (req, res) => {
+    try {
+        const { error } = await supabase
+            .from('patients')
+            .update({ 
+                is_active: true,
+                discharge_date: null,
+                discharge_reason: null,
+                discharge_notes: null
+            })
+            .eq('id', req.params.id);
+        
+        if (error) throw error;
+        res.json({ success: true, message: 'Paciente reactivado' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
 // ==========================================
 // 5. EDUCACIÓN
 // ==========================================
@@ -145,13 +199,36 @@ app.post('/api/education/topics', async (req, res) => {
 
 app.get('/api/auxiliar/patients', async (req, res) => {
     try {
-        const { data } = await supabase
+        const { data, error } = await supabase
             .from('patients')
-            .select('*, altitude_profiles(city_name, spo2_min_normal)')
+            .select(`
+                *,
+                altitude_profiles(city_name, spo2_min_normal),
+                clinical_records!inner(
+                    created_at,
+                    spo2,
+                    glucose,
+                    eva_score,
+                    glasgow_eyes,
+                    glasgow_verbal,
+                    glasgow_motor
+                )
+            `)
             .eq('is_active', true)
             .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        
+        // Ordenar registros clínicos por fecha (más reciente primero)
+        data.forEach(p => {
+            if (p.clinical_records) {
+                p.clinical_records.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            }
+        });
+        
         res.json({ success: true, data: data || [] });
     } catch (error) {
+        console.error('Error en /api/auxiliar/patients:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });
@@ -291,65 +368,7 @@ app.post('/api/shifts/close', async (req, res) => {
 });
 
 // ==========================================
-// 7. BAJAS Y DESACTIVACIONES
-// ==========================================
-
-app.patch('/api/professionals/:id/deactivate', async (req, res) => {
-    try {
-        const { isActive } = req.body;
-        const { error } = await supabase
-            .from('professionals')
-            .update({ is_active: isActive === false ? false : true })
-            .eq('id', req.params.id);
-        
-        if (error) throw error;
-        res.json({ success: true, message: isActive === false ? 'Profesional desactivado' : 'Profesional reactivado' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-app.patch('/api/patients/:id/discharge', async (req, res) => {
-    try {
-        const { reason, notes } = req.body;
-        const { error } = await supabase
-            .from('patients')
-            .update({ 
-                is_active: false,
-                discharge_date: new Date().toISOString(),
-                discharge_reason: reason,
-                discharge_notes: notes || null
-            })
-            .eq('id', req.params.id);
-        
-        if (error) throw error;
-        res.json({ success: true, message: 'Paciente dado de baja' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-app.patch('/api/patients/:id/reactivate', async (req, res) => {
-    try {
-        const { error } = await supabase
-            .from('patients')
-            .update({ 
-                is_active: true,
-                discharge_date: null,
-                discharge_reason: null,
-                discharge_notes: null
-            })
-            .eq('id', req.params.id);
-        
-        if (error) throw error;
-        res.json({ success: true, message: 'Paciente reactivado' });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// ==========================================
-// 8. INFORMES
+// 7. INFORMES
 // ==========================================
 app.get('/api/reports/pending', async (req, res) => {
     try {
@@ -383,7 +402,7 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, '0.0.0.0', () => { 
-    console.log(` Vital Hogar Pro Vivo en puerto ${PORT}`); 
+    console.log(`🚀 Vital Hogar Pro Vivo en puerto ${PORT}`); 
 });
 
 export default app;
