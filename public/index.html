@@ -2,27 +2,166 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Vital Hogar - Prueba</title>
-    <style>body { background: #0f172a; color: white; font-family: sans-serif; text-align: center; padding: 50px; } input { padding: 10px; margin: 5px; } button { padding: 10px; background: #22c55e; color: white; border: none; }</style>
+    <title>Vital Hogar Pro - Admin</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root { --bg-dark: #0f172a; --card-bg: #1e293b; --primary: #22c55e; --danger: #ef4444; --text-main: #e2e8f0; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 20px; }
+        .hidden { display: none; }
+        input, select { width: 100%; padding: 10px; margin: 5px 0; background: #0f172a; border: 1px solid #334155; color: white; }
+        button { padding: 10px; background: var(--primary); color: white; border: none; cursor: pointer; margin-top: 10px; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-bottom: 20px; }
+        .card { background: var(--card-bg); padding: 20px; border-radius: 10px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #0f172a; }
+        th, td { padding: 10px; border-bottom: 1px solid #334155; text-align: left; }
+        .nav { display: flex; gap: 10px; margin-bottom: 20px; }
+        .nav button { background: #334155; width: auto; }
+        .nav button.active { background: var(--primary); }
+    </style>
 </head>
 <body>
-    <img src="https://i.imgur.com/01YZxey.jpeg" style="height:80px;">
-    <h2>Prueba de Acceso</h2>
-    <input type="email" id="e" value="admin@vitalhogar.com"><br>
-    <input type="password" id="p" value="123456"><br><br>
-    <button onclick="test()">Probar Login</button>
-    <p id="r"></p>
+    <div id="loginScreen" class="card" style="max-width: 400px; margin: 100px auto; text-align: center;">
+        <h2>Acceso Admin</h2>
+        <input type="email" id="email" placeholder="Email">
+        <input type="password" id="pass" placeholder="Clave">
+        <button onclick="login()">Ingresar</button>
+        <p id="msg" style="color:red"></p>
+    </div>
+
+    <div id="adminPanel" class="hidden">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+            <h1>Panel de Control</h1>
+            <button onclick="logout()" style="background:var(--danger); width:auto;">Salir</button>
+        </div>
+
+        <div class="grid">
+            <div class="card"><h3>Pacientes</h3><h2 id="statPat">0</h2></div>
+            <div class="card"><h3>Profesionales</h3><h2 id="statProf">0</h2></div>
+            <div class="card" style="border-left: 5px solid var(--danger);"><h3>Alertas Vencimiento</h3><h2 id="statAlert">0</h2></div>
+        </div>
+
+        <div class="nav">
+            <button class="active" onclick="show('prof')">Profesionales</button>
+            <button onclick="show('pat')">Pacientes</button>
+            <button onclick="show('edu')">Educación</button>
+        </div>
+
+        <!-- PROFESIONALES -->
+        <div id="profSection">
+            <div class="card">
+                <h3>Nuevo Profesional</h3>
+                <div class="grid">
+                    <input type="text" id="pName" placeholder="Nombre">
+                    <input type="email" id="pEmail" placeholder="Email">
+                    <input type="text" id="pPass" placeholder="Clave">
+                    <select id="pSpec"><option value="AUXILIAR_ENFERMERIA">Auxiliar</option><option value="MEDICINA">Médico</option></select>
+                    <input type="date" id="pExp" placeholder="Vencimiento">
+                </div>
+                <button onclick="createProf()">Guardar Profesional</button>
+            </div>
+            <table id="profTable"><thead><tr><th>Nombre</th><th>Rol</th><th>Estado</th></tr></thead><tbody></tbody></table>
+        </div>
+
+        <!-- PACIENTES -->
+        <div id="patSection" class="hidden">
+            <div class="card">
+                <h3>Nuevo Paciente</h3>
+                <div class="grid">
+                    <input type="text" id="patName" placeholder="Nombre Paciente">
+                    <select id="patCity"><option value="Bogotá">Bogotá</option><option value="Medellín">Medellín</option></select>
+                    <input type="text" id="famName" placeholder="Nombre Familiar Responsable">
+                    <input type="text" id="famId" placeholder="Cédula Familiar">
+                </div>
+                <button onclick="createPat()">Guardar Paciente</button>
+            </div>
+            <table id="patTable"><thead><tr><th>Paciente</th><th>Ciudad</th><th>Familiar</th></tr></thead><tbody></tbody></table>
+        </div>
+
+        <!-- EDUCACIÓN -->
+        <div id="eduSection" class="hidden">
+            <div class="card">
+                <h3>Nuevo Tema Educativo</h3>
+                <input type="text" id="eduTitle" placeholder="Título del Tema">
+                <select id="eduResp"><option>Cargando...</option></select>
+                <button onclick="createEdu()">Guardar Tema</button>
+            </div>
+            <table id="eduTable"><thead><tr><th>Tema</th><th>Responsable</th></tr></thead><tbody></tbody></table>
+        </div>
+    </div>
 
     <script>
-        async function test() {
-            const res = await fetch('/api/auth/login', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ email: document.getElementById('e').value, password: document.getElementById('p').value })
-            });
+        async function login() {
+            const res = await fetch('/api/auth/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ email: document.getElementById('email').value, password: document.getElementById('pass').value }) });
             const data = await res.json();
-            document.getElementById('r').innerText = JSON.stringify(data);
+            if (data.success) {
+                localStorage.setItem('user', JSON.stringify(data.data.user));
+                initApp();
+            } else { document.getElementById('msg').innerText = data.message; }
         }
+
+        function initApp() {
+            if (!localStorage.getItem('user')) return;
+            document.getElementById('loginScreen').classList.add('hidden');
+            document.getElementById('adminPanel').classList.remove('hidden');
+            loadStats(); loadProfs(); loadEduResps();
+        }
+
+        function logout() { localStorage.clear(); location.reload(); }
+        function show(id) {
+            ['profSection', 'patSection', 'eduSection'].forEach(s => document.getElementById(s).classList.add('hidden'));
+            document.getElementById(id + 'Section').classList.remove('hidden');
+            if(id === 'pat') loadPats();
+            if(id === 'edu') loadEdus();
+        }
+
+        async function loadStats() {
+            const res = await fetch('/api/dashboard/stats');
+            const d = await res.json();
+            document.getElementById('statPat').innerText = d.data.patients;
+            document.getElementById('statProf').innerText = d.data.professionals;
+            document.getElementById('statAlert').innerText = d.data.alerts.length;
+        }
+
+        async function loadProfs() {
+            const res = await fetch('/api/professionals');
+            const d = await res.json();
+            document.querySelector('#profTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.specialties?.name}</td><td>${p.is_active?'Activo':'Inactivo'}</td></tr>`).join('');
+        }
+
+        async function createProf() {
+            await fetch('/api/professionals', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ fullName: document.getElementById('pName').value, email: document.getElementById('pEmail').value, password: document.getElementById('pPass').value, specialtyName: document.getElementById('pSpec').value, cardExpiry: document.getElementById('pExp').value }) });
+            loadProfs(); loadStats();
+        }
+
+        async function loadPats() {
+            const res = await fetch('/api/patients');
+            const d = await res.json();
+            document.querySelector('#patTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.city_id?'Asignada':'N/A'}</td><td>${p.family_name}</td></tr>`).join('');
+        }
+
+        async function createPat() {
+            await fetch('/api/patients', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ fullName: document.getElementById('patName').value, cityName: document.getElementById('patCity').value, familyName: document.getElementById('famName').value, familyId: document.getElementById('famId').value }) });
+            loadPats(); loadStats();
+        }
+
+        async function loadEduResps() {
+            const res = await fetch('/api/professionals');
+            const d = await res.json();
+            document.getElementById('eduResp').innerHTML = d.data.map(p => `<option value="${p.id}">${p.full_name}</option>`).join('');
+        }
+
+        async function loadEdus() {
+            const res = await fetch('/api/education/topics');
+            const d = await res.json();
+            document.querySelector('#eduTable tbody').innerHTML = d.data.map(t => `<tr><td>${t.title}</td><td>${t.professionals?.full_name}</td></tr>`).join('');
+        }
+
+        async function createEdu() {
+            await fetch('/api/education/topics', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title: document.getElementById('eduTitle').value, responsibleId: document.getElementById('eduResp').value }) });
+            loadEdus();
+        }
+
+        window.onload = initApp;
     </script>
 </body>
 </html>
