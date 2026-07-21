@@ -42,20 +42,11 @@ app.get('/api/dashboard/stats', async (req, res) => {
     try {
         const { count: patCount } = await supabase.from('patients').select('*', { count: 'exact', head: true }).eq('is_active', true);
         const { count: profCount } = await supabase.from('professionals').select('*', { count: 'exact', head: true }).eq('is_active', true);
-        
-        const firstDayOfMonth = new Date();
-        firstDayOfMonth.setDate(1);
-        const { count: eduCount } = await supabase.from('education_topics')
-            .select('*', { count: 'exact', head: true })
-            .gte('created_at', firstDayOfMonth.toISOString());
-
+        const firstDayOfMonth = new Date(); firstDayOfMonth.setDate(1);
+        const { count: eduCount } = await supabase.from('education_topics').select('*', { count: 'exact', head: true }).gte('created_at', firstDayOfMonth.toISOString());
         const { data: patientsWithReports } = await supabase.from('patients').select('id').eq('is_active', true);
-        const pendingReports = patientsWithReports?.length || 0;
-
-        res.json({ 
-            success: true, 
-            data: { patients: patCount, professionals: profCount, educationSessions: eduCount || 0, pendingReports: pendingReports } 
-        });
+        
+        res.json({ success: true, data: { patients: patCount, professionals: profCount, educationSessions: eduCount || 0, pendingReports: patientsWithReports?.length || 0 } });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
@@ -72,7 +63,6 @@ app.post('/api/professionals', async (req, res) => {
         const { email, password, fullName, documentNumber, specialtyName, signature } = req.body;
         const { data: specData } = await supabase.from('specialties').select('id').eq('name', specialtyName).single();
         if (!specData) return res.status(400).json({ success: false, message: 'Especialidad no válida' });
-
         const { data: authUser } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
         await supabase.from('professionals').insert([{ user_id: authUser.user.id, full_name: fullName, document_number: documentNumber, specialty_id: specData.id, signature_data: signature, is_active: true }]);
         res.json({ success: true, message: 'Profesional registrado' });
@@ -143,7 +133,6 @@ app.get('/api/auxiliar/patients', async (req, res) => {
             .select(`*, altitude_profiles(city_name, spo2_min_normal), clinical_records!inner(created_at, spo2, glucose, eva_score, glasgow_eyes, glasgow_verbal, glasgow_motor)`)
             .eq('is_active', true)
             .order('created_at', { ascending: false });
-        
         if (error) throw error;
         data.forEach(p => { if (p.clinical_records) p.clinical_records.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); });
         res.json({ success: true, data: data || [] });
@@ -175,12 +164,18 @@ app.post('/api/clinical-records', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
+// HISTORIAL DIARIO (Actualizado para incluir firmas del turno)
 app.get('/api/patients/:id/daily-history', async (req, res) => {
     try {
         const today = new Date(); today.setHours(0, 0, 0, 0);
-        const { data, error } = await supabase.from('clinical_records').select('*, professionals(full_name)').eq('patient_id', req.params.id).gte('created_at', today.toISOString()).order('created_at', { ascending: true });
-        if (error) throw error;
-        res.json({ success: true, data: data || [] });
+        const { data: records, error: err1 } = await supabase.from('clinical_records').select('*, professionals(full_name)').eq('patient_id', req.params.id).gte('created_at', today.toISOString()).order('created_at', { ascending: true });
+        if (err1) throw err1;
+        
+        // Obtener firmas de los turnos de hoy
+        const { data: signatures, error: err2 } = await supabase.from('shift_signatures').select('*').gte('created_at', today.toISOString());
+        if (err2) throw err2;
+
+        res.json({ success: true, data: { records: records || [], signatures: signatures || [] } });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
@@ -203,60 +198,36 @@ app.get('/api/reports/pending', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// NUEVA RUTA: Obtener datos completos para el PDF mensual
 app.get('/api/reports/:patientId/:month/:year', async (req, res) => {
     try {
         const { patientId, month, year } = req.params;
-        
-        // 1. Datos del paciente
         const { data: patient } = await supabase.from('patients').select('*, altitude_profiles(city_name)').eq('id', patientId).single();
-        
-        // 2. Registros clínicos del mes
         const startDate = `${year}-${month}-01T00:00:00.000Z`;
-        const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59).toISOString(); // Último día del mes
-        
-        const { data: records } = await supabase
-            .from('clinical_records')
-            .select('*, professionals(full_name)')
-            .eq('patient_id', patientId)
-            .gte('created_at', startDate)
-            .lte('created_at', endDate)
-            .order('created_at', { ascending: true });
+        const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59).toISOString();
+        const { data: records } = await supabase.from('clinical_records').select('*, professionals(full_name)').eq('patient_id', patientId).gte('created_at', startDate).lte('created_at', endDate).order('created_at', { ascending: true });
 
-        // 3. Calcular estadísticas
         let stats = { totalRecords: 0, avgSpo2: 0, avgHR: 0, avgTemp: 0, criticalAlerts: 0 };
         let spo2Sum = 0, hrSum = 0, tempSum = 0, count = 0;
-        
         if (records) {
             stats.totalRecords = records.length;
             records.forEach(r => {
                 if (r.spo2) { spo2Sum += r.spo2; count++; }
                 if (r.heart_rate) hrSum += r.heart_rate;
                 if (r.temperature) tempSum += r.temperature;
-                
-                // Contar alertas críticas
                 const spo2Min = patient?.altitude_profiles?.spo2_min_normal || 95;
                 if (r.spo2 < spo2Min - 3 || r.glucose > 200 || r.glucose < 60) stats.criticalAlerts++;
             });
             if (count > 0) stats.avgSpo2 = Math.round(spo2Sum / count);
-            if (records.length > 0) {
-                stats.avgHR = Math.round(hrSum / records.length);
-                stats.avgTemp = (tempSum / records.length).toFixed(1);
-            }
+            if (records.length > 0) { stats.avgHR = Math.round(hrSum / records.length); stats.avgTemp = (tempSum / records.length).toFixed(1); }
         }
-
         res.json({ success: true, data: { patient, records: records || [], stats } });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
 // ==========================================
 // SERVIDOR DE ARCHIVOS
 // ==========================================
-app.get('*', (req, res) => { 
-    if (!req.path.startsWith('/api')) res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
+app.get('*', (req, res) => { if (!req.path.startsWith('/api')) res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 
-app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Vital Hogar Pro Vivo en puerto ${PORT}`); });
+app.listen(PORT, '0.0.0.0', () => { console.log(` Vital Hogar Pro Vivo en puerto ${PORT}`); });
 export default app;
