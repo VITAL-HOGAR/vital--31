@@ -36,22 +36,19 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // ==========================================
-// 2. DASHBOARD MEJORADO (Con semáforo y alertas)
+// 2. DASHBOARD MEJORADO
 // ==========================================
 app.get('/api/dashboard/stats', async (req, res) => {
     try {
-        // Métricas básicas
         const { count: patCount } = await supabase.from('patients').select('*', { count: 'exact', head: true }).eq('is_active', true);
         const { count: profCount } = await supabase.from('professionals').select('*', { count: 'exact', head: true }).eq('is_active', true);
         
-        // Sesiones educativas del mes actual
         const firstDayOfMonth = new Date();
         firstDayOfMonth.setDate(1);
         const { count: eduCount } = await supabase.from('education_topics')
             .select('*', { count: 'exact', head: true })
             .gte('created_at', firstDayOfMonth.toISOString());
 
-        // Alertas de vencimiento (próximos 30 días)
         const thirtyDaysFromNow = new Date();
         thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
         const { data: expiryAlerts } = await supabase.from('professionals')
@@ -59,13 +56,11 @@ app.get('/api/dashboard/stats', async (req, res) => {
             .lte('card_expiry_date', thirtyDaysFromNow.toISOString().split('T')[0])
             .gt('card_expiry_date', new Date().toISOString().split('T')[0]);
 
-        // Informes pendientes (pacientes sin informe este mes)
         const { data: patientsWithReports } = await supabase
             .from('patients')
             .select('id')
             .eq('is_active', true);
 
-        // Por ahora, todos los pacientes están "pendientes" de informe hasta Fase 4
         const pendingReports = patientsWithReports?.length || 0;
 
         res.json({ 
@@ -180,12 +175,11 @@ app.post('/api/education/topics', async (req, res) => {
 });
 
 // ==========================================
-// 6. INFORMES MENSUALES (Esqueleto para Fase 4)
+// 6. INFORMES MENSUALES
 // ==========================================
 app.get('/api/reports/pending', async (req, res) => {
     try {
         const { data: patients } = await supabase.from('patients').select('id, full_name, family_name').eq('is_active', true);
-        // Por ahora, todos están pendientes. En Fase 4 filtraremos los que ya tienen informe del mes
         res.json({ success: true, data: patients || [] });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -196,16 +190,9 @@ app.post('/api/reports/generate', async (req, res) => {
     try {
         const { patientId, month, year } = req.body;
         console.log(`📄 Generando informe para paciente ${patientId} - ${month}/${year}`);
-        
-        // En Fase 4 aquí recolectaremos:
-        // - Signos vitales del mes
-        // - Actividades realizadas
-        // - Novedades
-        // - Firmas
-        
         res.json({ 
             success: true, 
-            message: 'Informe generado (simulación - pendiente Fase 4)',
+            message: 'Informe generado (simulación - pendiente Fase 5)',
             data: { patientId, month, year, status: 'pending_implementation' }
         });
     } catch (error) {
@@ -213,6 +200,123 @@ app.post('/api/reports/generate', async (req, res) => {
     }
 });
 
-app.get('*', (req, res) => { if (!req.path.startsWith('/api')) res.sendFile(path.join(__dirname, 'public', 'index.html')); });
-app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Vital Hogar Pro Vivo en puerto ${PORT}`); });
+// ==========================================
+// 7. VISTA DEL AUXILIAR (FASE 4)
+// ==========================================
+
+// Obtener pacientes activos con datos de altitud (para SpO2)
+app.get('/api/auxiliar/patients', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('patients')
+            .select('*, altitude_profiles(city_name, spo2_min_normal)')
+            .eq('is_active', true)
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        res.json({ success: true, data: data || [] });
+    } catch (error) {
+        console.error("❌ Error cargando pacientes para auxiliar:", error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Guardar registro clínico (signos vitales + actividades + novedades)
+app.post('/api/clinical-records', async (req, res) => {
+    try {
+        console.log("📥 Backend: Recibiendo registro clínico:", req.body);
+        const { 
+            patientId, professionalId, bloodPressure, heartRate, 
+            respiratoryRate, temperature, spo2, glucose, 
+            activitiesCompleted, notes 
+        } = req.body;
+
+        const { data, error: dbErr } = await supabase.from('clinical_records').insert([{
+            patient_id: patientId,
+            professional_id: professionalId,
+            blood_pressure: bloodPressure,
+            heart_rate: heartRate,
+            respiratory_rate: respiratoryRate,
+            temperature: temperature,
+            spo2: spo2,
+            glucose: glucose,
+            activities_completed: activitiesCompleted,
+            notes: notes
+        }]).select().single();
+
+        if (dbErr) {
+            console.error("❌ Backend: Error al guardar registro clínico:", dbErr);
+            throw dbErr;
+        }
+
+        console.log("✅ Backend: Registro clínico guardado exitosamente, ID:", data.id);
+        res.json({ success: true, message: 'Registro clínico guardado', data: { id: data.id } });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Cerrar turno con doble firma (Auxiliar + Familiar)
+app.post('/api/shifts/close', async (req, res) => {
+    try {
+        console.log("📥 Backend: Cerrando turno con doble firma:", req.body);
+        const { 
+            clinicalRecordId, 
+            auxiliarySignature, auxiliaryName, auxiliaryIdNumber,
+            familySignature, familyName, familyIdNumber 
+        } = req.body;
+
+        const { error: dbErr } = await supabase.from('shift_signatures').insert([{
+            clinical_record_id: clinicalRecordId,
+            auxiliary_signature: auxiliarySignature,
+            auxiliary_name: auxiliaryName,
+            auxiliary_id_number: auxiliaryIdNumber,
+            auxiliary_signed_at: new Date().toISOString(),
+            family_signature: familySignature,
+            family_name: familyName,
+            family_id_number: familyIdNumber,
+            family_signed_at: new Date().toISOString()
+        }]);
+
+        if (dbErr) {
+            console.error("❌ Backend: Error al guardar firmas:", dbErr);
+            throw dbErr;
+        }
+
+        console.log("✅ Backend: Turno cerrado con doble firma exitosamente");
+        res.json({ success: true, message: 'Turno cerrado exitosamente' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Obtener historial de registros de un paciente (para informes)
+app.get('/api/patients/:id/records', async (req, res) => {
+    try {
+        const { data, error } = await supabase
+            .from('clinical_records')
+            .select('*, shift_signatures(*)')
+            .eq('patient_id', req.params.id)
+            .order('created_at', { ascending: false });
+        
+        if (error) throw error;
+        res.json({ success: true, data: data || [] });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ==========================================
+// SERVIDOR DE ARCHIVOS ESTÁTICOS
+// ==========================================
+app.get('*', (req, res) => { 
+    if (!req.path.startsWith('/api')) {
+        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    }
+});
+
+app.listen(PORT, '0.0.0.0', () => { 
+    console.log(`🚀 Vital Hogar Pro Vivo en puerto ${PORT}`); 
+});
+
 export default app;
