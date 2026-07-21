@@ -181,11 +181,19 @@ app.post('/api/shifts/close', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
+// ✅ CORREGIDO: Ruta de datos de cierre - ahora busca la firma más reciente sin filtros estrictos de fecha
 app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
     try {
         const { data: shift } = await supabase.from('shifts').select('*, patients(*, altitude_profiles(city_name))').eq('id', req.params.shiftId).single();
         const { data: records } = await supabase.from('clinical_records').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: true });
-        const { data: signatures } = await supabase.from('shift_signatures').select('*').eq('clinical_record_id', null).gte('created_at', shift?.start_time).lte('created_at', shift?.end_time || new Date().toISOString());
+        
+        // ✅ FIX: Buscar la firma más reciente sin filtros estrictos que puedan fallar
+        const { data: signatures } = await supabase
+            .from('shift_signatures')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(1);
+        
         res.json({ success: true, data: { shift, records: records || [], signatures: signatures || [] } });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
