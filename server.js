@@ -11,6 +11,7 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 10000;
+// Asegúrate de que esta variable esté en Render
 const supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
 
 app.use(cors());
@@ -21,30 +22,32 @@ app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
         
-        // 1. Auth
+        // 1. Login Auth
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-        if (authError) return res.json({ success: false, message: 'Auth falló' });
+        if (authError) return res.json({ success: false, message: 'Auth Error: ' + authError.message });
 
-        // 2. Buscar perfil (Consulta directa sin select específico)
-        const { data: profile, error: profileError } = await supabase
+        console.log('UID del usuario:', authData.user.id);
+
+        // 2. Consulta directa a la tabla
+        const { data: profile, error: dbError } = await supabase
             .from('professionals')
             .select('*')
             .eq('user_id', authData.user.id)
-            .maybeSingle(); // maybeSingle evita errores si hay 0 o 1 resultado
+            .single();
 
-        if (profileError) {
-            console.error('ERROR DB:', profileError);
-            return res.json({ success: false, message: 'Error DB: ' + profileError.message });
+        if (dbError) {
+            console.error('❌ ERROR SUPABASE DETALLADO:', dbError);
+            return res.json({ success: false, message: 'DB Error: ' + dbError.message + ' | Code: ' + dbError.code });
         }
 
         if (!profile) {
-            return res.json({ success: false, message: 'No hay perfil para este usuario' });
+            return res.json({ success: false, message: 'Usuario existe en Auth pero no en tabla Professionals.' });
         }
 
         res.json({ success: true, user: profile });
 
     } catch (err) {
-        res.json({ success: false, message: 'Error interno: ' + err.message });
+        res.json({ success: false, message: 'Catch Error: ' + err.message });
     }
 });
 
