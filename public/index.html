@@ -8,7 +8,7 @@
         :root { --bg-dark: #0f172a; --card-bg: #1e293b; --primary: #22c55e; --danger: #ef4444; --warning: #f59e0b; --info: #3b82f6; --text-main: #e2e8f0; }
         body { font-family: 'Segoe UI', sans-serif; background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 20px; }
         .hidden { display: none; }
-        input, select, textarea { width: 100%; padding: 10px; margin: 5px 0; background: #0f172a; border: 1px solid #334155; color: white; border-radius: 6px; box-sizing: border-box; }
+        input, select, textarea { width: 100%; padding: 10px; margin: 5px 0; background: #0f172a; border: 2px solid #334155; color: white; border-radius: 6px; box-sizing: border-box; font-size: 1rem; }
         button { padding: 10px; background: var(--primary); color: white; border: none; cursor: pointer; margin-top: 10px; border-radius: 6px; font-weight: bold; }
         button:hover { opacity: 0.9; }
         .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
@@ -25,34 +25,61 @@
         .mic-btn.recording { background: var(--danger); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
         
-        .patient-card { background: #1e293b; padding: 15px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; border: 2px solid transparent; }
+        .patient-card { background: #1e293b; padding: 15px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; border: 2px solid transparent; transition: all 0.3s; }
         .patient-card:hover { border-color: var(--primary); }
         
-        .vital-input { position: relative; }
-        .vital-input.alert-low { border-color: var(--danger) !important; background: #7f1d1d !important; }
-        .vital-input.alert-high { border-color: var(--warning) !important; background: #78350f !important; }
-        .vital-input.alert-normal { border-color: var(--primary) !important; }
+        /* ALARMAS DE SIGNOS VITALES */
+        .vital-status { padding: 8px; border-radius: 6px; margin-top: 5px; font-size: 0.85rem; font-weight: bold; display: none; }
+        .vital-status.show { display: block; }
+        .vital-status.normal { background: var(--primary); color: white; }
+        .vital-status.warning { background: var(--warning); color: black; }
+        .vital-status.danger { background: var(--danger); color: white; }
         
-        .alert-message { padding: 8px; border-radius: 6px; margin-top: 5px; font-size: 0.85rem; font-weight: bold; }
-        .alert-danger { background: var(--danger); color: white; }
-        .alert-warning { background: var(--warning); color: black; }
-        .alert-success { background: var(--primary); color: white; }
+        input.vital-normal { border-color: var(--primary) !important; }
+        input.vital-warning { border-color: var(--warning) !important; background: #422006 !important; }
+        input.vital-danger { border-color: var(--danger) !important; background: #450a0a !important; }
         
-        .activity-item { background: #0f172a; padding: 10px; border-radius: 6px; display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+        /* GLASGOW */
+        .glasgow-total { background: var(--card-bg); padding: 15px; border-radius: 8px; margin-top: 15px; text-align: center; border: 2px solid #334155; }
+        .glasgow-total h3 { margin: 0; font-size: 2rem; }
+        .glasgow-total.normal { border-color: var(--primary); }
+        .glasgow-total.normal h3 { color: var(--primary); }
+        .glasgow-total.mild { border-color: var(--warning); }
+        .glasgow-total.mild h3 { color: var(--warning); }
+        .glasgow-total.moderate { border-color: #f97316; }
+        .glasgow-total.moderate h3 { color: #f97316; }
+        .glasgow-total.severe { border-color: var(--danger); }
+        .glasgow-total.severe h3 { color: var(--danger); }
+        
+        /* HISTORIAL */
+        .history-item { background: #0f172a; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid var(--info); }
+        .history-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
+        .history-time { font-weight: bold; color: var(--info); }
+        .history-aux { color: #94a3b8; font-size: 0.9rem; }
+        .history-status { padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
+        .history-status.estable { background: var(--primary); color: white; }
+        .history-status.novedades { background: var(--warning); color: black; }
+        .history-status.critico { background: var(--danger); color: white; }
+        .history-vitals { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 10px 0; }
+        .history-vital-item { background: var(--card-bg); padding: 8px; border-radius: 6px; text-align: center; }
+        .history-vital-item strong { display: block; color: var(--primary); font-size: 1.1rem; }
+        .history-vital-item small { color: #94a3b8; }
+        .history-activities { margin: 10px 0; }
+        .history-activity-tag { display: inline-block; background: var(--card-bg); padding: 4px 10px; border-radius: 12px; margin: 2px; font-size: 0.85rem; }
+        .history-notes { background: var(--card-bg); padding: 10px; border-radius: 6px; margin-top: 10px; font-style: italic; color: #cbd5e1; }
+        
+        /* ACTIVIDADES */
+        .activity-item { background: #0f172a; padding: 10px; border-radius: 6px; display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
         .activity-item input[type="checkbox"] { width: auto; margin: 0; }
         .activity-item input[type="time"] { width: 120px; margin: 0; }
+        .activity-item label { flex: 1; min-width: 150px; }
         
+        /* FIRMA */
         .signature-canvas { background: white; border: 2px dashed #334155; border-radius: 6px; width: 100%; height: 150px; cursor: crosshair; }
         
-        .history-item { background: #0f172a; padding: 10px; border-radius: 6px; margin-bottom: 10px; border-left: 3px solid var(--info); }
-        
+        /* EVA */
         .eva-slider { width: 100%; margin: 10px 0; }
         .eva-faces { display: flex; justify-content: space-between; font-size: 1.5rem; margin-top: 5px; }
-        
-        .glasgow-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-        
-        .sbar-section { background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px; }
-        .sbar-section h5 { margin: 0 0 10px 0; color: var(--info); }
     </style>
 </head>
 <body>
@@ -69,7 +96,7 @@
         <p id="msg" style="color: var(--danger); margin-top: 10px;"></p>
     </div>
 
-    <!-- PANEL ADMIN -->
+    <!-- PANEL ADMIN (Simplificado) -->
     <div id="adminPanel" class="hidden">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
             <h1>Panel de Control</h1>
@@ -106,6 +133,8 @@
                     <option value="Bogotá">Bogotá</option>
                     <option value="Medellín">Medellín</option>
                     <option value="Cali">Cali</option>
+                    <option value="Barranquilla">Barranquilla</option>
+                    <option value="Bucaramanga">Bucaramanga</option>
                 </select>
                 <input type="text" id="famName" placeholder="Familiar">
                 <input type="text" id="famCel" placeholder="Celular">
@@ -141,10 +170,14 @@
                 <h3>Iniciar Turno - <span id="patientNameStart" style="color: var(--primary);"></span></h3>
                 <label>Tipo de Turno:</label>
                 <select id="shiftType">
-                    <option value="8h_diurno">8 horas - Diurno</option>
-                    <option value="12h_nocturno">12 horas - Nocturno</option>
-                    <option value="24h">24 horas</option>
-                    <option value="personalizado">Personalizado</option>
+                    <option value="6h_diurno">☀️ 6h Diurno</option>
+                    <option value="8h_diurno">☀️ 8h Diurno</option>
+                    <option value="12h_diurno">☀️ 12h Diurno</option>
+                    <option value="6h_nocturno">🌙 6h Nocturno</option>
+                    <option value="8h_nocturno">🌙 8h Nocturno</option>
+                    <option value="12h_nocturno">🌙 12h Nocturno</option>
+                    <option value="24h">🔄 24 horas</option>
+                    <option value="personalizado">⚙️ Personalizado</option>
                 </select>
                 
                 <label>Estado en que recibe al paciente:</label>
@@ -169,59 +202,79 @@
             <div class="card">
                 <h3>Registro Clínico - <span id="patientNameClinical" style="color: var(--primary);"></span></h3>
                 
-                <h4>Signos Vitales</h4>
+                <h4><i class="fas fa-heartbeat"></i> Signos Vitales</h4>
                 <div class="grid">
                     <div>
-                        <input type="text" id="bloodPressure" placeholder="Presión (120/80)" oninput="checkVital('bp')">
-                        <div id="bpAlert"></div>
+                        <label>Presión Arterial (sistólica/diastólica)</label>
+                        <input type="text" id="bloodPressure" placeholder="Ej: 120/80" oninput="checkVital('bp')">
+                        <div id="bpAlert" class="vital-status"></div>
                     </div>
                     <div>
-                        <input type="number" id="heartRate" placeholder="FC (lpm)" oninput="checkVital('hr')">
-                        <div id="hrAlert"></div>
+                        <label>Frecuencia Cardíaca (lpm)</label>
+                        <input type="number" id="heartRate" placeholder="Ej: 80" oninput="checkVital('hr')">
+                        <div id="hrAlert" class="vital-status"></div>
                     </div>
                     <div>
-                        <input type="number" id="respiratoryRate" placeholder="FR (rpm)" oninput="checkVital('rr')">
-                        <div id="rrAlert"></div>
+                        <label>Frecuencia Respiratoria (rpm)</label>
+                        <input type="number" id="respiratoryRate" placeholder="Ej: 18" oninput="checkVital('rr')">
+                        <div id="rrAlert" class="vital-status"></div>
                     </div>
                     <div>
-                        <input type="number" step="0.1" id="temperature" placeholder="Temp (°C)" oninput="checkVital('temp')">
-                        <div id="tempAlert"></div>
+                        <label>Temperatura (°C)</label>
+                        <input type="number" step="0.1" id="temperature" placeholder="Ej: 36.5" oninput="checkVital('temp')">
+                        <div id="tempAlert" class="vital-status"></div>
                     </div>
                     <div>
-                        <input type="number" id="spo2" placeholder="SpO2 (%)" oninput="checkVital('spo2')">
-                        <div id="spo2Alert"></div>
+                        <label>SpO2 (%)</label>
+                        <input type="number" id="spo2" placeholder="Ej: 96" oninput="checkVital('spo2')">
+                        <div id="spo2Alert" class="vital-status"></div>
                     </div>
                     <div>
-                        <input type="number" id="glucose" placeholder="Glucosa (mg/dL)" oninput="checkVital('glu')">
-                        <div id="gluAlert"></div>
+                        <label>Glucosa (mg/dL)</label>
+                        <input type="number" id="glucose" placeholder="Ej: 110" oninput="checkVital('glu')">
+                        <div id="gluAlert" class="vital-status"></div>
                     </div>
                 </div>
 
-                <h4>Escala EVA (Dolor 0-10)</h4>
+                <h4><i class="fas fa-heart"></i> Escala EVA (Dolor 0-10)</h4>
                 <input type="range" id="evaScore" min="0" max="10" value="0" class="eva-slider" oninput="updateEVA()">
                 <div class="eva-faces">
                     <span>😊</span><span>😐</span><span>😣</span><span>😭</span>
                 </div>
                 <p id="evaValue" style="text-align: center; font-size: 1.2rem; font-weight: bold;">0 - Sin dolor</p>
 
-                <h4>Nivel de Consciencia</h4>
+                <h4><i class="fas fa-brain"></i> Nivel de Consciencia</h4>
                 <select id="consciousnessLevel">
-                    <option value="alerta">Alerta</option>
-                    <option value="somnoliento">Somnoliento</option>
-                    <option value="estupor">Estupor</option>
-                    <option value="coma">Coma</option>
+                    <option value="alerta">🟢 Alerta</option>
+                    <option value="somnoliento">🟡 Somnoliento</option>
+                    <option value="estupor">🟠 Estupor</option>
+                    <option value="coma">🔴 Coma</option>
                 </select>
 
-                <button onclick="toggleGlasgow()" style="background: #334155; width: auto;">Escala Glasgow (Opcional)</button>
+                <h4><i class="fas fa-brain"></i> Escala Glasgow (Opcional)</h4>
+                <button onclick="toggleGlasgow()" style="background: #334155; width: auto;"><i class="fas fa-expand"></i> Expandir Escala Glasgow</button>
                 <div id="glasgowSection" class="hidden">
-                    <div class="glasgow-grid">
-                        <div><label>Ojos (1-4):</label><input type="number" id="glasgowEyes" min="1" max="4"></div>
-                        <div><label>Verbal (1-5):</label><input type="number" id="glasgowVerbal" min="1" max="5"></div>
-                        <div><label>Motor (1-6):</label><input type="number" id="glasgowMotor" min="1" max="6"></div>
+                    <div class="grid" style="grid-template-columns: repeat(3, 1fr);">
+                        <div>
+                            <label>👁️ Ojos (1-4)</label>
+                            <input type="number" id="glasgowEyes" min="1" max="4" value="4" oninput="calculateGlasgow()">
+                        </div>
+                        <div>
+                            <label>💬 Verbal (1-5)</label>
+                            <input type="number" id="glasgowVerbal" min="1" max="5" value="5" oninput="calculateGlasgow()">
+                        </div>
+                        <div>
+                            <label>🦵 Motor (1-6)</label>
+                            <input type="number" id="glasgowMotor" min="1" max="6" value="6" oninput="calculateGlasgow()">
+                        </div>
+                    </div>
+                    <div id="glasgowTotal" class="glasgow-total normal">
+                        <h3>15/15</h3>
+                        <p>Normal</p>
                     </div>
                 </div>
 
-                <h4>Actividades Realizadas</h4>
+                <h4><i class="fas fa-tasks"></i> Actividades Realizadas</h4>
                 <div id="activitiesList">
                     <div class="activity-item">
                         <input type="checkbox" id="actBath">
@@ -245,54 +298,54 @@
                     </div>
                 </div>
 
-                <h4>SBAR (Solo en novedades)</h4>
-                <div class="sbar-section">
-                    <h5>S - Situación</h5>
+                <h4><i class="fas fa-exchange-alt"></i> SBAR (Solo en novedades)</h4>
+                <div class="sbar-section" style="background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                    <h5 style="color: var(--info); margin: 0 0 10px 0;">S - Situación</h5>
                     <div class="mic-wrapper">
                         <textarea id="sbarSituation" rows="2" placeholder="¿Qué está pasando?"></textarea>
                         <button class="mic-btn" onclick="startDictation('sbarSituation')"><i class="fas fa-microphone"></i></button>
                     </div>
                 </div>
-                <div class="sbar-section">
-                    <h5>B - Antecedentes</h5>
+                <div class="sbar-section" style="background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                    <h5 style="color: var(--info); margin: 0 0 10px 0;">B - Antecedentes</h5>
                     <div class="mic-wrapper">
                         <textarea id="sbarBackground" rows="2" placeholder="Contexto clínico"></textarea>
                         <button class="mic-btn" onclick="startDictation('sbarBackground')"><i class="fas fa-microphone"></i></button>
                     </div>
                 </div>
-                <div class="sbar-section">
-                    <h5>A - Evaluación</h5>
+                <div class="sbar-section" style="background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                    <h5 style="color: var(--info); margin: 0 0 10px 0;">A - Evaluación</h5>
                     <div class="mic-wrapper">
                         <textarea id="sbarAssessment" rows="2" placeholder="Mi evaluación"></textarea>
                         <button class="mic-btn" onclick="startDictation('sbarAssessment')"><i class="fas fa-microphone"></i></button>
                     </div>
                 </div>
-                <div class="sbar-section">
-                    <h5>R - Recomendación</h5>
+                <div class="sbar-section" style="background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                    <h5 style="color: var(--info); margin: 0 0 10px 0;">R - Recomendación</h5>
                     <div class="mic-wrapper">
                         <textarea id="sbarRecommendation" rows="2" placeholder="Qué sugiero hacer"></textarea>
                         <button class="mic-btn" onclick="startDictation('sbarRecommendation')"><i class="fas fa-microphone"></i></button>
                     </div>
                 </div>
 
-                <h4>Novedades</h4>
+                <h4><i class="fas fa-notes-medical"></i> Novedades</h4>
                 <div class="mic-wrapper">
                     <textarea id="clinicalNotes" rows="4" placeholder="Observaciones adicionales"></textarea>
                     <button class="mic-btn" onclick="startDictation('clinicalNotes')"><i class="fas fa-microphone"></i></button>
                 </div>
 
-                <button onclick="saveClinicalRecord()" style="width: 100%;"><i class="fas fa-save"></i> Guardar Registro</button>
+                <button onclick="saveClinicalRecord()" style="width: 100%; margin-top: 20px;"><i class="fas fa-save"></i> Guardar Registro Clínico</button>
             </div>
 
             <!-- HISTORIAL DEL DÍA -->
             <div class="card">
-                <h3>Historial del Día</h3>
+                <h3><i class="fas fa-history"></i> Historial del Día</h3>
                 <div id="dailyHistory"></div>
             </div>
 
             <!-- CIERRE DE TURNO -->
             <div class="card">
-                <h3>Cierre de Turno</h3>
+                <h3><i class="fas fa-sign-out-alt"></i> Cierre de Turno</h3>
                 <label>Estado en que entrega al paciente:</label>
                 <select id="patientDeliveredStatus">
                     <option value="estable">🟢 Estable</option>
@@ -312,17 +365,17 @@
                 <label>Justificación (si no se realizó algo):</label>
                 <input type="text" id="pendingJustification" placeholder="Ej: No se realizó baño porque el paciente se negó">
 
-                <h4>Firma del Auxiliar</h4>
+                <h4>✍️ Firma del Auxiliar</h4>
                 <canvas id="auxSigCanvas" class="signature-canvas"></canvas>
-                <button onclick="clearAuxSig()" style="background: #334155; width: auto;">Borrar</button>
+                <button onclick="clearAuxSig()" style="background: #334155; width: auto;"><i class="fas fa-eraser"></i> Borrar</button>
 
-                <h4>Firma del Familiar</h4>
+                <h4>✍️ Firma del Familiar</h4>
                 <input type="text" id="familySignName" placeholder="Nombre del familiar">
                 <input type="text" id="familySignId" placeholder="Cédula">
                 <canvas id="famSigCanvas" class="signature-canvas"></canvas>
-                <button onclick="clearFamSig()" style="background: #334155; width: auto;">Borrar</button>
+                <button onclick="clearFamSig()" style="background: #334155; width: auto;"><i class="fas fa-eraser"></i> Borrar</button>
 
-                <button onclick="closeShift()" style="width: 100%; background: var(--info);"><i class="fas fa-check-circle"></i> Cerrar Turno</button>
+                <button onclick="closeShift()" style="width: 100%; background: var(--info); margin-top: 20px;"><i class="fas fa-check-circle"></i> Cerrar Turno</button>
             </div>
         </div>
     </div>
@@ -331,9 +384,11 @@
         let currentUser = null;
         let selectedPatient = null;
         let currentShiftId = null;
-        let adminCanvas, adminCtx, auxCanvas, auxCtx, famCanvas, famCtx;
+        let auxCanvas, auxCtx, famCanvas, famCtx;
 
+        // ==========================================
         // LOGIN
+        // ==========================================
         function togglePass() {
             const input = document.getElementById('pass');
             const icon = document.querySelector('.toggle-password i');
@@ -381,7 +436,9 @@
             document.getElementById(id + 'Section').classList.remove('hidden');
         }
 
+        // ==========================================
         // MICRÓFONO
+        // ==========================================
         function startDictation(elementId) {
             if (window.hasOwnProperty('webkitSpeechRecognition')) {
                 const recognition = new webkitSpeechRecognition();
@@ -397,7 +454,9 @@
             }
         }
 
+        // ==========================================
         // AUXILIAR - PACIENTES
+        // ==========================================
         async function loadAuxPatients() {
             const res = await fetch('/api/auxiliar/patients');
             const d = await res.json();
@@ -440,42 +499,156 @@
             }
         }
 
-        // ALARMAS DE SIGNOS VITALES
+        // ==========================================
+        // 🔴 CORRECCIÓN 1: ALARMAS EN TODOS LOS SIGNOS
+        // ==========================================
         function checkVital(type) {
             const spo2Min = selectedPatient.altitude_profiles?.spo2_min_normal || 95;
             
             if (type === 'bp') {
                 const val = document.getElementById('bloodPressure').value;
-                const [sys, dia] = val.split('/').map(Number);
+                const match = val.match(/(\d+)\/(\d+)/);
                 const alertDiv = document.getElementById('bpAlert');
-                if (sys && (sys < 90 || sys > 140)) {
-                    alertDiv.innerHTML = `<div class="alert-message alert-danger">⚠️ Presión sistólica fuera de rango</div>`;
+                const input = document.getElementById('bloodPressure');
+                
+                if (!match) {
+                    alertDiv.classList.remove('show');
+                    input.className = '';
+                    return;
+                }
+                
+                const sys = parseInt(match[1]);
+                const dia = parseInt(match[2]);
+                
+                if (sys < 80 || sys >= 160 || dia < 50 || dia >= 100) {
+                    alertDiv.className = 'vital-status show danger';
+                    alertDiv.innerHTML = '🔴 CRÍTICO: Presión arterial fuera de rango';
+                    input.className = 'vital-danger';
+                } else if (sys < 90 || sys >= 140 || dia < 60 || dia >= 90) {
+                    alertDiv.className = 'vital-status show warning';
+                    alertDiv.innerHTML = '🟡 ALERTA: Presión arterial alterada';
+                    input.className = 'vital-warning';
                 } else {
-                    alertDiv.innerHTML = '';
+                    alertDiv.className = 'vital-status show normal';
+                    alertDiv.innerHTML = '🟢 Normal';
+                    input.className = 'vital-normal';
                 }
             }
             
             if (type === 'hr') {
                 const val = parseInt(document.getElementById('heartRate').value);
                 const alertDiv = document.getElementById('hrAlert');
-                if (val && (val < 60 || val > 100)) {
-                    alertDiv.innerHTML = `<div class="alert-message alert-danger">⚠️ FC fuera de rango (60-100)</div>`;
+                const input = document.getElementById('heartRate');
+                
+                if (!val) { alertDiv.classList.remove('show'); input.className = ''; return; }
+                
+                if (val < 50 || val >= 120) {
+                    alertDiv.className = 'vital-status show danger';
+                    alertDiv.innerHTML = '🔴 CRÍTICO: FC fuera de rango (normal: 60-100)';
+                    input.className = 'vital-danger';
+                } else if (val < 60 || val > 100) {
+                    alertDiv.className = 'vital-status show warning';
+                    alertDiv.innerHTML = '🟡 ALERTA: FC alterada (normal: 60-100)';
+                    input.className = 'vital-warning';
                 } else {
-                    alertDiv.innerHTML = '';
+                    alertDiv.className = 'vital-status show normal';
+                    alertDiv.innerHTML = '🟢 Normal';
+                    input.className = 'vital-normal';
+                }
+            }
+            
+            if (type === 'rr') {
+                const val = parseInt(document.getElementById('respiratoryRate').value);
+                const alertDiv = document.getElementById('rrAlert');
+                const input = document.getElementById('respiratoryRate');
+                
+                if (!val) { alertDiv.classList.remove('show'); input.className = ''; return; }
+                
+                if (val < 10 || val >= 25) {
+                    alertDiv.className = 'vital-status show danger';
+                    alertDiv.innerHTML = '🔴 CRÍTICO: FR fuera de rango (normal: 12-20)';
+                    input.className = 'vital-danger';
+                } else if (val < 12 || val > 20) {
+                    alertDiv.className = 'vital-status show warning';
+                    alertDiv.innerHTML = '🟡 ALERTA: FR alterada (normal: 12-20)';
+                    input.className = 'vital-warning';
+                } else {
+                    alertDiv.className = 'vital-status show normal';
+                    alertDiv.innerHTML = '🟢 Normal';
+                    input.className = 'vital-normal';
+                }
+            }
+            
+            if (type === 'temp') {
+                const val = parseFloat(document.getElementById('temperature').value);
+                const alertDiv = document.getElementById('tempAlert');
+                const input = document.getElementById('temperature');
+                
+                if (!val) { alertDiv.classList.remove('show'); input.className = ''; return; }
+                
+                if (val < 35.5 || val >= 38.0) {
+                    alertDiv.className = 'vital-status show danger';
+                    alertDiv.innerHTML = '🔴 CRÍTICO: Temperatura fuera de rango';
+                    input.className = 'vital-danger';
+                } else if (val < 36.1 || val > 37.2) {
+                    alertDiv.className = 'vital-status show warning';
+                    alertDiv.innerHTML = '🟡 ALERTA: Temperatura alterada (normal: 36.1-37.2)';
+                    input.className = 'vital-warning';
+                } else {
+                    alertDiv.className = 'vital-status show normal';
+                    alertDiv.innerHTML = '🟢 Normal';
+                    input.className = 'vital-normal';
                 }
             }
             
             if (type === 'spo2') {
                 const val = parseInt(document.getElementById('spo2').value);
                 const alertDiv = document.getElementById('spo2Alert');
-                if (val && val < spo2Min) {
-                    alertDiv.innerHTML = `<div class="alert-message alert-danger">⚠️ SpO2 por debajo del mínimo (${spo2Min}%)</div>`;
+                const input = document.getElementById('spo2');
+                
+                if (!val) { alertDiv.classList.remove('show'); input.className = ''; return; }
+                
+                if (val < spo2Min - 3) {
+                    alertDiv.className = 'vital-status show danger';
+                    alertDiv.innerHTML = `🔴 CRÍTICO: SpO2 muy baja (mínimo esperado: ${spo2Min}%)`;
+                    input.className = 'vital-danger';
+                } else if (val < spo2Min) {
+                    alertDiv.className = 'vital-status show warning';
+                    alertDiv.innerHTML = `🟡 ALERTA: SpO2 por debajo del mínimo (${spo2Min}%)`;
+                    input.className = 'vital-warning';
                 } else {
-                    alertDiv.innerHTML = '';
+                    alertDiv.className = 'vital-status show normal';
+                    alertDiv.innerHTML = '🟢 Normal';
+                    input.className = 'vital-normal';
+                }
+            }
+            
+            if (type === 'glu') {
+                const val = parseInt(document.getElementById('glucose').value);
+                const alertDiv = document.getElementById('gluAlert');
+                const input = document.getElementById('glucose');
+                
+                if (!val) { alertDiv.classList.remove('show'); input.className = ''; return; }
+                
+                if (val < 60 || val >= 200) {
+                    alertDiv.className = 'vital-status show danger';
+                    alertDiv.innerHTML = '🔴 CRÍTICO: Glucosa fuera de rango (normal: 70-140)';
+                    input.className = 'vital-danger';
+                } else if (val < 70 || val > 140) {
+                    alertDiv.className = 'vital-status show warning';
+                    alertDiv.innerHTML = '🟡 ALERTA: Glucosa alterada (normal: 70-140)';
+                    input.className = 'vital-warning';
+                } else {
+                    alertDiv.className = 'vital-status show normal';
+                    alertDiv.innerHTML = '🟢 Normal';
+                    input.className = 'vital-normal';
                 }
             }
         }
 
+        // ==========================================
+        // EVA
+        // ==========================================
         function updateEVA() {
             const val = document.getElementById('evaScore').value;
             let text = 'Sin dolor';
@@ -485,10 +658,44 @@
             document.getElementById('evaValue').innerText = `${val} - ${text}`;
         }
 
+        // ==========================================
+        // 🔴 CORRECCIÓN 3: GLASGOW CON CÁLCULO AUTOMÁTICO
+        // ==========================================
         function toggleGlasgow() {
             document.getElementById('glasgowSection').classList.toggle('hidden');
+            if (!document.getElementById('glasgowSection').classList.contains('hidden')) {
+                calculateGlasgow();
+            }
         }
 
+        function calculateGlasgow() {
+            const eyes = parseInt(document.getElementById('glasgowEyes').value) || 0;
+            const verbal = parseInt(document.getElementById('glasgowVerbal').value) || 0;
+            const motor = parseInt(document.getElementById('glasgowMotor').value) || 0;
+            const total = eyes + verbal + motor;
+            
+            const totalDiv = document.getElementById('glasgowTotal');
+            let status = 'Normal';
+            let statusClass = 'normal';
+            
+            if (total >= 13 && total <= 14) {
+                status = '⚠️ Alteración LEVE';
+                statusClass = 'mild';
+            } else if (total >= 9 && total <= 12) {
+                status = '⚠️ Alteración MODERADA';
+                statusClass = 'moderate';
+            } else if (total >= 3 && total <= 8) {
+                status = '🚨 Alteración SEVERA (Coma)';
+                statusClass = 'severe';
+            }
+            
+            totalDiv.className = `glasgow-total ${statusClass}`;
+            totalDiv.innerHTML = `<h3>${total}/15</h3><p>${status}</p>`;
+        }
+
+        // ==========================================
+        // GUARDAR REGISTRO CLÍNICO
+        // ==========================================
         async function saveClinicalRecord() {
             const activities = {};
             ['Bath', 'Feeding', 'Medication', 'Mobility'].forEach(act => {
@@ -529,58 +736,125 @@
             });
             const d = await res.json();
             if (d.success) {
-                alert('✅ Registro guardado');
+                alert('✅ Registro guardado exitosamente');
                 loadDailyHistory();
+            } else {
+                alert('❌ Error: ' + d.message);
             }
         }
 
+        // ==========================================
+        // 🔴 CORRECCIÓN 2: HISTORIAL COMPLETO
+        // ==========================================
         async function loadDailyHistory() {
             const res = await fetch(`/api/patients/${selectedPatient.id}/daily-history`);
             const d = await res.json();
-            document.getElementById('dailyHistory').innerHTML = d.data.map(r => `
-                <div class="history-item">
-                    <strong>${new Date(r.record_time).toLocaleTimeString()}</strong> - ${r.professionals?.full_name}<br>
-                    SpO2: ${r.spo2 || 'N/A'}% | FC: ${r.heart_rate || 'N/A'} | EVA: ${r.eva_score || 'N/A'}
-                </div>
-            `).join('');
+            
+            if (!d.data || d.data.length === 0) {
+                document.getElementById('dailyHistory').innerHTML = '<p style="color: #94a3b8; text-align: center;">No hay registros hoy</p>';
+                return;
+            }
+            
+            document.getElementById('dailyHistory').innerHTML = d.data.map(r => {
+                const date = new Date(r.created_at);
+                const timeStr = date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+                
+                // Construir tags de actividades
+                let activitiesHtml = '';
+                if (r.activities_completed) {
+                    const acts = r.activities_completed;
+                    if (acts.bath?.done) activitiesHtml += `<span class="history-activity-tag">🛁 Baño (${acts.bath.time || '--:--'})</span>`;
+                    if (acts.feeding?.done) activitiesHtml += `<span class="history-activity-tag">🍽️ Alimentación (${acts.feeding.time || '--:--'})</span>`;
+                    if (acts.medication?.done) activitiesHtml += `<span class="history-activity-tag">💊 Medicamentos (${acts.medication.time || '--:--'})</span>`;
+                    if (acts.mobility?.done) activitiesHtml += `<span class="history-activity-tag">🚶 Movilización (${acts.mobility.time || '--:--'})</span>`;
+                }
+                
+                // Calcular Glasgow si existe
+                let glasgowHtml = '';
+                if (r.glasgow_eyes && r.glasgow_verbal && r.glasgow_motor) {
+                    const glasgowTotal = r.glasgow_eyes + r.glasgow_verbal + r.glasgow_motor;
+                    glasgowHtml = `<div class="history-vital-item"><strong>${glasgowTotal}/15</strong><small>Glasgow</small></div>`;
+                }
+                
+                return `
+                    <div class="history-item">
+                        <div class="history-header">
+                            <span class="history-time">🕐 ${timeStr}</span>
+                            <span class="history-aux">${r.professionals?.full_name || 'Auxiliar'}</span>
+                        </div>
+                        
+                        <div class="history-vitals">
+                            <div class="history-vital-item"><strong>${r.blood_pressure || '--/--'}</strong><small>PA</small></div>
+                            <div class="history-vital-item"><strong>${r.heart_rate || '--'}</strong><small>FC (lpm)</small></div>
+                            <div class="history-vital-item"><strong>${r.respiratory_rate || '--'}</strong><small>FR (rpm)</small></div>
+                            <div class="history-vital-item"><strong>${r.temperature || '--'}°C</strong><small>Temp</small></div>
+                            <div class="history-vital-item"><strong>${r.spo2 || '--'}%</strong><small>SpO2</small></div>
+                            <div class="history-vital-item"><strong>${r.glucose || '--'}</strong><small>Glucosa</small></div>
+                            <div class="history-vital-item"><strong>${r.eva_score ?? '--'}</strong><small>EVA</small></div>
+                            ${glasgowHtml}
+                        </div>
+                        
+                        ${activitiesHtml ? `<div class="history-activities"><strong>✅ Actividades:</strong><br>${activitiesHtml}</div>` : ''}
+                        
+                        ${r.notes ? `<div class="history-notes">📝 ${r.notes}</div>` : ''}
+                        
+                        ${r.sbar_situation ? `<div class="history-notes"><strong>🚨 SBAR:</strong> ${r.sbar_situation}</div>` : ''}
+                    </div>
+                `;
+            }).join('');
         }
 
+        // ==========================================
+        // FIRMAS
+        // ==========================================
         function initSignatureCanvases() {
             auxCanvas = document.getElementById('auxSigCanvas');
             auxCtx = auxCanvas.getContext('2d');
             auxCanvas.width = auxCanvas.offsetWidth;
             auxCanvas.height = 150;
+            auxCtx.fillStyle = 'white';
+            auxCtx.fillRect(0, 0, auxCanvas.width, auxCanvas.height);
+            
             let auxDrawing = false;
             auxCanvas.onmousedown = () => auxDrawing = true;
             auxCanvas.onmouseup = () => auxDrawing = false;
             auxCanvas.onmousemove = (e) => {
                 if (!auxDrawing) return;
                 const rect = auxCanvas.getBoundingClientRect();
-                auxCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-                auxCtx.stroke();
+                auxCtx.lineWidth = 2; auxCtx.lineCap = 'round'; auxCtx.strokeStyle = 'black';
+                auxCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top); auxCtx.stroke();
+                auxCtx.beginPath(); auxCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
             };
 
             famCanvas = document.getElementById('famSigCanvas');
             famCtx = famCanvas.getContext('2d');
             famCanvas.width = famCanvas.offsetWidth;
             famCanvas.height = 150;
+            famCtx.fillStyle = 'white';
+            famCtx.fillRect(0, 0, famCanvas.width, famCanvas.height);
+            
             let famDrawing = false;
             famCanvas.onmousedown = () => famDrawing = true;
             famCanvas.onmouseup = () => famDrawing = false;
             famCanvas.onmousemove = (e) => {
                 if (!famDrawing) return;
                 const rect = famCanvas.getBoundingClientRect();
-                famCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-                famCtx.stroke();
+                famCtx.lineWidth = 2; famCtx.lineCap = 'round'; famCtx.strokeStyle = 'black';
+                famCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top); famCtx.stroke();
+                famCtx.beginPath(); famCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
             };
         }
 
         function clearAuxSig() {
-            auxCtx.clearRect(0, 0, auxCanvas.width, auxCanvas.height);
+            auxCtx.fillStyle = 'white';
+            auxCtx.fillRect(0, 0, auxCanvas.width, auxCanvas.height);
+            auxCtx.beginPath();
         }
 
         function clearFamSig() {
-            famCtx.clearRect(0, 0, famCanvas.width, famCanvas.height);
+            famCtx.fillStyle = 'white';
+            famCtx.fillRect(0, 0, famCanvas.width, famCanvas.height);
+            famCtx.beginPath();
         }
 
         async function closeShift() {
@@ -605,12 +879,16 @@
             });
             const d = await res.json();
             if (d.success) {
-                alert('✅ Turno cerrado');
+                alert('✅ Turno cerrado exitosamente');
                 location.reload();
+            } else {
+                alert('❌ Error: ' + d.message);
             }
         }
 
-        // ADMIN
+        // ==========================================
+        // ADMIN (Simplificado)
+        // ==========================================
         async function createProf() {
             const payload = {
                 fullName: document.getElementById('pName').value,
@@ -619,12 +897,13 @@
                 password: document.getElementById('pPass').value,
                 specialtyName: document.getElementById('pSpec').value
             };
-            await fetch('/api/professionals', { 
+            const res = await fetch('/api/professionals', { 
                 method: 'POST', 
                 headers: {'Content-Type': 'application/json'}, 
                 body: JSON.stringify(payload) 
             });
-            alert('Profesional creado');
+            const d = await res.json();
+            alert(d.message);
         }
 
         async function createPat() {
@@ -634,21 +913,23 @@
                 familyName: document.getElementById('famName').value,
                 contactPhone: document.getElementById('famCel').value
             };
-            await fetch('/api/patients', { 
+            const res = await fetch('/api/patients', { 
                 method: 'POST', 
                 headers: {'Content-Type': 'application/json'}, 
                 body: JSON.stringify(payload) 
             });
-            alert('Paciente creado');
+            const d = await res.json();
+            alert(d.message);
         }
 
         async function createEdu() {
-            await fetch('/api/education/topics', { 
+            const res = await fetch('/api/education/topics', { 
                 method: 'POST', 
                 headers: {'Content-Type': 'application/json'}, 
                 body: JSON.stringify({ title: document.getElementById('eduTitle').value }) 
             });
-            alert('Tema creado');
+            const d = await res.json();
+            alert(d.message);
         }
 
         window.onload = () => { if(localStorage.getItem('user')) initApp(); };
