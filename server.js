@@ -36,7 +36,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // ==========================================
-// 2. DASHBOARD MEJORADO
+// 2. DASHBOARD
 // ==========================================
 app.get('/api/dashboard/stats', async (req, res) => {
     try {
@@ -49,18 +49,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
             .select('*', { count: 'exact', head: true })
             .gte('created_at', firstDayOfMonth.toISOString());
 
-        const thirtyDaysFromNow = new Date();
-        thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-        const { data: expiryAlerts } = await supabase.from('professionals')
-            .select('full_name, card_expiry_date')
-            .lte('card_expiry_date', thirtyDaysFromNow.toISOString().split('T')[0])
-            .gt('card_expiry_date', new Date().toISOString().split('T')[0]);
-
-        const { data: patientsWithReports } = await supabase
-            .from('patients')
-            .select('id')
-            .eq('is_active', true);
-
+        const { data: patientsWithReports } = await supabase.from('patients').select('id').eq('is_active', true);
         const pendingReports = patientsWithReports?.length || 0;
 
         res.json({ 
@@ -69,18 +58,16 @@ app.get('/api/dashboard/stats', async (req, res) => {
                 patients: patCount, 
                 professionals: profCount,
                 educationSessions: eduCount || 0,
-                pendingReports: pendingReports,
-                expiryAlerts: expiryAlerts || []
+                pendingReports: pendingReports
             } 
         });
     } catch (error) { 
-        console.error('Error dashboard:', error);
         res.status(500).json({ success: false, message: error.message }); 
     }
 });
 
 // ==========================================
-// 3. GESTIÓN PROFESIONALES
+// 3. PROFESIONALES
 // ==========================================
 app.get('/api/professionals', async (req, res) => {
     const { data } = await supabase.from('professionals').select('*, specialties(name)').order('created_at', { ascending: false });
@@ -89,16 +76,13 @@ app.get('/api/professionals', async (req, res) => {
 
 app.post('/api/professionals', async (req, res) => {
     try {
-        console.log("📥 Backend: Recibiendo datos de profesional:", req.body);
         const { email, password, fullName, documentNumber, specialtyName, signature } = req.body;
-        
         const { data: specData } = await supabase.from('specialties').select('id').eq('name', specialtyName).single();
         if (!specData) return res.status(400).json({ success: false, message: 'Especialidad no válida' });
 
-        const { data: authUser, error: authErr } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
-        if (authErr) throw authErr;
+        const { data: authUser } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
 
-        const { error: dbErr } = await supabase.from('professionals').insert([{
+        await supabase.from('professionals').insert([{
             user_id: authUser.user.id, 
             full_name: fullName, 
             document_number: documentNumber,
@@ -107,23 +91,12 @@ app.post('/api/professionals', async (req, res) => {
             is_active: true
         }]);
         
-        if (dbErr) {
-            console.error("❌ Backend: Error al guardar en Supabase:", dbErr);
-            throw dbErr;
-        }
-        
-        console.log("✅ Backend: Profesional guardado exitosamente");
         res.json({ success: true, message: 'Profesional registrado' });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-app.patch('/api/professionals/:id', async (req, res) => {
-    await supabase.from('professionals').update({ is_active: req.body.isActive }).eq('id', req.params.id);
-    res.json({ success: true });
-});
-
 // ==========================================
-// 4. GESTIÓN PACIENTES
+// 4. PACIENTES
 // ==========================================
 app.get('/api/patients', async (req, res) => {
     const { data } = await supabase.from('patients').select('*').order('created_at', { ascending: false });
@@ -132,12 +105,10 @@ app.get('/api/patients', async (req, res) => {
 
 app.post('/api/patients', async (req, res) => {
     try {
-        console.log("📥 Backend: Recibiendo datos de paciente:", req.body);
         const { fullName, documentNumber, cityName, pathology, address, contactPhone, familyName, familyId, familyRel } = req.body;
-        
         const { data: cityData } = await supabase.from('altitude_profiles').select('id').eq('city_name', cityName).single();
         
-        const { error: dbErr } = await supabase.from('patients').insert([{
+        await supabase.from('patients').insert([{
             full_name: fullName, 
             document_number: documentNumber, 
             city_id: cityData?.id, 
@@ -150,18 +121,12 @@ app.post('/api/patients', async (req, res) => {
             is_active: true
         }]);
 
-        if (dbErr) {
-            console.error("❌ Backend: Error al guardar paciente en Supabase:", dbErr);
-            throw dbErr;
-        }
-
-        console.log("✅ Backend: Paciente guardado exitosamente");
         res.json({ success: true, message: 'Paciente registrado' });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
 // ==========================================
-// 5. GESTIÓN EDUCACIÓN
+// 5. EDUCACIÓN
 // ==========================================
 app.get('/api/education/topics', async (req, res) => {
     const { data } = await supabase.from('education_topics').select('*, professionals(full_name)').order('created_at', { ascending: false });
@@ -175,63 +140,58 @@ app.post('/api/education/topics', async (req, res) => {
 });
 
 // ==========================================
-// 6. INFORMES MENSUALES
-// ==========================================
-app.get('/api/reports/pending', async (req, res) => {
-    try {
-        const { data: patients } = await supabase.from('patients').select('id, full_name, family_name').eq('is_active', true);
-        res.json({ success: true, data: patients || [] });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-app.post('/api/reports/generate', async (req, res) => {
-    try {
-        const { patientId, month, year } = req.body;
-        console.log(`📄 Generando informe para paciente ${patientId} - ${month}/${year}`);
-        res.json({ 
-            success: true, 
-            message: 'Informe generado (simulación - pendiente Fase 5)',
-            data: { patientId, month, year, status: 'pending_implementation' }
-        });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
-// ==========================================
-// 7. VISTA DEL AUXILIAR (FASE 4)
+// 6. AUXILIAR - TURNOS Y REGISTROS
 // ==========================================
 
-// Obtener pacientes activos con datos de altitud (para SpO2)
+// Obtener pacientes con datos de altitud
 app.get('/api/auxiliar/patients', async (req, res) => {
     try {
-        const { data, error } = await supabase
+        const { data } = await supabase
             .from('patients')
             .select('*, altitude_profiles(city_name, spo2_min_normal)')
             .eq('is_active', true)
             .order('created_at', { ascending: false });
-        
-        if (error) throw error;
         res.json({ success: true, data: data || [] });
     } catch (error) {
-        console.error("❌ Error cargando pacientes para auxiliar:", error);
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
-// Guardar registro clínico (signos vitales + actividades + novedades)
+// Iniciar turno
+app.post('/api/shifts/start', async (req, res) => {
+    try {
+        const { patientId, professionalId, shiftType, patientStatus, patientNotes } = req.body;
+        
+        const { data, error } = await supabase.from('shifts').insert([{
+            patient_id: patientId,
+            professional_id: professionalId,
+            shift_type: shiftType,
+            start_time: new Date().toISOString(),
+            patient_received_status: patientStatus,
+            patient_received_notes: patientNotes,
+            is_closed: false
+        }]).select().single();
+
+        if (error) throw error;
+        
+        res.json({ success: true, message: 'Turno iniciado', data: { id: data.id } });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Guardar registro clínico
 app.post('/api/clinical-records', async (req, res) => {
     try {
-        console.log("📥 Backend: Recibiendo registro clínico:", req.body);
         const { 
-            patientId, professionalId, bloodPressure, heartRate, 
-            respiratoryRate, temperature, spo2, glucose, 
-            activitiesCompleted, notes 
+            shiftId, patientId, professionalId, bloodPressure, heartRate, 
+            respiratoryRate, temperature, spo2, glucose, evaScore,
+            glasgowEyes, glasgowVerbal, glasgowMotor, consciousnessLevel,
+            activitiesCompleted, sbarSituation, sbarBackground, sbarAssessment, sbarRecommendation, notes 
         } = req.body;
 
-        const { data, error: dbErr } = await supabase.from('clinical_records').insert([{
+        const { data, error } = await supabase.from('clinical_records').insert([{
+            shift_id: shiftId,
             patient_id: patientId,
             professional_id: professionalId,
             blood_pressure: bloodPressure,
@@ -240,34 +200,71 @@ app.post('/api/clinical-records', async (req, res) => {
             temperature: temperature,
             spo2: spo2,
             glucose: glucose,
+            eva_score: evaScore,
+            glasgow_eyes: glasgowEyes,
+            glasgow_verbal: glasgowVerbal,
+            glasgow_motor: glasgowMotor,
+            consciousness_level: consciousnessLevel,
             activities_completed: activitiesCompleted,
+            sbar_situation: sbarSituation,
+            sbar_background: sbarBackground,
+            sbar_assessment: sbarAssessment,
+            sbar_recommendation: sbarRecommendation,
             notes: notes
         }]).select().single();
 
-        if (dbErr) {
-            console.error("❌ Backend: Error al guardar registro clínico:", dbErr);
-            throw dbErr;
-        }
-
-        console.log("✅ Backend: Registro clínico guardado exitosamente, ID:", data.id);
-        res.json({ success: true, message: 'Registro clínico guardado', data: { id: data.id } });
+        if (error) throw error;
+        
+        res.json({ success: true, message: 'Registro guardado', data: { id: data.id } });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
-// Cerrar turno con doble firma (Auxiliar + Familiar)
+// Obtener historial del día (todos los registros del paciente)
+app.get('/api/patients/:id/daily-history', async (req, res) => {
+    try {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const { data, error } = await supabase
+            .from('clinical_records')
+            .select('*, professionals(full_name)')
+            .eq('patient_id', req.params.id)
+            .gte('created_at', today.toISOString())
+            .order('created_at', { ascending: true });
+        
+        if (error) throw error;
+        res.json({ success: true, data: data || [] });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Cerrar turno con doble firma
 app.post('/api/shifts/close', async (req, res) => {
     try {
-        console.log("📥 Backend: Cerrando turno con doble firma:", req.body);
         const { 
-            clinicalRecordId, 
+            shiftId,
+            patientDeliveredStatus, patientDeliveredNotes,
+            pendingTasks, pendingJustification,
             auxiliarySignature, auxiliaryName, auxiliaryIdNumber,
             familySignature, familyName, familyIdNumber 
         } = req.body;
 
-        const { error: dbErr } = await supabase.from('shift_signatures').insert([{
-            clinical_record_id: clinicalRecordId,
+        // Actualizar turno
+        await supabase.from('shifts').update({
+            end_time: new Date().toISOString(),
+            patient_delivered_status: patientDeliveredStatus,
+            patient_delivered_notes: patientDeliveredNotes,
+            pending_tasks: pendingTasks,
+            pending_justification: pendingJustification,
+            is_closed: true
+        }).eq('id', shiftId);
+
+        // Guardar firmas
+        await supabase.from('shift_signatures').insert([{
+            clinical_record_id: null, // Ya no está vinculado a un solo registro
             auxiliary_signature: auxiliarySignature,
             auxiliary_name: auxiliaryName,
             auxiliary_id_number: auxiliaryIdNumber,
@@ -278,36 +275,14 @@ app.post('/api/shifts/close', async (req, res) => {
             family_signed_at: new Date().toISOString()
         }]);
 
-        if (dbErr) {
-            console.error("❌ Backend: Error al guardar firmas:", dbErr);
-            throw dbErr;
-        }
-
-        console.log("✅ Backend: Turno cerrado con doble firma exitosamente");
         res.json({ success: true, message: 'Turno cerrado exitosamente' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
-// Obtener historial de registros de un paciente (para informes)
-app.get('/api/patients/:id/records', async (req, res) => {
-    try {
-        const { data, error } = await supabase
-            .from('clinical_records')
-            .select('*, shift_signatures(*)')
-            .eq('patient_id', req.params.id)
-            .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        res.json({ success: true, data: data || [] });
-    } catch (error) {
-        res.status(500).json({ success: false, message: error.message });
-    }
-});
-
 // ==========================================
-// SERVIDOR DE ARCHIVOS ESTÁTICOS
+// SERVIDOR DE ARCHIVOS
 // ==========================================
 app.get('*', (req, res) => { 
     if (!req.path.startsWith('/api')) {
