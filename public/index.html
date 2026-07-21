@@ -87,23 +87,12 @@
         .stat-card { text-align: center; border-left: 5px solid var(--primary); }
         .stat-card h3 { color: #94a3b8; font-size: 0.9rem; margin-bottom: 10px; }
         .stat-card h2 { font-size: 2.5rem; margin: 0; color: var(--primary); }
-        .stat-card.warning { border-left-color: var(--warning); } .stat-card.warning h2 { color: var(--warning); }
-        .stat-card.danger { border-left-color: var(--danger); } .stat-card.danger h2 { color: var(--danger); }
-        .stat-card.info { border-left-color: var(--info); } .stat-card.info h2 { color: var(--info); }
         .quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .action-btn { padding: 20px; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .action-btn i { font-size: 1.5rem; }
         .nav { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
         .nav button { background: #334155; width: auto; margin-top: 0; }
         .nav button.active { background: var(--primary); }
-        .warning-box { background: #7f1d1d; border: 2px solid var(--danger); padding: 15px; border-radius: 8px; margin: 15px 0; }
-        .warning-box h4 { color: #fecaca; margin: 0 0 10px 0; }
-        .warning-box p { margin: 5px 0; font-size: 0.9rem; }
-        .transport-option { background: #0f172a; padding: 12px; border-radius: 6px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; cursor: pointer; border: 2px solid transparent; }
-        .transport-option:hover { border-color: var(--info); }
-        .transport-option.selected { border-color: var(--primary); }
-        .transport-option.risk-medium { border-left: 4px solid var(--warning); }
-        .transport-option.risk-high { border-left: 4px solid var(--danger); }
     </style>
 </head>
 <body>
@@ -129,9 +118,9 @@
         </div>
         <div class="grid">
             <div class="card stat-card"><h3><i class="fas fa-user-injured"></i> Pacientes Activos</h3><h2 id="statPat">0</h2></div>
-            <div class="card stat-card info"><h3><i class="fas fa-user-md"></i> Profesionales</h3><h2 id="statProf">0</h2></div>
+            <div class="card stat-card" style="border-left-color: var(--info);"><h3><i class="fas fa-user-md"></i> Profesionales</h3><h2 id="statProf">0</h2></div>
             <div class="card stat-card" style="border-left-color: #8b5cf6;"><h3><i class="fas fa-graduation-cap"></i> Educación (Mes)</h3><h2 id="statEdu" style="color: #8b5cf6;">0</h2></div>
-            <div class="card stat-card danger"><h3><i class="fas fa-file-medical"></i> Informes Pendientes</h3><h2 id="statReports">0</h2></div>
+            <div class="card stat-card" style="border-left-color: var(--danger);"><h3><i class="fas fa-file-medical"></i> Informes Pendientes</h3><h2 id="statReports">0</h2></div>
         </div>
         <div class="quick-actions">
             <button class="action-btn" onclick="show('pat')" style="background: var(--info);"><i class="fas fa-calendar-plus"></i> Asignar Turno</button>
@@ -247,7 +236,7 @@
                     <div class="grid"><div><label>Hora de Inicio:</label><input type="time" id="customStartTime"></div><div><label>Hora de Fin:</label><input type="time" id="customEndTime"></div></div>
                 </div>
                 <label>Estado en que recibe al paciente:</label>
-                <select id="patientReceivedStatus"><option value="estable">🟢 Estable</option><option value="con_novedades">🟡 Con Novedades</option><option value="critico">🔴 Crítico</option></select>
+                <select id="patientReceivedStatus"><option value="estable">🟢 Estable</option><option value="con_novedades">🟡 Con Novedades</option><option value="critico"> Crítico</option></select>
                 <label>Observación de recepción:</label>
                 <div class="mic-wrapper"><textarea id="patientReceivedNotes" rows="3" placeholder="¿Cómo encuentra al paciente?"></textarea><button class="mic-btn" onclick="startDictation('patientReceivedNotes')"><i class="fas fa-microphone"></i></button></div>
                 <button onclick="startShift()" style="background: var(--info); width: 100%;"><i class="fas fa-play"></i> Iniciar Turno</button>
@@ -297,7 +286,7 @@
                 </div>
                 <h4><i class="fas fa-tasks"></i> Actividades Realizadas</h4>
                 <div class="accordion"><div class="accordion-header" onclick="toggleAccordion(this)"><span>🧼 Higiene y Confort</span><i class="fas fa-chevron-down icon"></i></div><div class="accordion-content">
-                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actBath" onchange="toggleSubFields('bath')"><label><strong>🛁 Baño</strong></label><input type="time" id="actBathTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-bath"><label>Tipo:</label><select id="bathType"><option value="en_cama">En cama</option><option value="en_ducha">En ducha</option><option value="en_silla">En silla</option><option value="parcial">Parcial</option></select></div></div>
+                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actBath" onchange="toggleSubFields('bath')"><label><strong> Baño</strong></label><input type="time" id="actBathTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-bath"><label>Tipo:</label><select id="bathType"><option value="en_cama">En cama</option><option value="en_ducha">En ducha</option><option value="en_silla">En silla</option><option value="parcial">Parcial</option></select></div></div>
                     <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actOralHygiene" onchange="toggleSubFields('oral')"><label><strong>🦷 Higiene Bucal</strong></label><input type="time" id="actOralTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-oral"><label>Tipo:</label><select id="oralType"><option value="propia">Propia</option><option value="asistida">Asistida</option><option value="protesis">Prótesis removida</option></select></div></div>
                     <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actGrooming" onchange="toggleSubFields('groom')"><label><strong>💇 Arreglo Personal</strong></label><input type="time" id="actGroomTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-groom"><label>Tipo:</label><select id="groomType"><option value="peinado">Peinado</option><option value="afeitado">Afeitado</option><option value="unas">Corte de uñas</option></select></div></div>
                     <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actDiaper" onchange="toggleSubFields('diaper')"><label><strong>🩲 Cambio Pañal/Ropa</strong></label><input type="time" id="actDiaperTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-diaper"><label>Tipo:</label><select id="diaperType"><option value="panal">Pañal</option><option value="ropa_interior">Ropa interior</option><option value="ropa_completa">Ropa completa</option></select></div></div>
@@ -312,32 +301,32 @@
                     <div id="medList"></div><button onclick="addMedication()" style="background: var(--info); width: auto;"><i class="fas fa-plus"></i> Agregar Medicamento</button>
                 </div></div>
                 <div class="accordion"><div class="accordion-header" onclick="toggleAccordion(this)"><span>🩺 Cuidados Clínicos</span><i class="fas fa-chevron-down icon"></i></div><div class="accordion-content">
-                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actWound" onchange="toggleSubFields('wound')"><label><strong>🩹 Curación de Heridas</strong></label><input type="time" id="actWoundTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-wound"><label>Tipo:</label><select id="woundType"><option value="upp">Úlcera por presión</option><option value="quirurgica">Quirúrgica</option><option value="diabetica">Diabética</option></select><label>Estado:</label><select id="woundState"><option value="limpia">Limpia</option><option value="exudado">Con exudado</option><option value="infectada">Infectada</option></select></div></div>
+                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actWound" onchange="toggleSubFields('wound')"><label><strong> Curación de Heridas</strong></label><input type="time" id="actWoundTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-wound"><label>Tipo:</label><select id="woundType"><option value="upp">Úlcera por presión</option><option value="quirurgica">Quirúrgica</option><option value="diabetica">Diabética</option></select><label>Estado:</label><select id="woundState"><option value="limpia">Limpia</option><option value="exudado">Con exudado</option><option value="infectada">Infectada</option></select></div></div>
                     <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actOxygen" onchange="toggleSubFields('oxygen')"><label><strong>💨 Oxigenoterapia</strong></label><input type="time" id="actOxygenTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-oxygen"><label>L/min:</label><input type="number" id="oxygenLpm" step="0.5"><label>Dispositivo:</label><select id="oxygenDevice"><option value="canula">Cánula nasal</option><option value="mascarilla">Mascarilla</option></select></div></div>
                     <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actSuction" onchange="toggleSubFields('suction')"><label><strong>🫧 Aspiración de Secreciones</strong></label><input type="time" id="actSuctionTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-suction"><label>Tipo:</label><select id="suctionType"><option value="nasofaringea">Nasofaríngea</option><option value="traqueal">Traqueal</option></select></div></div>
                     <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actUrinaryOutput" onchange="toggleSubFields('urine')"><label><strong>🚽 Control de Egresos</strong></label><input type="time" id="actUrineTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-urine"><div class="grid"><div><label>Orina (mL):</label><input type="number" id="urineMl"></div><div><label>Heces:</label><select id="fecesAmount"><option value="ninguna">Ninguna</option><option value="normal">Normal</option><option value="abundante">Abundante</option></select></div></div></div></div>
                 </div></div>
                 <div class="accordion"><div class="accordion-header" onclick="toggleAccordion(this)"><span>🚶 Movilización</span><i class="fas fa-chevron-down icon"></i></div><div class="accordion-content">
-                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actPosition" onchange="toggleSubFields('position')"><label><strong>🔄 Cambio Postural</strong></label><input type="time" id="actPositionTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-position"><label>Posición:</label><select id="positionType"><option value="supino">Supino</option><option value="lateral_derecho">Lateral derecho</option><option value="lateral_izquierdo">Lateral izquierdo</option><option value="semifowler">Semi-Fowler</option></select></div></div>
-                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actActiveMob" onchange="toggleSubFields('activemob')"><label><strong>🏃 Movilización Activa</strong></label><input type="time" id="actActiveMobTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-activemob"><label>Minutos:</label><input type="number" id="activeMobDuration"></div></div>
+                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actPosition" onchange="toggleSubFields('position')"><label><strong> Cambio Postural</strong></label><input type="time" id="actPositionTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-position"><label>Posición:</label><select id="positionType"><option value="supino">Supino</option><option value="lateral_derecho">Lateral derecho</option><option value="lateral_izquierdo">Lateral izquierdo</option><option value="semifowler">Semi-Fowler</option></select></div></div>
+                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actActiveMob" onchange="toggleSubFields('activemob')"><label><strong> Movilización Activa</strong></label><input type="time" id="actActiveMobTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-activemob"><label>Minutos:</label><input type="number" id="activeMobDuration"></div></div>
                     <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actPassiveMob" onchange="toggleSubFields('passivemob')"><label><strong>🤲 Movilización Pasiva</strong></label><input type="time" id="actPassiveMobTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-passivemob"><label>Minutos:</label><input type="number" id="passiveMobDuration"></div></div>
-                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actSitting" onchange="toggleSubFields('sitting')"><label><strong> Sedestación</strong></label><input type="time" id="actSittingTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-sitting"><label>Minutos:</label><input type="number" id="sittingDuration"><label>¿Con apoyo?</label><select id="sittingSupport"><option value="si">Sí</option><option value="no">No</option></select></div></div>
+                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actSitting" onchange="toggleSubFields('sitting')"><label><strong>🪑 Sedestación</strong></label><input type="time" id="actSittingTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-sitting"><label>Minutos:</label><input type="number" id="sittingDuration"><label>¿Con apoyo?</label><select id="sittingSupport"><option value="si">Sí</option><option value="no">No</option></select></div></div>
                     <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actWalking" onchange="toggleSubFields('walking')"><label><strong>🚶 Deambulación</strong></label><input type="time" id="actWalkingTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-walking"><label>Metros:</label><input type="number" id="walkingDistance"><label>¿Con ayuda?</label><select id="walkingHelp"><option value="si">Sí</option><option value="no">No</option></select></div></div>
                 </div></div>
                 <div class="accordion"><div class="accordion-header" onclick="toggleAccordion(this)"><span>📋 Otros</span><i class="fas fa-chevron-down icon"></i></div><div class="accordion-content">
-                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actFamilyCall" onchange="toggleSubFields('famcall')"><label><strong>📞 Llamada a Familiar</strong></label><input type="time" id="actFamCallTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-famcall"><label>Motivo:</label><input type="text" id="famCallReason"></div></div>
-                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actDoctorCall" onchange="toggleSubFields('doccall')"><label><strong>🚑 Llamada a Médico/Emergencia</strong></label><input type="time" id="actDocCallTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-doccall"><label>Motivo:</label><input type="text" id="docCallReason"><label>Hora respuesta:</label><input type="time" id="docCallResponse"></div></div>
-                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actEducation" onchange="toggleSubFields('education')"><label><strong> Educación al Familiar</strong></label><input type="time" id="actEducationTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-education"><label>Tema:</label><div class="mic-wrapper"><textarea id="educationTopic" rows="2"></textarea><button class="mic-btn" onclick="startDictation('educationTopic')"><i class="fas fa-microphone"></i></button></div></div></div>
+                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actFamilyCall" onchange="toggleSubFields('famcall')"><label><strong> Llamada a Familiar</strong></label><input type="time" id="actFamCallTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-famcall"><label>Motivo:</label><input type="text" id="famCallReason"></div></div>
+                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actDoctorCall" onchange="toggleSubFields('doccall')"><label><strong> Llamada a Médico/Emergencia</strong></label><input type="time" id="actDocCallTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-doccall"><label>Motivo:</label><input type="text" id="docCallReason"><label>Hora respuesta:</label><input type="time" id="docCallResponse"></div></div>
+                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actEducation" onchange="toggleSubFields('education')"><label><strong>📚 Educación al Familiar</strong></label><input type="time" id="actEducationTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-education"><label>Tema:</label><div class="mic-wrapper"><textarea id="educationTopic" rows="2"></textarea><button class="mic-btn" onclick="startDictation('educationTopic')"><i class="fas fa-microphone"></i></button></div></div></div>
                     <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actBreathing" onchange="toggleSubFields('breathing')"><label><strong>🧘 Ejercicios Respiratorios</strong></label><input type="time" id="actBreathingTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-breathing"><label>Tipo:</label><select id="breathingType"><option value="espiracion">Espiración prolongada</option><option value="inspiracion">Inspiración profunda</option><option value="espirometro">Uso de espirómetro</option></select><label>Repeticiones:</label><input type="number" id="breathingReps"></div></div>
                 </div></div>
-                <div class="accordion"><div class="accordion-header" onclick="toggleAccordion(this)"><span>🗑️ Residuos & 🛡️ EPP</span><i class="fas fa-chevron-down icon"></i></div><div class="accordion-content">
+                <div class="accordion"><div class="accordion-header" onclick="toggleAccordion(this)"><span>️ Residuos & 🛡️ EPP</span><i class="fas fa-chevron-down icon"></i></div><div class="accordion-content">
                     <div style="background: #0f172a; padding: 12px; border-radius: 6px; margin-bottom: 10px;"><input type="checkbox" id="wasteSharps" style="width:auto;"> <label>Residuos punzocortantes en contenedor rígido</label></div>
                     <div style="background: #0f172a; padding: 12px; border-radius: 6px; margin-bottom: 10px;"><input type="checkbox" id="wasteBiohazard" style="width:auto;"> <label>Residuos infecciosos en bolsa roja</label></div>
                     <h4 style="margin-top: 20px;">EPP Utilizado:</h4>
                     <div class="ppe-grid">
                         <div class="ppe-item"><input type="checkbox" id="ppeGloves"><label>🧤 Guantes</label></div>
                         <div class="ppe-item"><input type="checkbox" id="ppeMask"><label>😷 Tapabocas</label></div>
-                        <div class="ppe-item"><input type="checkbox" id="ppeGoggles"><label> Gafas</label></div>
+                        <div class="ppe-item"><input type="checkbox" id="ppeGoggles"><label>🥽 Gafas</label></div>
                         <div class="ppe-item"><input type="checkbox" id="ppeGown"><label>🥼 Bata</label></div>
                     </div>
                 </div></div>
@@ -375,7 +364,7 @@
                 <canvas id="famSigCanvas" class="signature-canvas"></canvas>
                 <button onclick="clearFamSig()" style="background: #334155; width: auto;">Borrar</button>
                 <button onclick="closeShift()" style="width: 100%; background: var(--info); margin-top: 20px;"><i class="fas fa-check-circle"></i> Cerrar Turno</button>
-                <button id="generateClosurePDFBtn" onclick="generateClosurePDF()" style="width: 100%; background: var(--warning); color: black; display: none;"><i class="fas fa-file-pdf"></i>  Generar PDF de Cierre de Turno</button>
+                <button id="generateClosurePDFBtn" onclick="generateClosurePDF()" style="width: 100%; background: var(--warning); color: black; display: none;"><i class="fas fa-file-pdf"></i> 📄 Generar PDF de Cierre de Turno</button>
             </div>
         </div>
     </div>
@@ -405,34 +394,146 @@
         function getChecked(id) { const el = document.getElementById(id); return el ? el.checked : false; }
 
         function togglePass() { const input = document.getElementById('pass'); const icon = document.querySelector('.toggle-password i'); input.type = input.type === 'password' ? 'text' : 'password'; icon.classList.toggle('fa-eye'); icon.classList.toggle('fa-eye-slash'); }
-        async function login() { const res = await fetch('/api/auth/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ email: document.getElementById('email').value, password: document.getElementById('pass').value }) }); const data = await res.json(); if (data.success) { const specRes = await fetch('/api/professionals'); const specData = await specRes.json(); const prof = specData.data.find(p => p.id === data.data.user.id); currentUser = { ...data.data.user, specialty_name: prof?.specialties?.name }; localStorage.setItem('user', JSON.stringify(currentUser)); initApp(); } else { document.getElementById('msg').innerText = data.message; } }
-        function initApp() { if (!localStorage.getItem('user')) return; currentUser = JSON.parse(localStorage.getItem('user')); document.getElementById('loginScreen').classList.add('hidden'); if (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE') { document.getElementById('adminPanel').classList.remove('hidden'); loadDashboard(); loadProfs(); loadPats(); loadEduResps(); initProfSigCanvas(); } else { document.getElementById('auxiliarPanel').classList.remove('hidden'); loadAuxPatients(); setInterval(loadAuxPatients, 60000); } }
+        
+        async function login() { 
+            const res = await fetch('/api/auth/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ email: document.getElementById('email').value, password: document.getElementById('pass').value }) }); 
+            const data = await res.json(); 
+            if (data.success) { 
+                const specRes = await fetch('/api/professionals'); 
+                const specData = await specRes.json(); 
+                const prof = specData.data.find(p => p.id === data.data.user.id); 
+                currentUser = { ...data.data.user, specialty_name: prof?.specialties?.name, professional_card: prof?.professional_card, signature_data: prof?.signature_data }; 
+                localStorage.setItem('user', JSON.stringify(currentUser)); 
+                initApp(); 
+            } else { document.getElementById('msg').innerText = data.message; } 
+        }
+        
+        function initApp() { 
+            if (!localStorage.getItem('user')) return; 
+            currentUser = JSON.parse(localStorage.getItem('user')); 
+            document.getElementById('loginScreen').classList.add('hidden'); 
+            if (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE') { 
+                document.getElementById('adminPanel').classList.remove('hidden'); 
+                loadDashboard(); loadProfs(); loadPats(); loadEduResps(); 
+                setTimeout(initProfSigCanvas, 100); 
+            } else { 
+                document.getElementById('auxiliarPanel').classList.remove('hidden'); 
+                loadAuxPatients(); 
+                setInterval(loadAuxPatients, 60000); 
+            } 
+        }
+        
         function logout() { clearInterval(autosaveInterval); localStorage.clear(); location.reload(); }
-        function show(id) { ['profSection', 'patSection', 'eduSection', 'reportsSection'].forEach(s => document.getElementById(s).classList.add('hidden')); document.getElementById(id + 'Section').classList.remove('hidden'); document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active')); event.target.closest('button').classList.add('active'); if(id === 'prof') loadProfs(); if(id === 'pat') loadPats(); if(id === 'edu') { loadEduResps(); loadEdus(); } if(id === 'reports') loadPendingReports(); }
-        function startDictation(elementId) { if (window.hasOwnProperty('webkitSpeechRecognition')) { const recognition = new webkitSpeechRecognition(); recognition.lang = 'es-CO'; const btn = document.querySelector(`button[onclick="startDictation('${elementId}')"]`); btn.classList.add('recording'); recognition.start(); recognition.onresult = function(e) { document.getElementById(elementId).value += ' ' + e.results[0][0].transcript; btn.classList.remove('recording'); }; recognition.onend = () => btn.classList.remove('recording'); } }
+        
+        function show(id) { 
+            ['profSection', 'patSection', 'eduSection', 'reportsSection'].forEach(s => document.getElementById(s).classList.add('hidden')); 
+            document.getElementById(id + 'Section').classList.remove('hidden'); 
+            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active')); 
+            event.target.closest('button').classList.add('active'); 
+            if(id === 'prof') { loadProfs(); setTimeout(initProfSigCanvas, 100); } 
+            if(id === 'pat') loadPats(); 
+            if(id === 'edu') { loadEduResps(); loadEdus(); } 
+            if(id === 'reports') loadPendingReports(); 
+        }
+        
+        function startDictation(elementId) { 
+            if (window.hasOwnProperty('webkitSpeechRecognition')) { 
+                const recognition = new webkitSpeechRecognition(); 
+                recognition.lang = 'es-CO'; 
+                const btn = document.querySelector(`button[onclick="startDictation('${elementId}')"]`); 
+                btn.classList.add('recording'); 
+                recognition.start(); 
+                recognition.onresult = function(e) { document.getElementById(elementId).value += ' ' + e.results[0][0].transcript; btn.classList.remove('recording'); }; 
+                recognition.onend = () => btn.classList.remove('recording'); 
+            } 
+        }
 
         async function loadDashboard() { const res = await fetch('/api/dashboard/stats'); const d = await res.json(); if(d.success) { document.getElementById('statPat').innerText = d.data.patients || 0; document.getElementById('statProf').innerText = d.data.professionals || 0; document.getElementById('statEdu').innerText = d.data.educationSessions || 0; document.getElementById('statReports').innerText = d.data.pendingReports || 0; } }
-        async function loadProfs() { const res = await fetch('/api/professionals'); const d = await res.json(); document.querySelector('#profTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.document_number}</td><td>${p.specialties?.name || 'N/A'}</td><td>${p.is_active ? '✅ Activo' : '❌ Inactivo'}</td><td><button class="btn-small ${p.is_active ? 'btn-danger' : 'btn-warning'}" onclick="toggleProf('${p.id}', ${p.is_active})">${p.is_active ? 'Desactivar' : 'Reactivar'}</button></td></tr>`).join(''); }
-        async function toggleProf(id, currentStatus) { if (!confirm(`¿${currentStatus ? 'Desactivar' : 'Reactivar'} este profesional?`)) return; const res = await fetch(`/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ isActive: !currentStatus }) }); alert((await res.json()).message); loadProfs(); loadDashboard(); }
-        async function loadPats() { const res = await fetch('/api/patients'); const d = await res.json(); document.querySelector('#patTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.city_id ? 'Asignada' : 'N/A'}</td><td>${p.family_name || 'N/A'}</td><td>${p.contact_phone || 'N/A'}</td><td>${p.is_active ? '✅ Activo' : '❌ Baja'}</td><td>${p.is_active ? `<button class="btn-small btn-danger" onclick="openDischargeModal('${p.id}', '${p.full_name}')">Dar de Baja</button>` : `<button class="btn-small btn-warning" onclick="reactivatePatient('${p.id}')">Reactivar</button>`}</td></tr>`).join(''); }
+        
+        async function loadProfs() { 
+            const res = await fetch('/api/professionals'); 
+            const d = await res.json(); 
+            document.querySelector('#profTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.document_number}</td><td>${p.specialties?.name || 'N/A'}</td><td>${p.is_active ? '✅ Activo' : '❌ Inactivo'}</td><td><button class="btn-small ${p.is_active ? 'btn-danger' : 'btn-warning'}" onclick="toggleProf('${p.id}', ${p.is_active})">${p.is_active ? 'Desactivar' : 'Reactivar'}</button></td></tr>`).join(''); 
+        }
+        
+        async function toggleProf(id, currentStatus) { 
+            if (!confirm(`¿${currentStatus ? 'Desactivar' : 'Reactivar'} este profesional?`)) return; 
+            const res = await fetch(`/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ isActive: !currentStatus }) }); 
+            const d = await res.json();
+            alert(d.message); 
+            loadProfs(); loadDashboard(); 
+        }
+        
+        async function loadPats() { 
+            const res = await fetch('/api/patients'); 
+            const d = await res.json(); 
+            document.querySelector('#patTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.city_id ? 'Asignada' : 'N/A'}</td><td>${p.family_name || 'N/A'}</td><td>${p.contact_phone || 'N/A'}</td><td>${p.is_active ? '✅ Activo' : '❌ Baja'}</td><td>${p.is_active ? `<button class="btn-small btn-danger" onclick="openDischargeModal('${p.id}', '${p.full_name}')">Dar de Baja</button>` : `<button class="btn-small btn-warning" onclick="reactivatePatient('${p.id}')">Reactivar</button>`}</td></tr>`).join(''); 
+        }
+        
         function openDischargeModal(id, name) { dischargePatientId = id; document.getElementById('dischargePatientName').innerText = name; document.getElementById('dischargeModal').classList.remove('hidden'); }
         function closeDischargeModal() { document.getElementById('dischargeModal').classList.add('hidden'); document.getElementById('dischargeReason').value = ''; document.getElementById('dischargeNotes').value = ''; }
-        async function confirmDischarge() { const reason = document.getElementById('dischargeReason').value; if (!reason) return alert('Selecciona un motivo'); if (!confirm('¿Confirmar baja?')) return; const res = await fetch(`/api/patients/${dischargePatientId}/discharge`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ reason, notes: document.getElementById('dischargeNotes').value }) }); alert((await res.json()).message); closeDischargeModal(); loadPats(); loadDashboard(); }
-        async function reactivatePatient(id) { if (!confirm('¿Reactivar paciente?')) return; const res = await fetch(`/api/patients/${id}/reactivate`, { method: 'PATCH' }); alert((await res.json()).message); loadPats(); loadDashboard(); }
-        async function createProf() { 
-            const signature = profCanvas.toDataURL();
-            const res = await fetch('/api/professionals', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ fullName: document.getElementById('pName').value, documentNumber: document.getElementById('pDoc').value, professionalCard: document.getElementById('pCard').value, email: document.getElementById('pEmail').value, password: document.getElementById('pPass').value, specialtyName: document.getElementById('pSpec').value, signature: signature }) }); 
-            alert((await res.json()).message); 
-            if ((await res.clone().json()).success) { clearProfSig(); loadProfs(); loadDashboard(); }
+        
+        async function confirmDischarge() { 
+            const reason = document.getElementById('dischargeReason').value; 
+            if (!reason) return alert('Selecciona un motivo'); 
+            if (!confirm('¿Confirmar baja?')) return; 
+            const res = await fetch(`/api/patients/${dischargePatientId}/discharge`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ reason, notes: document.getElementById('dischargeNotes').value }) }); 
+            const d = await res.json();
+            alert(d.message); 
+            closeDischargeModal(); loadPats(); loadDashboard(); 
         }
-        async function createPat() { const res = await fetch('/api/patients', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ fullName: document.getElementById('patName').value, cityName: document.getElementById('patCity').value, familyName: document.getElementById('famName').value, contactPhone: document.getElementById('famCel').value }) }); alert((await res.json()).message); loadPats(); loadDashboard(); }
+        
+        async function reactivatePatient(id) { 
+            if (!confirm('¿Reactivar paciente?')) return; 
+            const res = await fetch(`/api/patients/${id}/reactivate`, { method: 'PATCH' }); 
+            const d = await res.json();
+            alert(d.message); 
+            loadPats(); loadDashboard(); 
+        }
+        
+        // ✅ CORREGIDO: createProf() - ahora lee la respuesta UNA sola vez y valida el canvas
+        async function createProf() { 
+            if (!profCanvas) { alert('❌ Error: El lienzo de firma no está listo. Recarga la página.'); return; }
+            const signature = profCanvas.toDataURL();
+            const payload = { 
+                fullName: document.getElementById('pName').value, 
+                documentNumber: document.getElementById('pDoc').value, 
+                professionalCard: document.getElementById('pCard').value, 
+                email: document.getElementById('pEmail').value, 
+                password: document.getElementById('pPass').value, 
+                specialtyName: document.getElementById('pSpec').value, 
+                signature: signature 
+            };
+            const res = await fetch('/api/professionals', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }); 
+            const data = await res.json();
+            alert(data.message); 
+            if (data.success) { 
+                clearProfSig(); 
+                document.getElementById('pName').value = '';
+                document.getElementById('pDoc').value = '';
+                document.getElementById('pCard').value = '';
+                document.getElementById('pEmail').value = '';
+                document.getElementById('pPass').value = '';
+                loadProfs(); 
+                loadDashboard(); 
+            }
+        }
+        
+        async function createPat() { 
+            const res = await fetch('/api/patients', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ fullName: document.getElementById('patName').value, cityName: document.getElementById('patCity').value, familyName: document.getElementById('famName').value, contactPhone: document.getElementById('famCel').value }) }); 
+            const d = await res.json();
+            alert(d.message); 
+            loadPats(); loadDashboard(); 
+        }
+        
         async function loadEduResps() { const res = await fetch('/api/professionals'); const d = await res.json(); document.getElementById('eduResp').innerHTML = d.data.map(p => `<option value="${p.id}">${p.full_name} (${p.specialties?.name})</option>`).join(''); }
         async function loadEdus() { const res = await fetch('/api/education/topics'); const d = await res.json(); document.querySelector('#eduTable tbody').innerHTML = d.data.map(t => `<tr><td>${t.title}</td><td>${t.professionals?.full_name || 'N/A'}</td></tr>`).join(''); }
-        async function createEdu() { const res = await fetch('/api/education/topics', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title: document.getElementById('eduTitle').value, responsibleId: document.getElementById('eduResp').value }) }); alert((await res.json()).message); loadEdus(); loadDashboard(); }
+        async function createEdu() { const res = await fetch('/api/education/topics', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title: document.getElementById('eduTitle').value, responsibleId: document.getElementById('eduResp').value }) }); const d = await res.json(); alert(d.message); loadEdus(); loadDashboard(); }
         async function loadPendingReports() { const res = await fetch('/api/reports/pending'); const d = await res.json(); const patientSelect = document.getElementById('reportPatient'); patientSelect.innerHTML = '<option value="">Seleccionar paciente...</option>'; if(d.data) { d.data.forEach(p => { patientSelect.innerHTML += `<option value="${p.id}">${p.full_name}</option>`; }); } }
 
         function initProfSigCanvas() {
             profCanvas = document.getElementById('profSigCanvas');
+            if (!profCanvas) return;
             profCtx = profCanvas.getContext('2d');
             profCanvas.width = profCanvas.offsetWidth;
             profCanvas.height = 150;
@@ -446,7 +547,7 @@
             profCanvas.onmousemove = (e) => { if (!drawing) return; const r = profCanvas.getBoundingClientRect(); profCtx.lineWidth = 2; profCtx.lineCap = 'round'; profCtx.strokeStyle = 'black'; profCtx.lineTo(e.clientX - r.left, e.clientY - r.top); profCtx.stroke(); profCtx.beginPath(); profCtx.moveTo(e.clientX - r.left, e.clientY - r.top); };
             profCanvas.ontouchmove = (e) => { e.preventDefault(); if (!drawing) return; const r = profCanvas.getBoundingClientRect(); const touch = e.touches[0]; profCtx.lineWidth = 2; profCtx.lineCap = 'round'; profCtx.strokeStyle = 'black'; profCtx.lineTo(touch.clientX - r.left, touch.clientY - r.top); profCtx.stroke(); profCtx.beginPath(); profCtx.moveTo(touch.clientX - r.left, touch.clientY - r.top); };
         }
-        function clearProfSig() { profCtx.fillStyle = 'white'; profCtx.fillRect(0, 0, profCanvas.width, profCanvas.height); profCtx.beginPath(); }
+        function clearProfSig() { if (profCtx) { profCtx.fillStyle = 'white'; profCtx.fillRect(0, 0, profCanvas.width, profCanvas.height); profCtx.beginPath(); } }
 
         async function generateMonthlyPDF() {
             const patientId = document.getElementById('reportPatient').value;
@@ -454,7 +555,7 @@
             const year = document.getElementById('reportYear').value;
             const statusDiv = document.getElementById('pdfStatus');
             if(!patientId) return alert('Selecciona un paciente');
-            statusDiv.innerText = ' Generando informe...';
+            statusDiv.innerText = '🔄 Generando informe...';
             try {
                 const res = await fetch(`/api/reports/${patientId}/${month}/${year}`);
                 const result = await res.json();
@@ -581,7 +682,7 @@
                 doc.text(`Documento generado el ${new Date().toLocaleString('es-CO')} por Vital Hogar Pro.`, 105, finalY + 55, null, null, "center");
                 
                 doc.save(`Resumen_Diario_${selectedPatient.full_name.replace(/\s+/g, '_')}_${new Date().toLocaleDateString('es-CO').replace(/\//g, '-')}.pdf`);
-            } catch (error) { console.error(error); alert(' Error al generar PDF: ' + error.message); }
+            } catch (error) { console.error(error); alert('❌ Error al generar PDF: ' + error.message); }
         }
 
         async function generateClosurePDF() {
@@ -661,17 +762,46 @@
                 doc.text("Este documento certifica el cierre del turno y la entrega del paciente.", 105, finalY + 60, null, null, "center");
                 
                 doc.save(`Cierre_Turno_${shift?.patients?.full_name.replace(/\s+/g, '_')}_${new Date(shift?.start_time).toLocaleDateString('es-CO').replace(/\//g, '-')}.pdf`);
-            } catch (error) { console.error(error); alert(' Error al generar PDF: ' + error.message); }
+            } catch (error) { console.error(error); alert('❌ Error al generar PDF: ' + error.message); }
         }
 
         async function loadAuxPatients() { const res = await fetch('/api/auxiliar/patients'); const d = await res.json(); const patientsWithStatus = d.data.map(p => { const lastRecord = p.clinical_records?.[0]; const now = new Date(); const lastRecordTime = lastRecord ? new Date(lastRecord.created_at) : null; const hoursSinceLastRecord = lastRecordTime ? (now - lastRecordTime) / (1000 * 60 * 60) : Infinity; let status = 'estable'; if (lastRecord) { const spo2Min = p.altitude_profiles?.spo2_min_normal || 95; if (lastRecord.spo2 < spo2Min - 2) status = 'alerta'; if (lastRecord.glucose < 60 || lastRecord.glucose > 200) status = 'critico'; if (lastRecord.eva_score >= 7) status = 'critico'; if (lastRecord.glasgow_eyes + lastRecord.glasgow_verbal + lastRecord.glasgow_motor < 9) status = 'critico'; } if (hoursSinceLastRecord > 12) status = 'critico'; else if (hoursSinceLastRecord > 4) status = 'alerta'; return { ...p, status }; }); document.getElementById('auxPatientList').innerHTML = patientsWithStatus.map(p => `<div class="patient-card" style="border-left: 4px solid ${getStatusColor(p.status)};" onclick='selectPatient(${JSON.stringify(p)})'><strong>${p.full_name}</strong> - ${p.altitude_profiles?.city_name || 'N/A'} <span style="font-weight: bold; color: ${getStatusColor(p.status)}; float: right;">${getStatusEmoji(p.status)}</span><br><small>${p.pathology_summary || 'Sin patología'}</small></div>`).join(''); }
         function getStatusColor(status) { if (status === 'critico') return 'var(--danger)'; if (status === 'alerta') return 'var(--warning)'; return 'var(--primary)'; }
-        function getStatusEmoji(status) { if (status === 'critico') return '🔴'; if (status === 'alerta') return ''; return '🟢'; }
+        function getStatusEmoji(status) { if (status === 'critico') return '🔴'; if (status === 'alerta') return '🟡'; return ''; }
         function selectPatient(patient) { selectedPatient = patient; document.getElementById('patientNameStart').innerText = patient.full_name; document.getElementById('patientSelection').classList.add('hidden'); document.getElementById('shiftStart').classList.remove('hidden'); }
         function toggleCustomShift() { const type = document.getElementById('shiftType').value; const customDiv = document.getElementById('customShiftTimes'); if (type === 'personalizado') customDiv.classList.remove('hidden'); else customDiv.classList.add('hidden'); }
-        async function startShift() { const shiftType = document.getElementById('shiftType').value; let customStart = null, customEnd = null; if (shiftType === 'personalizado') { customStart = document.getElementById('customStartTime').value; customEnd = document.getElementById('customEndTime').value; if (!customStart || !customEnd) return alert('⚠️ Debes definir la hora de inicio y fin'); } const res = await fetch('/api/shifts/start', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ patientId: selectedPatient.id, professionalId: currentUser.id, shiftType, patientStatus: document.getElementById('patientReceivedStatus').value, patientNotes: document.getElementById('patientReceivedNotes').value, customStartTime: customStart, customEndTime: customEnd }) }); const d = await res.json(); if (d.success) { currentShiftId = d.data.id; document.getElementById('patientNameClinical').innerText = selectedPatient.full_name; document.getElementById('shiftStart').classList.add('hidden'); document.getElementById('clinicalForm').classList.remove('hidden'); initSignatureCanvases(); loadDailyHistory(); startAutosave(); } }
+        
+        // ✅ CORREGIDO: startShift() - ahora convierte "14:30" en fecha completa de hoy
+        async function startShift() { 
+            const shiftType = document.getElementById('shiftType').value; 
+            let customStart = null, customEnd = null; 
+            if (shiftType === 'personalizado') { 
+                const startTimeVal = document.getElementById('customStartTime').value;
+                const endTimeVal = document.getElementById('customEndTime').value;
+                if (!startTimeVal || !endTimeVal) return alert('⚠️ Debes definir la hora de inicio y fin'); 
+                
+                // Combinar fecha de hoy con la hora seleccionada
+                const today = new Date().toISOString().split('T')[0];
+                customStart = `${today}T${startTimeVal}:00.000Z`;
+                customEnd = `${today}T${endTimeVal}:00.000Z`;
+            } 
+            const res = await fetch('/api/shifts/start', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ patientId: selectedPatient.id, professionalId: currentUser.id, shiftType, patientStatus: document.getElementById('patientReceivedStatus').value, patientNotes: document.getElementById('patientReceivedNotes').value, customStartTime: customStart, customEndTime: customEnd }) }); 
+            const d = await res.json(); 
+            if (d.success) { 
+                currentShiftId = d.data.id; 
+                document.getElementById('patientNameClinical').innerText = selectedPatient.full_name; 
+                document.getElementById('shiftStart').classList.add('hidden'); 
+                document.getElementById('clinicalForm').classList.remove('hidden'); 
+                initSignatureCanvases(); 
+                loadDailyHistory(); 
+                startAutosave(); 
+            } else {
+                alert('❌ Error al iniciar turno: ' + d.message);
+            }
+        }
+        
         function startAutosave() { clearInterval(autosaveInterval); autosaveInterval = setInterval(() => { const draft = { bp: getVal('bloodPressure'), hr: getVal('heartRate'), notes: getVal('clinicalNotes') }; localStorage.setItem(`draft_${selectedPatient.id}`, JSON.stringify(draft)); }, 30000); }
-        function checkVital(type) { const spo2Min = selectedPatient.altitude_profiles?.spo2_min_normal || 95; const checks = { bp: () => { const v = getVal('bloodPressure'); const m = v.match(/(\d+)\/(\d+)/); if (!m) return { status: 'none' }; const [s, d] = [parseInt(m[1]), parseInt(m[2])]; if (s < 80 || s >= 160 || d < 50 || d >= 100) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (s < 90 || s >= 140 || d < 60 || d >= 90) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: ' Normal' }; }, hr: () => { const v = parseInt(getVal('heartRate')); if (!v) return { status: 'none' }; if (v < 50 || v >= 120) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < 60 || v > 100) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: ' Normal' }; }, rr: () => { const v = parseInt(getVal('respiratoryRate')); if (!v) return { status: 'none' }; if (v < 10 || v >= 25) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < 12 || v > 20) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: '🟢 Normal' }; }, temp: () => { const v = parseFloat(getVal('temperature')); if (!v) return { status: 'none' }; if (v < 35.5 || v >= 38.0) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < 36.1 || v > 37.2) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: '🟢 Normal' }; }, spo2: () => { const v = parseInt(getVal('spo2')); if (!v) return { status: 'none' }; if (v < spo2Min - 3) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < spo2Min) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: '🟢 Normal' }; }, glu: () => { const v = parseInt(getVal('glucose')); if (!v) return { status: 'none' }; if (v < 60 || v >= 200) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < 70 || v > 140) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: '🟢 Normal' }; } }; const r = checks[type](); const inputMap = { bp: 'bloodPressure', hr: 'heartRate', rr: 'respiratoryRate', temp: 'temperature', spo2: 'spo2', glu: 'glucose' }; const alertMap = { bp: 'bpAlert', hr: 'hrAlert', rr: 'rrAlert', temp: 'tempAlert', spo2: 'spo2Alert', glu: 'gluAlert' }; const input = document.getElementById(inputMap[type]); const alertDiv = document.getElementById(alertMap[type]); if (r.status === 'none') { alertDiv.classList.remove('show'); input.className = ''; } else { alertDiv.className = `vital-status show ${r.status}`; alertDiv.innerHTML = r.msg; input.className = `vital-${r.status}`; } }
+        function checkVital(type) { const spo2Min = selectedPatient.altitude_profiles?.spo2_min_normal || 95; const checks = { bp: () => { const v = getVal('bloodPressure'); const m = v.match(/(\d+)\/(\d+)/); if (!m) return { status: 'none' }; const [s, d] = [parseInt(m[1]), parseInt(m[2])]; if (s < 80 || s >= 160 || d < 50 || d >= 100) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (s < 90 || s >= 140 || d < 60 || d >= 90) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: '🟢 Normal' }; }, hr: () => { const v = parseInt(getVal('heartRate')); if (!v) return { status: 'none' }; if (v < 50 || v >= 120) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < 60 || v > 100) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: '🟢 Normal' }; }, rr: () => { const v = parseInt(getVal('respiratoryRate')); if (!v) return { status: 'none' }; if (v < 10 || v >= 25) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < 12 || v > 20) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: ' Normal' }; }, temp: () => { const v = parseFloat(getVal('temperature')); if (!v) return { status: 'none' }; if (v < 35.5 || v >= 38.0) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < 36.1 || v > 37.2) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: '🟢 Normal' }; }, spo2: () => { const v = parseInt(getVal('spo2')); if (!v) return { status: 'none' }; if (v < spo2Min - 3) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < spo2Min) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: '🟢 Normal' }; }, glu: () => { const v = parseInt(getVal('glucose')); if (!v) return { status: 'none' }; if (v < 60 || v >= 200) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < 70 || v > 140) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: ' Normal' }; } }; const r = checks[type](); const inputMap = { bp: 'bloodPressure', hr: 'heartRate', rr: 'respiratoryRate', temp: 'temperature', spo2: 'spo2', glu: 'glucose' }; const alertMap = { bp: 'bpAlert', hr: 'hrAlert', rr: 'rrAlert', temp: 'tempAlert', spo2: 'spo2Alert', glu: 'gluAlert' }; const input = document.getElementById(inputMap[type]); const alertDiv = document.getElementById(alertMap[type]); if (r.status === 'none') { alertDiv.classList.remove('show'); input.className = ''; } else { alertDiv.className = `vital-status show ${r.status}`; alertDiv.innerHTML = r.msg; input.className = `vital-${r.status}`; } }
         function updateEVA() { const v = getVal('evaScore'); let t = 'Sin dolor'; if (v >= 1 && v <= 3) t = 'Dolor leve'; if (v >= 4 && v <= 6) t = 'Dolor moderado'; if (v >= 7) t = 'Dolor severo'; document.getElementById('evaValue').innerText = `${v} - ${t}`; }
         function toggleGlasgow() { document.getElementById('glasgowSection').classList.toggle('hidden'); if (!document.getElementById('glasgowSection').classList.contains('hidden')) calculateGlasgow(); }
         function calculateGlasgow() { const t = (parseInt(getVal('glasgowEyes'))||0) + (parseInt(getVal('glasgowVerbal'))||0) + (parseInt(getVal('glasgowMotor'))||0); const d = document.getElementById('glasgowTotal'); let s = 'Normal', c = 'normal'; if (t >= 13 && t <= 14) { s = '⚠️ LEVE'; c = 'mild'; } else if (t >= 9 && t <= 12) { s = '⚠️ MODERADA'; c = 'moderate'; } else if (t >= 3 && t <= 8) { s = '🚨 SEVERA'; c = 'severe'; } d.className = `glasgow-total ${c}`; d.innerHTML = `<h3>${t}/15</h3><p>${s}</p>`; }
@@ -759,7 +889,7 @@
 
         function getVitalStatus(type, value) { const spo2Min = selectedPatient?.altitude_profiles?.spo2_min_normal || 95; if (value === null || value === undefined || value === '') return { status: 'normal', label: '--' }; if (type === 'bp') { const m = String(value).match(/(\d+)\/(\d+)/); if (!m) return { status: 'normal', label: value }; const [s, d] = [parseInt(m[1]), parseInt(m[2])]; if (s < 80 || s >= 160 || d < 50 || d >= 100) return { status: 'danger', label: value }; if (s < 90 || s >= 140 || d < 60 || d >= 90) return { status: 'warning', label: value }; return { status: 'normal', label: value }; } if (type === 'hr') { if (value < 50 || value >= 120) return { status: 'danger', label: value }; if (value < 60 || value > 100) return { status: 'warning', label: value }; return { status: 'normal', label: value }; } if (type === 'rr') { if (value < 10 || value >= 25) return { status: 'danger', label: value }; if (value < 12 || value > 20) return { status: 'warning', label: value }; return { status: 'normal', label: value }; } if (type === 'temp') { if (value < 35.5 || value >= 38.0) return { status: 'danger', label: value + '°C' }; if (value < 36.1 || value > 37.2) return { status: 'warning', label: value + '°C' }; return { status: 'normal', label: value + '°C' }; } if (type === 'spo2') { if (value < spo2Min - 3) return { status: 'danger', label: value + '%' }; if (value < spo2Min) return { status: 'warning', label: value + '%' }; return { status: 'normal', label: value + '%' }; } if (type === 'glu') { if (value < 60 || value >= 200) return { status: 'danger', label: value }; if (value < 70 || value > 140) return { status: 'warning', label: value }; return { status: 'normal', label: value }; } if (type === 'eva') { if (value >= 7) return { status: 'danger', label: value }; if (value >= 4) return { status: 'warning', label: value }; return { status: 'normal', label: value }; } return { status: 'normal', label: value }; }
         function formatTime12h(timeStr) { if (!timeStr) return '--:--'; if (timeStr.includes(':') && !timeStr.includes(' ')) { const [h, m] = timeStr.split(':'); const hour = parseInt(h); const ampm = hour >= 12 ? 'p. m.' : 'a. m.'; const hour12 = hour % 12 || 12; return `${String(hour12).padStart(2, '0')}:${m} ${ampm}`; } return timeStr; }
-        async function loadDailyHistory() { const res = await fetch(`/api/patients/${selectedPatient.id}/daily-history`); const d = await res.json(); if (!d.data.records || d.data.records.length === 0) { document.getElementById('dailyHistory').innerHTML = '<p style="color: #94a3b8; text-align: center;">No hay registros hoy</p>'; return; } document.getElementById('dailyHistory').innerHTML = d.data.records.map(r => { const date = new Date(r.created_at); const timeStr = date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true }); const bp = getVitalStatus('bp', r.blood_pressure); const hr = getVitalStatus('hr', r.heart_rate); const rr = getVitalStatus('rr', r.respiratory_rate); const temp = getVitalStatus('temp', r.temperature); const spo2 = getVitalStatus('spo2', r.spo2); const glu = getVitalStatus('glu', r.glucose); const eva = getVitalStatus('eva', r.eva_score); let glasgowHtml = ''; if (r.glasgow_eyes && r.glasgow_verbal && r.glasgow_motor) { const t = r.glasgow_eyes + r.glasgow_verbal + r.glasgow_motor; let s = 'normal'; if (t >= 13 && t <= 14) s = 'warning'; if (t >= 9 && t <= 12) s = 'warning'; if (t >= 3 && t <= 8) s = 'danger'; glasgowHtml = `<div class="history-vital-item v-${s}"><strong>${t}/15</strong><small>Glasgow</small></div>`; } let activitiesHtml = ''; if (r.activities_completed) { const acts = r.activities_completed; const tags = []; if (acts.hygiene?.bath?.done) tags.push(`🛁 Baño (${formatTime12h(acts.hygiene.bath.time)})`); if (acts.feeding?.oral?.done) tags.push(`🥣 Alimentación (${formatTime12h(acts.feeding.oral.time)})`); if (acts.medications?.length > 0) tags.push(`💊 ${acts.medications.length} medicamento(s)`); if (acts.mobility?.position_change?.done) tags.push(`🔄 Cambio postural`); if (tags.length > 0) activitiesHtml = `<div style="margin: 10px 0;"><strong>✅ Actividades:</strong><br>${tags.map(t => `<span class="history-activity-tag">${t}</span>`).join('')}</div>`; } return `<div class="history-item"><div class="history-header"><span class="history-time">🕐 ${timeStr}</span><span style="color: #94a3b8;">${r.professionals?.full_name || 'Auxiliar'}</span></div><div class="history-vitals"><div class="history-vital-item v-${bp.status}"><strong>${bp.label || '--/--'}</strong><small>PA</small></div><div class="history-vital-item v-${hr.status}"><strong>${hr.label || '--'}</strong><small>FC</small></div><div class="history-vital-item v-${rr.status}"><strong>${rr.label || '--'}</strong><small>FR</small></div><div class="history-vital-item v-${temp.status}"><strong>${temp.label || '--'}</strong><small>Temp</small></div><div class="history-vital-item v-${spo2.status}"><strong>${spo2.label || '--'}</strong><small>SpO2</small></div><div class="history-vital-item v-${glu.status}"><strong>${glu.label || '--'}</strong><small>Glucosa</small></div><div class="history-vital-item v-${eva.status}"><strong>${eva.label ?? '--'}</strong><small>EVA</small></div>${glasgowHtml}</div>${activitiesHtml}${r.notes ? `<div class="history-notes">📝 ${r.notes}</div>` : ''}</div>`; }).join(''); }
+        async function loadDailyHistory() { const res = await fetch(`/api/patients/${selectedPatient.id}/daily-history`); const d = await res.json(); if (!d.data.records || d.data.records.length === 0) { document.getElementById('dailyHistory').innerHTML = '<p style="color: #94a3b8; text-align: center;">No hay registros hoy</p>'; return; } document.getElementById('dailyHistory').innerHTML = d.data.records.map(r => { const date = new Date(r.created_at); const timeStr = date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true }); const bp = getVitalStatus('bp', r.blood_pressure); const hr = getVitalStatus('hr', r.heart_rate); const rr = getVitalStatus('rr', r.respiratory_rate); const temp = getVitalStatus('temp', r.temperature); const spo2 = getVitalStatus('spo2', r.spo2); const glu = getVitalStatus('glu', r.glucose); const eva = getVitalStatus('eva', r.eva_score); let glasgowHtml = ''; if (r.glasgow_eyes && r.glasgow_verbal && r.glasgow_motor) { const t = r.glasgow_eyes + r.glasgow_verbal + r.glasgow_motor; let s = 'normal'; if (t >= 13 && t <= 14) s = 'warning'; if (t >= 9 && t <= 12) s = 'warning'; if (t >= 3 && t <= 8) s = 'danger'; glasgowHtml = `<div class="history-vital-item v-${s}"><strong>${t}/15</strong><small>Glasgow</small></div>`; } let activitiesHtml = ''; if (r.activities_completed) { const acts = r.activities_completed; const tags = []; if (acts.hygiene?.bath?.done) tags.push(`🛁 Baño (${formatTime12h(acts.hygiene.bath.time)})`); if (acts.feeding?.oral?.done) tags.push(`🥣 Alimentación (${formatTime12h(acts.feeding.oral.time)})`); if (acts.medications?.length > 0) tags.push(`💊 ${acts.medications.length} medicamento(s)`); if (acts.mobility?.position_change?.done) tags.push(`🔄 Cambio postural`); if (tags.length > 0) activitiesHtml = `<div style="margin: 10px 0;"><strong>✅ Actividades:</strong><br>${tags.map(t => `<span class="history-activity-tag">${t}</span>`).join('')}</div>`; } return `<div class="history-item"><div class="history-header"><span class="history-time"> ${timeStr}</span><span style="color: #94a3b8;">${r.professionals?.full_name || 'Auxiliar'}</span></div><div class="history-vitals"><div class="history-vital-item v-${bp.status}"><strong>${bp.label || '--/--'}</strong><small>PA</small></div><div class="history-vital-item v-${hr.status}"><strong>${hr.label || '--'}</strong><small>FC</small></div><div class="history-vital-item v-${rr.status}"><strong>${rr.label || '--'}</strong><small>FR</small></div><div class="history-vital-item v-${temp.status}"><strong>${temp.label || '--'}</strong><small>Temp</small></div><div class="history-vital-item v-${spo2.status}"><strong>${spo2.label || '--'}</strong><small>SpO2</small></div><div class="history-vital-item v-${glu.status}"><strong>${glu.label || '--'}</strong><small>Glucosa</small></div><div class="history-vital-item v-${eva.status}"><strong>${eva.label ?? '--'}</strong><small>EVA</small></div>${glasgowHtml}</div>${activitiesHtml}${r.notes ? `<div class="history-notes">📝 ${r.notes}</div>` : ''}</div>`; }).join(''); }
         async function closeShift() {
             const payload = {
                 shiftId: currentShiftId,
