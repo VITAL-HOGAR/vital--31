@@ -57,11 +57,11 @@ app.get('/api/professionals', async (req, res) => {
 
 app.post('/api/professionals', async (req, res) => {
     try {
-        const { email, password, fullName, documentNumber, specialtyName, signature } = req.body;
+        const { email, password, fullName, documentNumber, specialtyName, signature, professionalCard } = req.body;
         const { data: specData } = await supabase.from('specialties').select('id').eq('name', specialtyName).single();
         if (!specData) return res.status(400).json({ success: false, message: 'Especialidad no válida' });
         const { data: authUser } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
-        await supabase.from('professionals').insert([{ user_id: authUser.user.id, full_name: fullName, document_number: documentNumber, specialty_id: specData.id, signature_data: signature, is_active: true }]);
+        await supabase.from('professionals').insert([{ user_id: authUser.user.id, full_name: fullName, document_number: documentNumber, specialty_id: specData.id, signature_data: signature, professional_card: professionalCard || null, is_active: true }]);
         res.json({ success: true, message: 'Profesional registrado' });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
@@ -174,10 +174,20 @@ app.get('/api/patients/:id/daily-history', async (req, res) => {
 
 app.post('/api/shifts/close', async (req, res) => {
     try {
-        const { shiftId, patientDeliveredStatus, patientDeliveredNotes, pendingTasks, pendingJustification, auxiliarySignature, auxiliaryName, auxiliaryIdNumber, familySignature, familyName, familyIdNumber } = req.body;
+        const { shiftId, patientDeliveredStatus, patientDeliveredNotes, pendingTasks, pendingJustification, auxiliarySignature, auxiliaryName, auxiliaryIdNumber, auxiliaryProfessionalCard, familySignature, familyName, familyIdNumber, familyRelationship, familyPhone } = req.body;
         await supabase.from('shifts').update({ end_time: new Date().toISOString(), patient_delivered_status: patientDeliveredStatus, patient_delivered_notes: patientDeliveredNotes, pending_tasks: pendingTasks, pending_justification: pendingJustification, is_closed: true }).eq('id', shiftId);
-        await supabase.from('shift_signatures').insert([{ clinical_record_id: null, auxiliary_signature: auxiliarySignature, auxiliary_name: auxiliaryName, auxiliary_id_number: auxiliaryIdNumber, auxiliary_signed_at: new Date().toISOString(), family_signature: familySignature, family_name: familyName, family_id_number: familyIdNumber, family_signed_at: new Date().toISOString() }]);
-        res.json({ success: true, message: 'Turno cerrado exitosamente' });
+        await supabase.from('shift_signatures').insert([{ clinical_record_id: null, auxiliary_signature: auxiliarySignature, auxiliary_name: auxiliaryName, auxiliary_id_number: auxiliaryIdNumber, auxiliary_professional_card: auxiliaryProfessionalCard || null, auxiliary_signed_at: new Date().toISOString(), family_signature: familySignature, family_name: familyName, family_id_number: familyIdNumber, family_relationship: familyRelationship, family_phone: familyPhone, family_signed_at: new Date().toISOString() }]);
+        res.json({ success: true, message: 'Turno cerrado exitosamente', data: { shiftId } });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// NUEVA RUTA: Obtener datos completos del cierre de turno para PDF
+app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
+    try {
+        const { data: shift } = await supabase.from('shifts').select('*, patients(*, altitude_profiles(city_name))').eq('id', req.params.shiftId).single();
+        const { data: records } = await supabase.from('clinical_records').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: true });
+        const { data: signatures } = await supabase.from('shift_signatures').select('*').eq('clinical_record_id', null).gte('created_at', shift?.start_time).lte('created_at', shift?.end_time || new Date().toISOString());
+        res.json({ success: true, data: { shift, records: records || [], signatures: signatures || [] } });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
