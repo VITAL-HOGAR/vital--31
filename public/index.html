@@ -148,6 +148,10 @@
                         <option value="FISIOTERAPIA">Fisioterapeuta</option>
                         <option value="NUTRICION">Nutricionista</option>
                         <option value="PSICOLOGIA">Psicólogo</option>
+                        <option value="TERAPIA_OCUPACIONAL">Terapista Ocupacional</option>
+                        <option value="TERAPIA_RESPIRATORIA">Terapista Respiratorio</option>
+                        <option value="FONOAUDIOLOGIA">Fonoaudiólogo</option>
+                        <option value="TRABAJO_SOCIAL">Trabajador Social</option>
                     </select>
                 </div>
                 <p style="margin: 10px 0 5px; color: #94a3b8; font-size: 0.9rem;">Firma Digital:</p>
@@ -167,12 +171,59 @@
                     <input type="text" id="patName" placeholder="Nombre Completo">
                     <input type="text" id="patDoc" placeholder="Cédula">
                     <select id="patCity">
-                        <option value="Bogotá">Bogotá (Nivel 4 - SpO2 93%)</option>
-                        <option value="Medellín">Medellín (Nivel 3 - SpO2 95%)</option>
-                        <option value="Cali">Cali (Nivel 2 - SpO2 96%)</option>
-                        <option value="Cúcuta">Cúcuta (Nivel 1/2 - SpO2 96%)</option>
-                        <option value="Barranquilla">Barranquilla (Nivel 1 - SpO2 97%)</option>
-                    </select>
+    <optgroup label="🌊 NIVEL 1 - SpO2 97% (Costa y Llanos)">
+        <option value="Barranquilla">Barranquilla</option>
+        <option value="Cartagena">Cartagena</option>
+        <option value="Santa Marta">Santa Marta</option>
+        <option value="Riohacha">Riohacha</option>
+        <option value="Montería">Montería</option>
+        <option value="Valledupar">Valledupar</option>
+        <option value="Sincelejo">Sincelejo</option>
+        <option value="Quibdó">Quibdó</option>
+        <option value="Florencia">Florencia</option>
+        <option value="Mocoa">Mocoa</option>
+        <option value="Leticia">Leticia</option>
+        <option value="San Andrés">San Andrés</option>
+        <option value="Arauca">Arauca</option>
+        <option value="Yopal">Yopal</option>
+    </optgroup>
+    <optgroup label="🏔️ NIVEL 2 - SpO2 96% (Medias-Bajas)">
+        <option value="Cali">Cali</option>
+        <option value="Bucaramanga">Bucaramanga</option>
+        <option value="Cúcuta">Cúcuta</option>
+        <option value="Neiva">Neiva</option>
+        <option value="Ibagué">Ibagué</option>
+        <option value="Villavicencio">Villavicencio</option>
+        <option value="Pereira">Pereira</option>
+        <option value="Armenia">Armenia</option>
+        <option value="Manizales">Manizales</option>
+        <option value="Palmira">Palmira</option>
+        <option value="Girardot">Girardot</option>
+        <option value="Tuluá">Tuluá</option>
+        <option value="Popayán">Popayán</option>
+    </optgroup>
+    <optgroup label="⛰️ NIVEL 3 - SpO2 95% (Medias)">
+        <option value="Medellín">Medellín</option>
+        <option value="Envigado">Envigado</option>
+        <option value="Itagüí">Itagüí</option>
+        <option value="Rionegro">Rionegro</option>
+        <option value="Tunja">Tunja</option>
+        <option value="Duitama">Duitama</option>
+        <option value="Sogamoso">Sogamoso</option>
+        <option value="Chía">Chía</option>
+        <option value="Zipaquirá">Zipaquirá</option>
+        <option value="Facatativá">Facatativá</option>
+        <option value="Dosquebradas">Dosquebradas</option>
+    </optgroup>
+    <optgroup label="🏔️ NIVEL 4 - SpO2 93% (Altas)">
+        <option value="Bogotá">Bogotá</option>
+        <option value="Soacha">Soacha</option>
+        <option value="Funza">Funza</option>
+        <option value="Mosquera">Mosquera</option>
+        <option value="Pasto">Pasto</option>
+        <option value="Ipiales">Ipiales</option>
+    </optgroup>
+</select>
                     <div class="mic-wrapper">
                         <input type="text" id="patPath" placeholder="Patología / Diagnóstico">
                         <button class="mic-btn" onclick="startDictation('patPath')"><i class="fas fa-microphone"></i></button>
