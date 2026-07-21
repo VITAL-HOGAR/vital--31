@@ -56,14 +56,16 @@
         .history-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
         .history-time { font-weight: bold; color: var(--info); }
         .history-aux { color: #94a3b8; font-size: 0.9rem; }
-        .history-status { padding: 3px 10px; border-radius: 12px; font-size: 0.8rem; font-weight: bold; }
-        .history-status.estable { background: var(--primary); color: white; }
-        .history-status.novedades { background: var(--warning); color: black; }
-        .history-status.critico { background: var(--danger); color: white; }
         .history-vitals { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin: 10px 0; }
-        .history-vital-item { background: var(--card-bg); padding: 8px; border-radius: 6px; text-align: center; }
-        .history-vital-item strong { display: block; color: var(--primary); font-size: 1.1rem; }
-        .history-vital-item small { color: #94a3b8; }
+        .history-vital-item { background: var(--card-bg); padding: 8px; border-radius: 6px; text-align: center; border: 2px solid transparent; }
+        .history-vital-item strong { display: block; font-size: 1.1rem; }
+        .history-vital-item small { color: #94a3b8; display: block; }
+        .history-vital-item.v-normal { border-color: var(--primary); }
+        .history-vital-item.v-normal strong { color: var(--primary); }
+        .history-vital-item.v-warning { border-color: var(--warning); background: #422006; }
+        .history-vital-item.v-warning strong { color: var(--warning); }
+        .history-vital-item.v-danger { border-color: var(--danger); background: #450a0a; }
+        .history-vital-item.v-danger strong { color: var(--danger); }
         .history-activities { margin: 10px 0; }
         .history-activity-tag { display: inline-block; background: var(--card-bg); padding: 4px 10px; border-radius: 12px; margin: 2px; font-size: 0.85rem; }
         .history-notes { background: var(--card-bg); padding: 10px; border-radius: 6px; margin-top: 10px; font-style: italic; color: #cbd5e1; }
@@ -71,7 +73,7 @@
         /* ACTIVIDADES */
         .activity-item { background: #0f172a; padding: 10px; border-radius: 6px; display: flex; align-items: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
         .activity-item input[type="checkbox"] { width: auto; margin: 0; }
-        .activity-item input[type="time"] { width: 120px; margin: 0; }
+        .activity-item input[type="time"] { width: 150px; margin: 0; }
         .activity-item label { flex: 1; min-width: 150px; }
         
         /* FIRMA */
@@ -158,13 +160,11 @@
             <button onclick="logout()" style="background:var(--danger); width:auto;">Salir</button>
         </div>
 
-        <!-- SELECCIÓN DE PACIENTE -->
         <div id="patientSelection" class="card">
             <h3>Selecciona un Paciente</h3>
             <div id="auxPatientList"></div>
         </div>
 
-        <!-- INICIO DE TURNO -->
         <div id="shiftStart" class="hidden">
             <div class="card">
                 <h3>Iniciar Turno - <span id="patientNameStart" style="color: var(--primary);"></span></h3>
@@ -197,7 +197,6 @@
             </div>
         </div>
 
-        <!-- REGISTRO CLÍNICO -->
         <div id="clinicalForm" class="hidden">
             <div class="card">
                 <h3>Registro Clínico - <span id="patientNameClinical" style="color: var(--primary);"></span></h3>
@@ -299,28 +298,28 @@
                 </div>
 
                 <h4><i class="fas fa-exchange-alt"></i> SBAR (Solo en novedades)</h4>
-                <div class="sbar-section" style="background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                <div style="background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
                     <h5 style="color: var(--info); margin: 0 0 10px 0;">S - Situación</h5>
                     <div class="mic-wrapper">
                         <textarea id="sbarSituation" rows="2" placeholder="¿Qué está pasando?"></textarea>
                         <button class="mic-btn" onclick="startDictation('sbarSituation')"><i class="fas fa-microphone"></i></button>
                     </div>
                 </div>
-                <div class="sbar-section" style="background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                <div style="background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
                     <h5 style="color: var(--info); margin: 0 0 10px 0;">B - Antecedentes</h5>
                     <div class="mic-wrapper">
                         <textarea id="sbarBackground" rows="2" placeholder="Contexto clínico"></textarea>
                         <button class="mic-btn" onclick="startDictation('sbarBackground')"><i class="fas fa-microphone"></i></button>
                     </div>
                 </div>
-                <div class="sbar-section" style="background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                <div style="background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
                     <h5 style="color: var(--info); margin: 0 0 10px 0;">A - Evaluación</h5>
                     <div class="mic-wrapper">
                         <textarea id="sbarAssessment" rows="2" placeholder="Mi evaluación"></textarea>
                         <button class="mic-btn" onclick="startDictation('sbarAssessment')"><i class="fas fa-microphone"></i></button>
                     </div>
                 </div>
-                <div class="sbar-section" style="background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
+                <div style="background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px;">
                     <h5 style="color: var(--info); margin: 0 0 10px 0;">R - Recomendación</h5>
                     <div class="mic-wrapper">
                         <textarea id="sbarRecommendation" rows="2" placeholder="Qué sugiero hacer"></textarea>
@@ -337,13 +336,11 @@
                 <button onclick="saveClinicalRecord()" style="width: 100%; margin-top: 20px;"><i class="fas fa-save"></i> Guardar Registro Clínico</button>
             </div>
 
-            <!-- HISTORIAL DEL DÍA -->
             <div class="card">
                 <h3><i class="fas fa-history"></i> Historial del Día</h3>
                 <div id="dailyHistory"></div>
             </div>
 
-            <!-- CIERRE DE TURNO -->
             <div class="card">
                 <h3><i class="fas fa-sign-out-alt"></i> Cierre de Turno</h3>
                 <label>Estado en que entrega al paciente:</label>
@@ -500,7 +497,7 @@
         }
 
         // ==========================================
-        // 🔴 CORRECCIÓN 1: ALARMAS EN TODOS LOS SIGNOS
+        // 🔴 ALARMAS EN TODOS LOS SIGNOS
         // ==========================================
         function checkVital(type) {
             const spo2Min = selectedPatient.altitude_profiles?.spo2_min_normal || 95;
@@ -511,11 +508,7 @@
                 const alertDiv = document.getElementById('bpAlert');
                 const input = document.getElementById('bloodPressure');
                 
-                if (!match) {
-                    alertDiv.classList.remove('show');
-                    input.className = '';
-                    return;
-                }
+                if (!match) { alertDiv.classList.remove('show'); input.className = ''; return; }
                 
                 const sys = parseInt(match[1]);
                 const dia = parseInt(match[2]);
@@ -539,7 +532,6 @@
                 const val = parseInt(document.getElementById('heartRate').value);
                 const alertDiv = document.getElementById('hrAlert');
                 const input = document.getElementById('heartRate');
-                
                 if (!val) { alertDiv.classList.remove('show'); input.className = ''; return; }
                 
                 if (val < 50 || val >= 120) {
@@ -561,7 +553,6 @@
                 const val = parseInt(document.getElementById('respiratoryRate').value);
                 const alertDiv = document.getElementById('rrAlert');
                 const input = document.getElementById('respiratoryRate');
-                
                 if (!val) { alertDiv.classList.remove('show'); input.className = ''; return; }
                 
                 if (val < 10 || val >= 25) {
@@ -583,7 +574,6 @@
                 const val = parseFloat(document.getElementById('temperature').value);
                 const alertDiv = document.getElementById('tempAlert');
                 const input = document.getElementById('temperature');
-                
                 if (!val) { alertDiv.classList.remove('show'); input.className = ''; return; }
                 
                 if (val < 35.5 || val >= 38.0) {
@@ -605,7 +595,6 @@
                 const val = parseInt(document.getElementById('spo2').value);
                 const alertDiv = document.getElementById('spo2Alert');
                 const input = document.getElementById('spo2');
-                
                 if (!val) { alertDiv.classList.remove('show'); input.className = ''; return; }
                 
                 if (val < spo2Min - 3) {
@@ -627,7 +616,6 @@
                 const val = parseInt(document.getElementById('glucose').value);
                 const alertDiv = document.getElementById('gluAlert');
                 const input = document.getElementById('glucose');
-                
                 if (!val) { alertDiv.classList.remove('show'); input.className = ''; return; }
                 
                 if (val < 60 || val >= 200) {
@@ -647,7 +635,56 @@
         }
 
         // ==========================================
-        // EVA
+        // 🔴 FUNCIÓN REUTILIZABLE PARA VALIDAR SIGNOS EN HISTORIAL
+        // ==========================================
+        function getVitalStatus(type, value) {
+            const spo2Min = selectedPatient?.altitude_profiles?.spo2_min_normal || 95;
+            if (value === null || value === undefined || value === '') return { status: 'normal', label: '--' };
+            
+            if (type === 'bp') {
+                const match = String(value).match(/(\d+)\/(\d+)/);
+                if (!match) return { status: 'normal', label: value };
+                const sys = parseInt(match[1]);
+                const dia = parseInt(match[2]);
+                if (sys < 80 || sys >= 160 || dia < 50 || dia >= 100) return { status: 'danger', label: value };
+                if (sys < 90 || sys >= 140 || dia < 60 || dia >= 90) return { status: 'warning', label: value };
+                return { status: 'normal', label: value };
+            }
+            if (type === 'hr') {
+                if (value < 50 || value >= 120) return { status: 'danger', label: value };
+                if (value < 60 || value > 100) return { status: 'warning', label: value };
+                return { status: 'normal', label: value };
+            }
+            if (type === 'rr') {
+                if (value < 10 || value >= 25) return { status: 'danger', label: value };
+                if (value < 12 || value > 20) return { status: 'warning', label: value };
+                return { status: 'normal', label: value };
+            }
+            if (type === 'temp') {
+                if (value < 35.5 || value >= 38.0) return { status: 'danger', label: value + '°C' };
+                if (value < 36.1 || value > 37.2) return { status: 'warning', label: value + '°C' };
+                return { status: 'normal', label: value + '°C' };
+            }
+            if (type === 'spo2') {
+                if (value < spo2Min - 3) return { status: 'danger', label: value + '%' };
+                if (value < spo2Min) return { status: 'warning', label: value + '%' };
+                return { status: 'normal', label: value + '%' };
+            }
+            if (type === 'glu') {
+                if (value < 60 || value >= 200) return { status: 'danger', label: value };
+                if (value < 70 || value > 140) return { status: 'warning', label: value };
+                return { status: 'normal', label: value };
+            }
+            if (type === 'eva') {
+                if (value >= 7) return { status: 'danger', label: value };
+                if (value >= 4) return { status: 'warning', label: value };
+                return { status: 'normal', label: value };
+            }
+            return { status: 'normal', label: value };
+        }
+
+        // ==========================================
+        // ✅ EVA
         // ==========================================
         function updateEVA() {
             const val = document.getElementById('evaScore').value;
@@ -659,7 +696,7 @@
         }
 
         // ==========================================
-        // 🔴 CORRECCIÓN 3: GLASGOW CON CÁLCULO AUTOMÁTICO
+        // ✅ GLASGOW CON CÁLCULO AUTOMÁTICO
         // ==========================================
         function toggleGlasgow() {
             document.getElementById('glasgowSection').classList.toggle('hidden');
@@ -694,7 +731,7 @@
         }
 
         // ==========================================
-        // GUARDAR REGISTRO CLÍNICO
+        // ✅ GUARDAR REGISTRO CLÍNICO
         // ==========================================
         async function saveClinicalRecord() {
             const activities = {};
@@ -744,8 +781,21 @@
         }
 
         // ==========================================
-        // 🔴 CORRECCIÓN 2: HISTORIAL COMPLETO
+        // ✅ HISTORIAL COMPLETO CON ALERTAS Y FORMATO AM/PM
         // ==========================================
+        function formatTime12h(timeStr) {
+            if (!timeStr) return '--:--';
+            // Si viene en formato "HH:MM" (24h)
+            if (timeStr.includes(':') && !timeStr.includes(' ')) {
+                const [h, m] = timeStr.split(':');
+                const hour = parseInt(h);
+                const ampm = hour >= 12 ? 'p. m.' : 'a. m.';
+                const hour12 = hour % 12 || 12;
+                return `${String(hour12).padStart(2, '0')}:${m} ${ampm}`;
+            }
+            return timeStr;
+        }
+
         async function loadDailyHistory() {
             const res = await fetch(`/api/patients/${selectedPatient.id}/daily-history`);
             const d = await res.json();
@@ -757,23 +807,40 @@
             
             document.getElementById('dailyHistory').innerHTML = d.data.map(r => {
                 const date = new Date(r.created_at);
-                const timeStr = date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+                const timeStr = date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
                 
-                // Construir tags de actividades
-                let activitiesHtml = '';
-                if (r.activities_completed) {
-                    const acts = r.activities_completed;
-                    if (acts.bath?.done) activitiesHtml += `<span class="history-activity-tag">🛁 Baño (${acts.bath.time || '--:--'})</span>`;
-                    if (acts.feeding?.done) activitiesHtml += `<span class="history-activity-tag">🍽️ Alimentación (${acts.feeding.time || '--:--'})</span>`;
-                    if (acts.medication?.done) activitiesHtml += `<span class="history-activity-tag">💊 Medicamentos (${acts.medication.time || '--:--'})</span>`;
-                    if (acts.mobility?.done) activitiesHtml += `<span class="history-activity-tag">🚶 Movilización (${acts.mobility.time || '--:--'})</span>`;
-                }
+                // Validar cada signo vital para el historial
+                const bp = getVitalStatus('bp', r.blood_pressure);
+                const hr = getVitalStatus('hr', r.heart_rate);
+                const rr = getVitalStatus('rr', r.respiratory_rate);
+                const temp = getVitalStatus('temp', r.temperature);
+                const spo2 = getVitalStatus('spo2', r.spo2);
+                const glu = getVitalStatus('glu', r.glucose);
+                const eva = getVitalStatus('eva', r.eva_score);
                 
-                // Calcular Glasgow si existe
+                // Glasgow
                 let glasgowHtml = '';
                 if (r.glasgow_eyes && r.glasgow_verbal && r.glasgow_motor) {
                     const glasgowTotal = r.glasgow_eyes + r.glasgow_verbal + r.glasgow_motor;
-                    glasgowHtml = `<div class="history-vital-item"><strong>${glasgowTotal}/15</strong><small>Glasgow</small></div>`;
+                    let glasgowStatus = 'normal';
+                    if (glasgowTotal >= 13 && glasgowTotal <= 14) glasgowStatus = 'warning';
+                    if (glasgowTotal >= 9 && glasgowTotal <= 12) glasgowStatus = 'warning';
+                    if (glasgowTotal >= 3 && glasgowTotal <= 8) glasgowStatus = 'danger';
+                    glasgowHtml = `<div class="history-vital-item v-${glasgowStatus}"><strong>${glasgowTotal}/15</strong><small>Glasgow</small></div>`;
+                }
+                
+                // Actividades con formato AM/PM
+                let activitiesHtml = '';
+                if (r.activities_completed) {
+                    const acts = r.activities_completed;
+                    const actList = [];
+                    if (acts.bath?.done) actList.push(`🛁 Baño (${formatTime12h(acts.bath.time)})`);
+                    if (acts.feeding?.done) actList.push(`🍽️ Alimentación (${formatTime12h(acts.feeding.time)})`);
+                    if (acts.medication?.done) actList.push(`💊 Medicamentos (${formatTime12h(acts.medication.time)})`);
+                    if (acts.mobility?.done) actList.push(`🚶 Movilización (${formatTime12h(acts.mobility.time)})`);
+                    if (actList.length > 0) {
+                        activitiesHtml = `<div class="history-activities"><strong>✅ Actividades:</strong><br>${actList.map(a => `<span class="history-activity-tag">${a}</span>`).join('')}</div>`;
+                    }
                 }
                 
                 return `
@@ -784,17 +851,17 @@
                         </div>
                         
                         <div class="history-vitals">
-                            <div class="history-vital-item"><strong>${r.blood_pressure || '--/--'}</strong><small>PA</small></div>
-                            <div class="history-vital-item"><strong>${r.heart_rate || '--'}</strong><small>FC (lpm)</small></div>
-                            <div class="history-vital-item"><strong>${r.respiratory_rate || '--'}</strong><small>FR (rpm)</small></div>
-                            <div class="history-vital-item"><strong>${r.temperature || '--'}°C</strong><small>Temp</small></div>
-                            <div class="history-vital-item"><strong>${r.spo2 || '--'}%</strong><small>SpO2</small></div>
-                            <div class="history-vital-item"><strong>${r.glucose || '--'}</strong><small>Glucosa</small></div>
-                            <div class="history-vital-item"><strong>${r.eva_score ?? '--'}</strong><small>EVA</small></div>
+                            <div class="history-vital-item v-${bp.status}"><strong>${bp.label || '--/--'}</strong><small>PA</small></div>
+                            <div class="history-vital-item v-${hr.status}"><strong>${hr.label || '--'}</strong><small>FC (lpm)</small></div>
+                            <div class="history-vital-item v-${rr.status}"><strong>${rr.label || '--'}</strong><small>FR (rpm)</small></div>
+                            <div class="history-vital-item v-${temp.status}"><strong>${temp.label || '--'}</strong><small>Temp</small></div>
+                            <div class="history-vital-item v-${spo2.status}"><strong>${spo2.label || '--'}</strong><small>SpO2</small></div>
+                            <div class="history-vital-item v-${glu.status}"><strong>${glu.label || '--'}</strong><small>Glucosa</small></div>
+                            <div class="history-vital-item v-${eva.status}"><strong>${eva.label ?? '--'}</strong><small>EVA</small></div>
                             ${glasgowHtml}
                         </div>
                         
-                        ${activitiesHtml ? `<div class="history-activities"><strong>✅ Actividades:</strong><br>${activitiesHtml}</div>` : ''}
+                        ${activitiesHtml}
                         
                         ${r.notes ? `<div class="history-notes">📝 ${r.notes}</div>` : ''}
                         
@@ -887,7 +954,7 @@
         }
 
         // ==========================================
-        // ADMIN (Simplificado)
+        // ADMIN
         // ==========================================
         async function createProf() {
             const payload = {
