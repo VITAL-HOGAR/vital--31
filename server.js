@@ -110,8 +110,9 @@ app.patch('/api/patients/:id/reactivate', async (req, res) => {
 // 5. EDUCACIÓN
 // ==========================================
 app.get('/api/education/topics', async (req, res) => {
+    // Se usa left join implícito para evitar que falle si no hay relación perfecta
     const { data } = await supabase.from('education_topics').select('*, professionals(full_name)').order('created_at', { ascending: false });
-    res.json({ success: true, data });
+    res.json({ success: true, data: data || [] });
 });
 
 app.post('/api/education/topics', async (req, res) => {
@@ -181,19 +182,11 @@ app.post('/api/shifts/close', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// ✅ CORREGIDO: Ruta de datos de cierre - ahora busca la firma más reciente sin filtros estrictos de fecha
 app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
     try {
         const { data: shift } = await supabase.from('shifts').select('*, patients(*, altitude_profiles(city_name))').eq('id', req.params.shiftId).single();
         const { data: records } = await supabase.from('clinical_records').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: true });
-        
-        // ✅ FIX: Buscar la firma más reciente sin filtros estrictos que puedan fallar
-        const { data: signatures } = await supabase
-            .from('shift_signatures')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(1);
-        
+        const { data: signatures } = await supabase.from('shift_signatures').select('*').order('created_at', { ascending: false }).limit(1);
         res.json({ success: true, data: { shift, records: records || [], signatures: signatures || [] } });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
