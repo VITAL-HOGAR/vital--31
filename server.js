@@ -181,7 +181,6 @@ app.post('/api/shifts/close', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// NUEVA RUTA: Obtener datos completos del cierre de turno para PDF
 app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
     try {
         const { data: shift } = await supabase.from('shifts').select('*, patients(*, altitude_profiles(city_name))').eq('id', req.params.shiftId).single();
@@ -227,6 +226,9 @@ app.get('/api/reports/:patientId/:month/:year', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
+// ==========================================
+// SERVIDOR DE ARCHIVOS (AL FINAL ABSOLUTO)
+// ==========================================
 app.get('*', (req, res) => { if (!req.path.startsWith('/api')) res.sendFile(path.join(__dirname, 'public', 'index.html')); });
 
 app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Vital Hogar Pro Vivo en puerto ${PORT}`); });
