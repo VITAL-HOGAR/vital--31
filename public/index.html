@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Vital Hogar Pro</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Librerías para PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
     <style>
@@ -19,17 +18,14 @@
         table { width: 100%; border-collapse: collapse; margin-top: 10px; background: #0f172a; border-radius: 8px; overflow: hidden; }
         th, td { padding: 12px; border-bottom: 1px solid #334155; text-align: left; }
         th { background: #1e293b; color: #94a3b8; }
-        
         .password-wrapper { position: relative; }
         .toggle-password { position: absolute; right: 10px; top: 15px; cursor: pointer; color: #94a3b8; background: none; border: none; margin: 0; width: auto; padding: 0; }
         .mic-wrapper { position: relative; display: flex; align-items: center; gap: 5px; }
         .mic-btn { background: var(--info); width: 40px; height: 40px; padding: 0; margin: 5px 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; }
         .mic-btn.recording { background: var(--danger); animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
-        
         .patient-card { background: #1e293b; padding: 15px; border-radius: 8px; margin-bottom: 10px; cursor: pointer; border: 2px solid transparent; transition: all 0.3s; }
         .patient-card:hover { border-color: var(--primary); }
-        
         .vital-status { padding: 8px; border-radius: 6px; margin-top: 5px; font-size: 0.85rem; font-weight: bold; display: none; }
         .vital-status.show { display: block; }
         .vital-status.normal { background: var(--primary); color: white; }
@@ -38,14 +34,12 @@
         input.vital-normal { border-color: var(--primary) !important; }
         input.vital-warning { border-color: var(--warning) !important; background: #422006 !important; }
         input.vital-danger { border-color: var(--danger) !important; background: #450a0a !important; }
-        
         .glasgow-total, .braden-total { background: var(--card-bg); padding: 15px; border-radius: 8px; margin-top: 15px; text-align: center; border: 2px solid #334155; }
         .glasgow-total h3, .braden-total h3 { margin: 0; font-size: 2rem; }
         .glasgow-total.normal, .braden-total.risk-none { border-color: var(--primary); color: var(--primary); }
         .glasgow-total.mild, .braden-total.risk-mild { border-color: var(--warning); color: var(--warning); }
         .glasgow-total.moderate, .braden-total.risk-moderate { border-color: #f97316; color: #f97316; }
         .glasgow-total.severe, .braden-total.risk-high { border-color: var(--danger); color: var(--danger); }
-        
         .history-item { background: #0f172a; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid var(--info); }
         .history-header { display: flex; justify-content: space-between; margin-bottom: 10px; }
         .history-time { font-weight: bold; color: var(--info); }
@@ -53,21 +47,14 @@
         .history-vital-item { background: var(--card-bg); padding: 8px; border-radius: 6px; text-align: center; border: 2px solid transparent; }
         .history-vital-item strong { display: block; font-size: 1.1rem; }
         .history-vital-item small { color: #94a3b8; display: block; }
-        .history-vital-item.v-normal { border-color: var(--primary); }
-        .history-vital-item.v-normal strong { color: var(--primary); }
-        .history-vital-item.v-warning { border-color: var(--warning); background: #422006; }
-        .history-vital-item.v-warning strong { color: var(--warning); }
-        .history-vital-item.v-danger { border-color: var(--danger); background: #450a0a; }
-        .history-vital-item.v-danger strong { color: var(--danger); }
-        
-        /* FIX VISUAL AM/PM */
+        .history-vital-item.v-normal { border-color: var(--primary); } .history-vital-item.v-normal strong { color: var(--primary); }
+        .history-vital-item.v-warning { border-color: var(--warning); background: #422006; } .history-vital-item.v-warning strong { color: var(--warning); }
+        .history-vital-item.v-danger { border-color: var(--danger); background: #450a0a; } .history-vital-item.v-danger strong { color: var(--danger); }
         .history-activity-tag { display: inline-block; background: var(--card-bg); padding: 6px 14px; border-radius: 12px; margin: 2px; font-size: 0.85rem; white-space: nowrap; }
         .history-notes { background: var(--card-bg); padding: 10px; border-radius: 6px; margin-top: 10px; font-style: italic; color: #cbd5e1; }
-        
         .signature-canvas { background: white; border: 2px dashed #334155; border-radius: 6px; width: 100%; height: 150px; cursor: crosshair; }
         .eva-slider { width: 100%; margin: 10px 0; }
         .eva-faces { display: flex; justify-content: space-between; font-size: 1.5rem; margin-top: 5px; }
-        
         .accordion { background: var(--card-bg); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
         .accordion-header { background: #334155; padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
         .accordion-header:hover { background: #475569; }
@@ -75,17 +62,14 @@
         .accordion-header.active .icon { transform: rotate(180deg); }
         .accordion-content { padding: 0; max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease; }
         .accordion-content.open { padding: 15px; max-height: 3000px; }
-        
         .sub-activity { background: #0f172a; padding: 12px; border-radius: 6px; margin-bottom: 10px; border-left: 3px solid var(--info); }
         .sub-activity-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
         .sub-activity-header input[type="checkbox"] { width: auto; margin: 0; }
         .sub-activity-fields { display: none; margin-top: 10px; padding: 10px; background: var(--card-bg); border-radius: 6px; }
         .sub-activity-fields.show { display: block; }
-        
         .med-item { background: #0f172a; padding: 10px; border-radius: 6px; margin-bottom: 8px; display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 8px; align-items: center; }
         .med-item input, .med-item select { margin: 0; padding: 6px; font-size: 0.9rem; }
         .btn-remove-med { background: var(--danger); padding: 6px 10px; margin: 0; width: auto; }
-        
         .braden-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
         .braden-item label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 5px; }
         .bristol-scale { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -93,29 +77,21 @@
         .bristol-option:hover { border-color: var(--info); }
         .bristol-option.selected { border-color: var(--primary); background: #052e16; }
         .bristol-option .emoji { font-size: 2rem; display: block; margin-bottom: 5px; }
-        
         .ppe-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
         .ppe-item { background: #0f172a; padding: 12px; border-radius: 6px; display: flex; align-items: center; gap: 10px; }
         .ppe-item input[type="checkbox"] { width: auto; margin: 0; }
-        
         .btn-small { padding: 6px 12px; margin: 2px; font-size: 0.85rem; width: auto; display: inline-block; }
         .btn-danger { background: var(--danger); }
         .btn-warning { background: var(--warning); color: black; }
-
         .stat-card { text-align: center; border-left: 5px solid var(--primary); }
         .stat-card h3 { color: #94a3b8; font-size: 0.9rem; margin-bottom: 10px; }
         .stat-card h2 { font-size: 2.5rem; margin: 0; color: var(--primary); }
-        .stat-card.warning { border-left-color: var(--warning); }
-        .stat-card.warning h2 { color: var(--warning); }
-        .stat-card.danger { border-left-color: var(--danger); }
-        .stat-card.danger h2 { color: var(--danger); }
-        .stat-card.info { border-left-color: var(--info); }
-        .stat-card.info h2 { color: var(--info); }
-        
+        .stat-card.warning { border-left-color: var(--warning); } .stat-card.warning h2 { color: var(--warning); }
+        .stat-card.danger { border-left-color: var(--danger); } .stat-card.danger h2 { color: var(--danger); }
+        .stat-card.info { border-left-color: var(--info); } .stat-card.info h2 { color: var(--info); }
         .quick-actions { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
         .action-btn { padding: 20px; font-size: 1rem; display: flex; align-items: center; justify-content: center; gap: 10px; }
         .action-btn i { font-size: 1.5rem; }
-        
         .nav { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
         .nav button { background: #334155; width: auto; margin-top: 0; }
         .nav button.active { background: var(--primary); }
@@ -144,20 +120,17 @@
             </div>
             <button onclick="logout()" style="background:var(--danger); width:auto;">Salir</button>
         </div>
-
         <div class="grid">
             <div class="card stat-card"><h3><i class="fas fa-user-injured"></i> Pacientes Activos</h3><h2 id="statPat">0</h2></div>
             <div class="card stat-card info"><h3><i class="fas fa-user-md"></i> Profesionales</h3><h2 id="statProf">0</h2></div>
             <div class="card stat-card" style="border-left-color: #8b5cf6;"><h3><i class="fas fa-graduation-cap"></i> Educación (Mes)</h3><h2 id="statEdu" style="color: #8b5cf6;">0</h2></div>
             <div class="card stat-card danger"><h3><i class="fas fa-file-medical"></i> Informes Pendientes</h3><h2 id="statReports">0</h2></div>
         </div>
-
         <div class="quick-actions">
             <button class="action-btn" onclick="show('pat')" style="background: var(--info);"><i class="fas fa-calendar-plus"></i> Asignar Turno</button>
             <button class="action-btn" onclick="show('reports')" style="background: var(--warning); color: black;"><i class="fas fa-file-pdf"></i> Generar Informe</button>
             <button class="action-btn" onclick="alert('Función en desarrollo')" style="background: var(--danger);"><i class="fas fa-exclamation-circle"></i> Novedad Urgente</button>
         </div>
-
         <div class="nav">
             <button class="active" onclick="show('prof')"><i class="fas fa-user-md"></i> Profesionales</button>
             <button onclick="show('pat')"><i class="fas fa-user-injured"></i> Pacientes</button>
@@ -210,7 +183,7 @@
         <div id="reportsSection" class="hidden">
             <div class="card">
                 <h3><i class="fas fa-file-medical"></i> Generar Informe Mensual PDF</h3>
-                <p style="color: #94a3b8;">Selecciona un paciente y el período para generar el informe clínico.</p>
+                <p style="color: #94a3b8;">Selecciona un paciente y el período para generar el informe clínico validado.</p>
                 <select id="reportPatient"><option value="">Seleccionar paciente...</option></select>
                 <div class="grid" style="margin-top: 15px;">
                     <select id="reportMonth">
@@ -247,36 +220,18 @@
                 <h3>Iniciar Turno - <span id="patientNameStart" style="color: var(--primary);"></span></h3>
                 <label>Tipo de Turno:</label>
                 <select id="shiftType" onchange="toggleCustomShift()">
-                    <option value="6h_diurno">☀️ 6h Diurno</option>
-                    <option value="8h_diurno">☀️ 8h Diurno</option>
-                    <option value="12h_diurno">☀️ 12h Diurno</option>
-                    <option value="6h_nocturno"> 6h Nocturno</option>
-                    <option value="8h_nocturno">🌙 8h Nocturno</option>
-                    <option value="12h_nocturno">🌙 12h Nocturno</option>
-                    <option value="24h">🔄 24 horas</option>
-                    <option value="personalizado">⚙️ Personalizado</option>
+                    <option value="6h_diurno">☀️ 6h Diurno</option><option value="8h_diurno">☀️ 8h Diurno</option><option value="12h_diurno">☀️ 12h Diurno</option>
+                    <option value="6h_nocturno">🌙 6h Nocturno</option><option value="8h_nocturno">🌙 8h Nocturno</option><option value="12h_nocturno">🌙 12h Nocturno</option>
+                    <option value="24h">🔄 24 horas</option><option value="personalizado">⚙️ Personalizado</option>
                 </select>
-                
-                <!-- NUEVO: Campos para turno personalizado -->
                 <div id="customShiftTimes" class="hidden" style="margin-top: 15px; padding: 15px; background: #0f172a; border-radius: 8px; border: 1px solid var(--info);">
                     <p style="color: var(--info); margin-top: 0;"><i class="fas fa-clock"></i> Define las horas exactas de tu turno:</p>
-                    <div class="grid">
-                        <div><label>Hora de Inicio:</label><input type="time" id="customStartTime"></div>
-                        <div><label>Hora de Fin:</label><input type="time" id="customEndTime"></div>
-                    </div>
+                    <div class="grid"><div><label>Hora de Inicio:</label><input type="time" id="customStartTime"></div><div><label>Hora de Fin:</label><input type="time" id="customEndTime"></div></div>
                 </div>
-
                 <label>Estado en que recibe al paciente:</label>
-                <select id="patientReceivedStatus">
-                    <option value="estable">🟢 Estable</option>
-                    <option value="con_novedades">🟡 Con Novedades</option>
-                    <option value="critico">🔴 Crítico</option>
-                </select>
+                <select id="patientReceivedStatus"><option value="estable">🟢 Estable</option><option value="con_novedades">🟡 Con Novedades</option><option value="critico">🔴 Crítico</option></select>
                 <label>Observación de recepción:</label>
-                <div class="mic-wrapper">
-                    <textarea id="patientReceivedNotes" rows="3" placeholder="¿Cómo encuentra al paciente?"></textarea>
-                    <button class="mic-btn" onclick="startDictation('patientReceivedNotes')"><i class="fas fa-microphone"></i></button>
-                </div>
+                <div class="mic-wrapper"><textarea id="patientReceivedNotes" rows="3" placeholder="¿Cómo encuentra al paciente?"></textarea><button class="mic-btn" onclick="startDictation('patientReceivedNotes')"><i class="fas fa-microphone"></i></button></div>
                 <button onclick="startShift()" style="background: var(--info); width: 100%;"><i class="fas fa-play"></i> Iniciar Turno</button>
             </div>
         </div>
@@ -284,7 +239,6 @@
         <div id="clinicalForm" class="hidden">
             <div class="card">
                 <h3>Registro Clínico - <span id="patientNameClinical" style="color: var(--primary);"></span></h3>
-                
                 <h4><i class="fas fa-heartbeat"></i> Signos Vitales</h4>
                 <div class="grid">
                     <div><label>Presión Arterial</label><input type="text" id="bloodPressure" placeholder="Ej: 120/80" oninput="checkVital('bp')"><div id="bpAlert" class="vital-status"></div></div>
@@ -294,20 +248,12 @@
                     <div><label>SpO2 (%)</label><input type="number" id="spo2" placeholder="Ej: 96" oninput="checkVital('spo2')"><div id="spo2Alert" class="vital-status"></div></div>
                     <div><label>Glucosa (mg/dL)</label><input type="number" id="glucose" placeholder="Ej: 110" oninput="checkVital('glu')"><div id="gluAlert" class="vital-status"></div></div>
                 </div>
-
                 <h4><i class="fas fa-heart"></i> Escala EVA (Dolor 0-10)</h4>
                 <input type="range" id="evaScore" min="0" max="10" value="0" class="eva-slider" oninput="updateEVA()">
-                <div class="eva-faces"><span>😊</span><span></span><span>😣</span><span>😭</span></div>
+                <div class="eva-faces"><span>😊</span><span>😐</span><span>😣</span><span>😭</span></div>
                 <p id="evaValue" style="text-align: center; font-size: 1.2rem; font-weight: bold;">0 - Sin dolor</p>
-
                 <h4><i class="fas fa-brain"></i> Nivel de Consciencia</h4>
-                <select id="consciousnessLevel">
-                    <option value="alerta">🟢 Alerta</option>
-                    <option value="somnoliento">🟡 Somnoliento</option>
-                    <option value="estupor">🟠 Estupor</option>
-                    <option value="coma">🔴 Coma</option>
-                </select>
-
+                <select id="consciousnessLevel"><option value="alerta">🟢 Alerta</option><option value="somnoliento">🟡 Somnoliento</option><option value="estupor">🟠 Estupor</option><option value="coma">🔴 Coma</option></select>
                 <h4><i class="fas fa-brain"></i> Escala Glasgow (Opcional)</h4>
                 <button onclick="toggleGlasgow()" style="background: #334155; width: auto;"><i class="fas fa-expand"></i> Expandir Escala Glasgow</button>
                 <div id="glasgowSection" class="hidden">
@@ -318,7 +264,6 @@
                     </div>
                     <div id="glasgowTotal" class="glasgow-total normal"><h3>15/15</h3><p>Normal</p></div>
                 </div>
-
                 <h4><i class="fas fa-bed"></i> Escala de Braden (Riesgo UPP)</h4>
                 <button onclick="toggleBraden()" style="background: #334155; width: auto;"><i class="fas fa-expand"></i> Expandir Escala Braden</button>
                 <div id="bradenSection" class="hidden">
@@ -332,96 +277,57 @@
                     </div>
                     <div id="bradenTotal" class="braden-total risk-none"><h3>24/24</h3><p>Sin riesgo</p></div>
                 </div>
-
                 <h4><i class="fas fa-tasks"></i> Actividades Realizadas</h4>
-                <div class="accordion">
-                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>🧼 Higiene y Confort</span><i class="fas fa-chevron-down icon"></i></div>
-                    <div class="accordion-content">
-                        <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actBath" onchange="toggleSubFields('bath')"><label><strong> Baño</strong></label><input type="time" id="actBathTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-bath"><label>Tipo:</label><select id="bathType"><option value="en_cama">En cama</option><option value="en_ducha">En ducha</option><option value="en_silla">En silla</option><option value="parcial">Parcial</option></select><label>Observación:</label><input type="text" id="bathObs"></div></div>
-                        <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actOralHygiene" onchange="toggleSubFields('oral')"><label><strong> Higiene Bucal</strong></label><input type="time" id="actOralTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-oral"><label>Tipo:</label><select id="oralType"><option value="propia">Propia</option><option value="asistida">Asistida</option><option value="protesis">Prótesis removida</option></select></div></div>
+                <div class="accordion"><div class="accordion-header" onclick="toggleAccordion(this)"><span>🧼 Higiene y Confort</span><i class="fas fa-chevron-down icon"></i></div><div class="accordion-content">
+                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actBath" onchange="toggleSubFields('bath')"><label><strong>🛁 Baño</strong></label><input type="time" id="actBathTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-bath"><label>Tipo:</label><select id="bathType"><option value="en_cama">En cama</option><option value="en_ducha">En ducha</option><option value="en_silla">En silla</option><option value="parcial">Parcial</option></select></div></div>
+                </div></div>
+                <div class="accordion"><div class="accordion-header" onclick="toggleAccordion(this)"><span>️ Alimentación</span><i class="fas fa-chevron-down icon"></i></div><div class="accordion-content">
+                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actOralFood" onchange="toggleSubFields('oralfood')"><label><strong> Alimentación Oral</strong></label><input type="time" id="actOralFoodTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-oralfood"><label>Cantidad:</label><select id="oralFoodQty"><option value="25%">25%</option><option value="50%">50%</option><option value="75%">75%</option><option value="100%">100%</option></select></div></div>
+                </div></div>
+                <div class="accordion"><div class="accordion-header" onclick="toggleAccordion(this)"><span>💊 Medicamentos</span><i class="fas fa-chevron-down icon"></i></div><div class="accordion-content">
+                    <div id="medList"></div><button onclick="addMedication()" style="background: var(--info); width: auto;"><i class="fas fa-plus"></i> Agregar Medicamento</button>
+                </div></div>
+                <div class="accordion"><div class="accordion-header" onclick="toggleAccordion(this)"><span>🩺 Cuidados Clínicos</span><i class="fas fa-chevron-down icon"></i></div><div class="accordion-content">
+                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actWound" onchange="toggleSubFields('wound')"><label><strong>🩹 Curación de Heridas</strong></label><input type="time" id="actWoundTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-wound"><label>Tipo:</label><select id="woundType"><option value="upp">Úlcera por presión</option><option value="quirurgica">Quirúrgica</option></select></div></div>
+                </div></div>
+                <div class="accordion"><div class="accordion-header" onclick="toggleAccordion(this)"><span>🚶 Movilización</span><i class="fas fa-chevron-down icon"></i></div><div class="accordion-content">
+                    <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actPosition" onchange="toggleSubFields('position')"><label><strong>🔄 Cambio Postural</strong></label><input type="time" id="actPositionTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-position"><label>Posición:</label><select id="positionType"><option value="supino">Supino</option><option value="lateral_derecho">Lateral derecho</option><option value="lateral_izquierdo">Lateral izquierdo</option></select></div></div>
+                </div></div>
+                <div class="accordion"><div class="accordion-header" onclick="toggleAccordion(this)"><span>️ Residuos & 🛡️ EPP</span><i class="fas fa-chevron-down icon"></i></div><div class="accordion-content">
+                    <div style="background: #0f172a; padding: 12px; border-radius: 6px; margin-bottom: 10px;"><input type="checkbox" id="wasteSharps" style="width:auto;"> <label>Residuos punzocortantes en contenedor rígido</label></div>
+                    <div class="ppe-grid">
+                        <div class="ppe-item"><input type="checkbox" id="ppeGloves"><label>🧤 Guantes</label></div>
+                        <div class="ppe-item"><input type="checkbox" id="ppeMask"><label>😷 Tapabocas</label></div>
                     </div>
-                </div>
-
-                <div class="accordion">
-                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>️ Alimentación</span><i class="fas fa-chevron-down icon"></i></div>
-                    <div class="accordion-content">
-                        <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actOralFood" onchange="toggleSubFields('oralfood')"><label><strong>🥣 Alimentación Oral</strong></label><input type="time" id="actOralFoodTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-oralfood"><label>Cantidad:</label><select id="oralFoodQty"><option value="25%">25%</option><option value="50%">50%</option><option value="75%">75%</option><option value="100%">100%</option></select><label>Dieta:</label><select id="oralFoodDiet"><option value="normal">Normal</option><option value="blanda">Blanda</option><option value="licuada">Licuada</option><option value="diabetica">Diabética</option></select></div></div>
-                    </div>
-                </div>
-
-                <div class="accordion">
-                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>💊 Medicamentos</span><i class="fas fa-chevron-down icon"></i></div>
-                    <div class="accordion-content">
-                        <div id="medList"></div>
-                        <button onclick="addMedication()" style="background: var(--info); width: auto;"><i class="fas fa-plus"></i> Agregar Medicamento</button>
-                    </div>
-                </div>
-
-                <div class="accordion">
-                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>🩺 Cuidados Clínicos</span><i class="fas fa-chevron-down icon"></i></div>
-                    <div class="accordion-content">
-                        <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actWound" onchange="toggleSubFields('wound')"><label><strong>🩹 Curación de Heridas</strong></label><input type="time" id="actWoundTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-wound"><label>Tipo:</label><select id="woundType"><option value="upp">Úlcera por presión</option><option value="quirurgica">Quirúrgica</option><option value="diabetica">Diabética</option></select><label>Estado:</label><select id="woundState"><option value="limpia">Limpia</option><option value="exudado">Con exudado</option><option value="infectada">Infectada</option></select></div></div>
-                        <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actOxygen" onchange="toggleSubFields('oxygen')"><label><strong>💨 Oxigenoterapia</strong></label><input type="time" id="actOxygenTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-oxygen"><label>L/min:</label><input type="number" id="oxygenLpm" step="0.5"><label>Dispositivo:</label><select id="oxygenDevice"><option value="canula">Cánula nasal</option><option value="mascarilla">Mascarilla</option></select></div></div>
-                    </div>
-                </div>
-
-                <div class="accordion">
-                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>🚶 Movilización</span><i class="fas fa-chevron-down icon"></i></div>
-                    <div class="accordion-content">
-                        <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actPosition" onchange="toggleSubFields('position')"><label><strong>🔄 Cambio Postural</strong></label><input type="time" id="actPositionTime" style="width:120px;margin:0;"></div><div class="sub-activity-fields" id="fields-position"><label>Posición:</label><select id="positionType"><option value="supino">Supino</option><option value="lateral_derecho">Lateral derecho</option><option value="lateral_izquierdo">Lateral izquierdo</option><option value="semifowler">Semi-Fowler</option></select></div></div>
-                    </div>
-                </div>
-
-                <div class="accordion">
-                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>🗑️ Residuos & 🛡️ EPP</span><i class="fas fa-chevron-down icon"></i></div>
-                    <div class="accordion-content">
-                        <div style="background: #0f172a; padding: 12px; border-radius: 6px; margin-bottom: 10px;"><input type="checkbox" id="wasteSharps" style="width:auto;"> <label>Residuos punzocortantes en contenedor rígido</label></div>
-                        <div style="background: #0f172a; padding: 12px; border-radius: 6px; margin-bottom: 10px;"><input type="checkbox" id="wasteBiohazard" style="width:auto;"> <label>Residuos infecciosos en bolsa roja</label></div>
-                        <h4 style="margin-top: 20px;">EPP Utilizado:</h4>
-                        <div class="ppe-grid">
-                            <div class="ppe-item"><input type="checkbox" id="ppeGloves"><label>🧤 Guantes</label></div>
-                            <div class="ppe-item"><input type="checkbox" id="ppeMask"><label> Tapabocas</label></div>
-                            <div class="ppe-item"><input type="checkbox" id="ppeGoggles"><label>🥽 Gafas</label></div>
-                            <div class="ppe-item"><input type="checkbox" id="ppeGown"><label>🥼 Bata</label></div>
-                        </div>
-                    </div>
-                </div>
-
+                </div></div>
                 <h4><i class="fas fa-exchange-alt"></i> SBAR</h4>
                 <div style="background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px;"><h5 style="color: var(--info); margin: 0 0 10px 0;">S - Situación</h5><div class="mic-wrapper"><textarea id="sbarSituation" rows="2"></textarea><button class="mic-btn" onclick="startDictation('sbarSituation')"><i class="fas fa-microphone"></i></button></div></div>
-                <div style="background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px;"><h5 style="color: var(--info); margin: 0 0 10px 0;">B - Antecedentes</h5><div class="mic-wrapper"><textarea id="sbarBackground" rows="2"></textarea><button class="mic-btn" onclick="startDictation('sbarBackground')"><i class="fas fa-microphone"></i></button></div></div>
-                <div style="background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px;"><h5 style="color: var(--info); margin: 0 0 10px 0;">A - Evaluación</h5><div class="mic-wrapper"><textarea id="sbarAssessment" rows="2"></textarea><button class="mic-btn" onclick="startDictation('sbarAssessment')"><i class="fas fa-microphone"></i></button></div></div>
-                <div style="background: #0f172a; padding: 15px; border-radius: 6px; margin-bottom: 15px;"><h5 style="color: var(--info); margin: 0 0 10px 0;">R - Recomendación</h5><div class="mic-wrapper"><textarea id="sbarRecommendation" rows="2"></textarea><button class="mic-btn" onclick="startDictation('sbarRecommendation')"><i class="fas fa-microphone"></i></button></div></div>
-
                 <h4><i class="fas fa-notes-medical"></i> Novedades</h4>
                 <div class="mic-wrapper"><textarea id="clinicalNotes" rows="4"></textarea><button class="mic-btn" onclick="startDictation('clinicalNotes')"><i class="fas fa-microphone"></i></button></div>
-
                 <button onclick="saveClinicalRecord()" style="width: 100%; margin-top: 20px;"><i class="fas fa-save"></i> Guardar Registro Clínico</button>
             </div>
 
             <div class="card">
                 <h3><i class="fas fa-history"></i> Historial del Día</h3>
+                <!-- NUEVO BOTÓN PDF DIARIO -->
+                <button onclick="generateDailyPDF()" style="width: 100%; background: var(--info); margin-bottom: 15px;"><i class="fas fa-file-pdf"></i> 📄 Descargar Resumen del Día (PDF)</button>
                 <div id="dailyHistory"></div>
             </div>
 
             <div class="card">
                 <h3><i class="fas fa-sign-out-alt"></i> Cierre de Turno</h3>
                 <label>Estado en que entrega:</label>
-                <select id="patientDeliveredStatus"><option value="estable">🟢 Estable</option><option value="con_novedades">🟡 Con Novedades</option><option value="critico"> Crítico</option></select>
+                <select id="patientDeliveredStatus"><option value="estable">🟢 Estable</option><option value="con_novedades">🟡 Con Novedades</option><option value="critico">🔴 Crítico</option></select>
                 <label>Descripción:</label>
                 <div class="mic-wrapper"><textarea id="patientDeliveredNotes" rows="3"></textarea><button class="mic-btn" onclick="startDictation('patientDeliveredNotes')"><i class="fas fa-microphone"></i></button></div>
                 <label>Pendientes:</label><input type="text" id="pendingTasks">
-                <label>Justificación:</label><input type="text" id="pendingJustification">
-
                 <h4>✍️ Firma del Auxiliar</h4>
                 <canvas id="auxSigCanvas" class="signature-canvas"></canvas>
                 <button onclick="clearAuxSig()" style="background: #334155; width: auto;">Borrar</button>
-
                 <h4>✍️ Firma del Familiar</h4>
                 <input type="text" id="familySignName" placeholder="Nombre"><input type="text" id="familySignId" placeholder="Cédula">
                 <canvas id="famSigCanvas" class="signature-canvas"></canvas>
                 <button onclick="clearFamSig()" style="background: #334155; width: auto;">Borrar</button>
-
                 <button onclick="closeShift()" style="width: 100%; background: var(--info); margin-top: 20px;"><i class="fas fa-check-circle"></i> Cerrar Turno</button>
             </div>
         </div>
@@ -433,17 +339,8 @@
             <h3><i class="fas fa-user-times"></i> Dar de Baja al Paciente</h3>
             <p style="color: #94a3b8;">Paciente: <strong id="dischargePatientName"></strong></p>
             <label>Motivo de baja:</label>
-            <select id="dischargeReason">
-                <option value="">Seleccionar motivo...</option>
-                <option value="Fin de contrato">Fin de contrato</option>
-                <option value="Fallecimiento">Fallecimiento</option>
-                <option value="Traslado a otra IPS">Traslado a otra IPS</option>
-                <option value="Mejoría del paciente">Mejoría del paciente</option>
-                <option value="Voluntad del paciente/familiar">Voluntad del paciente/familiar</option>
-                <option value="Otro">Otro</option>
-            </select>
-            <label>Observaciones (opcional):</label>
-            <textarea id="dischargeNotes" rows="3" placeholder="Detalles adicionales..."></textarea>
+            <select id="dischargeReason"><option value="">Seleccionar motivo...</option><option value="Fin de contrato">Fin de contrato</option><option value="Fallecimiento">Fallecimiento</option><option value="Traslado a otra IPS">Traslado a otra IPS</option><option value="Mejoría del paciente">Mejoría del paciente</option><option value="Voluntad del paciente/familiar">Voluntad del paciente/familiar</option><option value="Otro">Otro</option></select>
+            <label>Observaciones (opcional):</label><textarea id="dischargeNotes" rows="3" placeholder="Detalles adicionales..."></textarea>
             <div style="display: flex; gap: 10px; margin-top: 20px;">
                 <button onclick="closeDischargeModal()" style="background: #334155; flex: 1;">Cancelar</button>
                 <button onclick="confirmDischarge()" style="background: var(--danger); flex: 1;">Confirmar Baja</button>
@@ -456,525 +353,179 @@
         let auxCanvas, auxCtx, famCanvas, famCtx;
         let medications = [], selectedBristolType = null, dischargePatientId = null;
         let autosaveInterval;
+        const LOGO_URL = 'https://i.imgur.com/01YZxey.jpeg';
 
-        function togglePass() {
-            const input = document.getElementById('pass');
-            const icon = document.querySelector('.toggle-password i');
-            input.type = input.type === 'password' ? 'text' : 'password';
-            icon.classList.toggle('fa-eye');
-            icon.classList.toggle('fa-eye-slash');
-        }
-
-        async function login() {
-            const res = await fetch('/api/auth/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ email: document.getElementById('email').value, password: document.getElementById('pass').value }) });
-            const data = await res.json();
-            if (data.success) {
-                const specRes = await fetch('/api/professionals');
-                const specData = await specRes.json();
-                const prof = specData.data.find(p => p.id === data.data.user.id);
-                currentUser = { ...data.data.user, specialty_name: prof?.specialties?.name };
-                localStorage.setItem('user', JSON.stringify(currentUser));
-                initApp();
-            } else { document.getElementById('msg').innerText = data.message; }
-        }
-
-        function initApp() {
-            if (!localStorage.getItem('user')) return;
-            currentUser = JSON.parse(localStorage.getItem('user'));
-            document.getElementById('loginScreen').classList.add('hidden');
-            if (currentUser.specialty_name === 'ADMINISTRACION') {
-                document.getElementById('adminPanel').classList.remove('hidden');
-                loadDashboard(); loadProfs(); loadPats(); loadEduResps();
-            } else {
-                document.getElementById('auxiliarPanel').classList.remove('hidden');
-                loadAuxPatients();
-                setInterval(loadAuxPatients, 60000);
-            }
-        }
-
-        function logout() { 
-            clearInterval(autosaveInterval); 
-            localStorage.clear(); 
-            location.reload(); 
-        }
-        
-        function show(id) {
-            ['profSection', 'patSection', 'eduSection', 'reportsSection'].forEach(s => document.getElementById(s).classList.add('hidden'));
-            document.getElementById(id + 'Section').classList.remove('hidden');
-            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
-            event.target.closest('button').classList.add('active');
-            if(id === 'prof') loadProfs();
-            if(id === 'pat') loadPats();
-            if(id === 'edu') { loadEduResps(); loadEdus(); }
-            if(id === 'reports') loadPendingReports();
-        }
-
-        function startDictation(elementId) {
-            if (window.hasOwnProperty('webkitSpeechRecognition')) {
-                const recognition = new webkitSpeechRecognition();
-                recognition.lang = 'es-CO';
-                const btn = document.querySelector(`button[onclick="startDictation('${elementId}')"]`);
-                btn.classList.add('recording');
-                recognition.start();
-                recognition.onresult = function(e) { document.getElementById(elementId).value += ' ' + e.results[0][0].transcript; btn.classList.remove('recording'); };
-                recognition.onend = () => btn.classList.remove('recording');
-            }
-        }
+        function togglePass() { const input = document.getElementById('pass'); const icon = document.querySelector('.toggle-password i'); input.type = input.type === 'password' ? 'text' : 'password'; icon.classList.toggle('fa-eye'); icon.classList.toggle('fa-eye-slash'); }
+        async function login() { const res = await fetch('/api/auth/login', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ email: document.getElementById('email').value, password: document.getElementById('pass').value }) }); const data = await res.json(); if (data.success) { const specRes = await fetch('/api/professionals'); const specData = await specRes.json(); const prof = specData.data.find(p => p.id === data.data.user.id); currentUser = { ...data.data.user, specialty_name: prof?.specialties?.name }; localStorage.setItem('user', JSON.stringify(currentUser)); initApp(); } else { document.getElementById('msg').innerText = data.message; } }
+        function initApp() { if (!localStorage.getItem('user')) return; currentUser = JSON.parse(localStorage.getItem('user')); document.getElementById('loginScreen').classList.add('hidden'); if (currentUser.specialty_name === 'ADMINISTRACION') { document.getElementById('adminPanel').classList.remove('hidden'); loadDashboard(); loadProfs(); loadPats(); loadEduResps(); } else { document.getElementById('auxiliarPanel').classList.remove('hidden'); loadAuxPatients(); setInterval(loadAuxPatients, 60000); } }
+        function logout() { clearInterval(autosaveInterval); localStorage.clear(); location.reload(); }
+        function show(id) { ['profSection', 'patSection', 'eduSection', 'reportsSection'].forEach(s => document.getElementById(s).classList.add('hidden')); document.getElementById(id + 'Section').classList.remove('hidden'); document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active')); event.target.closest('button').classList.add('active'); if(id === 'prof') loadProfs(); if(id === 'pat') loadPats(); if(id === 'edu') { loadEduResps(); loadEdus(); } if(id === 'reports') loadPendingReports(); }
+        function startDictation(elementId) { if (window.hasOwnProperty('webkitSpeechRecognition')) { const recognition = new webkitSpeechRecognition(); recognition.lang = 'es-CO'; const btn = document.querySelector(`button[onclick="startDictation('${elementId}')"]`); btn.classList.add('recording'); recognition.start(); recognition.onresult = function(e) { document.getElementById(elementId).value += ' ' + e.results[0][0].transcript; btn.classList.remove('recording'); }; recognition.onend = () => btn.classList.remove('recording'); } }
 
         // ADMIN FUNCTIONS
-        async function loadDashboard() {
-            const res = await fetch('/api/dashboard/stats');
-            const d = await res.json();
-            if(d.success) {
-                document.getElementById('statPat').innerText = d.data.patients || 0;
-                document.getElementById('statProf').innerText = d.data.professionals || 0;
-                document.getElementById('statEdu').innerText = d.data.educationSessions || 0;
-                document.getElementById('statReports').innerText = d.data.pendingReports || 0;
-            }
-        }
-
-        async function loadProfs() {
-            const res = await fetch('/api/professionals');
-            const d = await res.json();
-            document.querySelector('#profTable tbody').innerHTML = d.data.map(p => `
-                <tr><td>${p.full_name}</td><td>${p.document_number}</td><td>${p.specialties?.name || 'N/A'}</td><td>${p.is_active ? '✅ Activo' : '❌ Inactivo'}</td>
-                <td><button class="btn-small ${p.is_active ? 'btn-danger' : 'btn-warning'}" onclick="toggleProf('${p.id}', ${p.is_active})">${p.is_active ? 'Desactivar' : 'Reactivar'}</button></td></tr>
-            `).join('');
-        }
-
-        async function toggleProf(id, currentStatus) {
-            if (!confirm(`¿${currentStatus ? 'Desactivar' : 'Reactivar'} este profesional?`)) return;
-            const res = await fetch(`/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ isActive: !currentStatus }) });
-            alert((await res.json()).message);
-            loadProfs(); loadDashboard();
-        }
-
-        async function loadPats() {
-            const res = await fetch('/api/patients');
-            const d = await res.json();
-            document.querySelector('#patTable tbody').innerHTML = d.data.map(p => `
-                <tr><td>${p.full_name}</td><td>${p.city_id ? 'Asignada' : 'N/A'}</td><td>${p.family_name || 'N/A'}</td><td>${p.contact_phone || 'N/A'}</td><td>${p.is_active ? '✅ Activo' : ' Baja'}</td>
-                <td>${p.is_active ? `<button class="btn-small btn-danger" onclick="openDischargeModal('${p.id}', '${p.full_name}')">Dar de Baja</button>` : `<button class="btn-small btn-warning" onclick="reactivatePatient('${p.id}')">Reactivar</button>`}</td></tr>
-            `).join('');
-        }
-
+        async function loadDashboard() { const res = await fetch('/api/dashboard/stats'); const d = await res.json(); if(d.success) { document.getElementById('statPat').innerText = d.data.patients || 0; document.getElementById('statProf').innerText = d.data.professionals || 0; document.getElementById('statEdu').innerText = d.data.educationSessions || 0; document.getElementById('statReports').innerText = d.data.pendingReports || 0; } }
+        async function loadProfs() { const res = await fetch('/api/professionals'); const d = await res.json(); document.querySelector('#profTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.document_number}</td><td>${p.specialties?.name || 'N/A'}</td><td>${p.is_active ? '✅ Activo' : '❌ Inactivo'}</td><td><button class="btn-small ${p.is_active ? 'btn-danger' : 'btn-warning'}" onclick="toggleProf('${p.id}', ${p.is_active})">${p.is_active ? 'Desactivar' : 'Reactivar'}</button></td></tr>`).join(''); }
+        async function toggleProf(id, currentStatus) { if (!confirm(`¿${currentStatus ? 'Desactivar' : 'Reactivar'} este profesional?`)) return; const res = await fetch(`/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ isActive: !currentStatus }) }); alert((await res.json()).message); loadProfs(); loadDashboard(); }
+        async function loadPats() { const res = await fetch('/api/patients'); const d = await res.json(); document.querySelector('#patTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.city_id ? 'Asignada' : 'N/A'}</td><td>${p.family_name || 'N/A'}</td><td>${p.contact_phone || 'N/A'}</td><td>${p.is_active ? '✅ Activo' : ' Baja'}</td><td>${p.is_active ? `<button class="btn-small btn-danger" onclick="openDischargeModal('${p.id}', '${p.full_name}')">Dar de Baja</button>` : `<button class="btn-small btn-warning" onclick="reactivatePatient('${p.id}')">Reactivar</button>`}</td></tr>`).join(''); }
         function openDischargeModal(id, name) { dischargePatientId = id; document.getElementById('dischargePatientName').innerText = name; document.getElementById('dischargeModal').classList.remove('hidden'); }
         function closeDischargeModal() { document.getElementById('dischargeModal').classList.add('hidden'); document.getElementById('dischargeReason').value = ''; document.getElementById('dischargeNotes').value = ''; }
-        
-        async function confirmDischarge() {
-            const reason = document.getElementById('dischargeReason').value;
-            if (!reason) return alert('Selecciona un motivo');
-            if (!confirm('¿Confirmar baja?')) return;
-            const res = await fetch(`/api/patients/${dischargePatientId}/discharge`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ reason, notes: document.getElementById('dischargeNotes').value }) });
-            alert((await res.json()).message);
-            closeDischargeModal(); loadPats(); loadDashboard();
-        }
+        async function confirmDischarge() { const reason = document.getElementById('dischargeReason').value; if (!reason) return alert('Selecciona un motivo'); if (!confirm('¿Confirmar baja?')) return; const res = await fetch(`/api/patients/${dischargePatientId}/discharge`, { method: 'PATCH', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ reason, notes: document.getElementById('dischargeNotes').value }) }); alert((await res.json()).message); closeDischargeModal(); loadPats(); loadDashboard(); }
+        async function reactivatePatient(id) { if (!confirm('¿Reactivar paciente?')) return; const res = await fetch(`/api/patients/${id}/reactivate`, { method: 'PATCH' }); alert((await res.json()).message); loadPats(); loadDashboard(); }
+        async function createProf() { const res = await fetch('/api/professionals', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ fullName: document.getElementById('pName').value, documentNumber: document.getElementById('pDoc').value, email: document.getElementById('pEmail').value, password: document.getElementById('pPass').value, specialtyName: document.getElementById('pSpec').value }) }); alert((await res.json()).message); loadProfs(); loadDashboard(); }
+        async function createPat() { const res = await fetch('/api/patients', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ fullName: document.getElementById('patName').value, cityName: document.getElementById('patCity').value, familyName: document.getElementById('famName').value, contactPhone: document.getElementById('famCel').value }) }); alert((await res.json()).message); loadPats(); loadDashboard(); }
+        async function loadEduResps() { const res = await fetch('/api/professionals'); const d = await res.json(); document.getElementById('eduResp').innerHTML = d.data.map(p => `<option value="${p.id}">${p.full_name} (${p.specialties?.name})</option>`).join(''); }
+        async function loadEdus() { const res = await fetch('/api/education/topics'); const d = await res.json(); document.querySelector('#eduTable tbody').innerHTML = d.data.map(t => `<tr><td>${t.title}</td><td>${t.professionals?.full_name || 'N/A'}</td></tr>`).join(''); }
+        async function createEdu() { const res = await fetch('/api/education/topics', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title: document.getElementById('eduTitle').value, responsibleId: document.getElementById('eduResp').value }) }); alert((await res.json()).message); loadEdus(); loadDashboard(); }
+        async function loadPendingReports() { const res = await fetch('/api/reports/pending'); const d = await res.json(); const patientSelect = document.getElementById('reportPatient'); patientSelect.innerHTML = '<option value="">Seleccionar paciente...</option>'; if(d.data) { d.data.forEach(p => { patientSelect.innerHTML += `<option value="${p.id}">${p.full_name}</option>`; }); } }
 
-        async function reactivatePatient(id) {
-            if (!confirm('¿Reactivar paciente?')) return;
-            const res = await fetch(`/api/patients/${id}/reactivate`, { method: 'PATCH' });
-            alert((await res.json()).message);
-            loadPats(); loadDashboard();
-        }
-
-        async function createProf() {
-            const res = await fetch('/api/professionals', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ fullName: document.getElementById('pName').value, documentNumber: document.getElementById('pDoc').value, email: document.getElementById('pEmail').value, password: document.getElementById('pPass').value, specialtyName: document.getElementById('pSpec').value }) });
-            alert((await res.json()).message); loadProfs(); loadDashboard();
-        }
-
-        async function createPat() {
-            const res = await fetch('/api/patients', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ fullName: document.getElementById('patName').value, cityName: document.getElementById('patCity').value, familyName: document.getElementById('famName').value, contactPhone: document.getElementById('famCel').value }) });
-            alert((await res.json()).message); loadPats(); loadDashboard();
-        }
-
-        async function loadEduResps() {
-            const res = await fetch('/api/professionals');
-            const d = await res.json();
-            document.getElementById('eduResp').innerHTML = d.data.map(p => `<option value="${p.id}">${p.full_name} (${p.specialties?.name})</option>`).join('');
-        }
-
-        async function loadEdus() {
-            const res = await fetch('/api/education/topics');
-            const d = await res.json();
-            document.querySelector('#eduTable tbody').innerHTML = d.data.map(t => `<tr><td>${t.title}</td><td>${t.professionals?.full_name || 'N/A'}</td></tr>`).join('');
-        }
-
-        async function createEdu() {
-            const res = await fetch('/api/education/topics', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ title: document.getElementById('eduTitle').value, responsibleId: document.getElementById('eduResp').value }) });
-            alert((await res.json()).message); loadEdus(); loadDashboard();
-        }
-
-        async function loadPendingReports() {
-            const res = await fetch('/api/reports/pending');
-            const d = await res.json();
-            const patientSelect = document.getElementById('reportPatient');
-            patientSelect.innerHTML = '<option value="">Seleccionar paciente...</option>';
-            if(d.data) {
-                d.data.forEach(p => { patientSelect.innerHTML += `<option value="${p.id}">${p.full_name}</option>`; });
-            }
-        }
-
-        // NUEVA FUNCIÓN: Generar PDF Mensual
+        // PDF MENSUAL (ADMIN)
         async function generateMonthlyPDF() {
             const patientId = document.getElementById('reportPatient').value;
             const month = document.getElementById('reportMonth').value;
             const year = document.getElementById('reportYear').value;
             const statusDiv = document.getElementById('pdfStatus');
-            
             if(!patientId) return alert('Selecciona un paciente');
-            
             statusDiv.innerText = ' Generando informe...';
-            
             try {
                 const res = await fetch(`/api/reports/${patientId}/${month}/${year}`);
                 const result = await res.json();
-                
                 if(!result.success) throw new Error(result.message);
-                
                 const { patient, records, stats } = result.data;
                 const monthNames = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF();
+                
+                // Logo
+                try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) { console.log('Logo error', e); }
+                
+                doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
+                doc.setFontSize(14); doc.setTextColor(0, 0, 0); doc.text("Informe Clínico Mensual", 105, 30, null, null, "center");
+                doc.setFontSize(10);
+                doc.text(`Paciente: ${patient.full_name}`, 14, 50);
+                doc.text(`Cédula: ${patient.document_number || 'N/A'}`, 14, 57);
+                doc.text(`Ciudad: ${patient.altitude_profiles?.city_name || 'N/A'}`, 14, 64);
+                doc.text(`Familiar Responsable: ${patient.family_name || 'N/A'}`, 14, 71);
+                doc.text(`Período: ${monthNames[parseInt(month)-1]} ${year}`, 14, 78);
+                
+                doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Resumen del Período", 14, 90);
+                doc.setTextColor(0, 0, 0); doc.setFontSize(10);
+                doc.text(`Total de registros clínicos: ${stats.totalRecords}`, 14, 97);
+                doc.text(`Promedio SpO2: ${stats.avgSpo2}%`, 14, 104);
+                doc.text(`Promedio FC: ${stats.avgHR} lpm`, 14, 111);
+                doc.text(`Promedio Temp: ${stats.avgTemp} °C`, 14, 118);
+                doc.text(`Alertas Críticas detectadas: ${stats.criticalAlerts}`, 14, 125);
+                
+                doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Detalle de Registros Clínicos", 14, 140);
+                const tableData = records.map(r => {
+                    const date = new Date(r.created_at).toLocaleDateString('es-CO');
+                    const time = new Date(r.created_at).toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'});
+                    return [`${date} ${time}`, r.blood_pressure || '--', r.heart_rate || '--', r.spo2 || '--', r.temperature || '--', r.eva_score ?? '--', r.notes ? r.notes.substring(0, 30) + (r.notes.length > 30 ? '...' : '') : '--'];
+                });
+                doc.autoTable({ startY: 145, head: [['Fecha/Hora', 'PA', 'FC', 'SpO2', 'Temp', 'EVA', 'Novedades']], body: tableData, theme: 'striped', headStyles: { fillColor: [34, 197, 94] }, styles: { fontSize: 8 } });
+                
+                // Firma del Profesional Validador
+                const finalY = doc.lastAutoTable.finalY + 20;
+                doc.setDrawColor(0);
+                doc.line(14, finalY, 80, finalY);
+                doc.setFontSize(9);
+                doc.text(`Firma Profesional Validador`, 14, finalY + 5);
+                doc.text(`${currentUser.full_name} - ${currentUser.specialty_name}`, 14, finalY + 10);
+                doc.text(`CC: ${currentUser.document_number}`, 14, finalY + 15);
+                
+                doc.setFontSize(8); doc.setTextColor(100);
+                doc.text(`Documento generado el ${new Date().toLocaleString('es-CO')} por Vital Hogar Pro.`, 105, finalY + 30, null, null, "center");
+                
+                doc.save(`Informe_Mensual_${patient.full_name.replace(/\s+/g, '_')}_${monthNames[parseInt(month)-1]}_${year}.pdf`);
+                statusDiv.innerText = '✅ PDF generado exitosamente';
+            } catch (error) { console.error(error); statusDiv.innerText = '❌ Error al generar PDF: ' + error.message; }
+        }
+
+        // PDF DIARIO (AUXILIAR)
+        async function generateDailyPDF() {
+            if (!selectedPatient) return alert('Selecciona un paciente primero');
+            const statusDiv = document.getElementById('pdfStatus') || { innerText: '' };
+            try {
+                const res = await fetch(`/api/patients/${selectedPatient.id}/daily-history`);
+                const result = await res.json();
+                if(!result.success) throw new Error(result.message);
+                const { records, signatures } = result.data;
                 
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
                 
-                // Encabezado
-                doc.setFontSize(18);
-                doc.setTextColor(34, 197, 94);
-                doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
-                doc.setFontSize(14);
-                doc.setTextColor(0, 0, 0);
-                doc.text("Informe Clínico Mensual", 105, 30, null, null, "center");
+                // Logo
+                try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
                 
-                // Datos del paciente
+                doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
+                doc.setFontSize(14); doc.setTextColor(0, 0, 0); doc.text("Resumen Clínico Diario", 105, 30, null, null, "center");
                 doc.setFontSize(10);
-                doc.text(`Paciente: ${patient.full_name}`, 14, 45);
-                doc.text(`Cédula: ${patient.document_number || 'N/A'}`, 14, 52);
-                doc.text(`Ciudad: ${patient.altitude_profiles?.city_name || 'N/A'}`, 14, 59);
-                doc.text(`Familiar Responsable: ${patient.family_name || 'N/A'}`, 14, 66);
-                doc.text(`Período: ${monthNames[parseInt(month)-1]} ${year}`, 14, 73);
+                doc.text(`Paciente: ${selectedPatient.full_name}`, 14, 50);
+                doc.text(`Fecha: ${new Date().toLocaleDateString('es-CO')}`, 14, 57);
+                doc.text(`Familiar Responsable: ${selectedPatient.family_name || 'N/A'}`, 14, 64);
                 
-                // Resumen Estadístico
-                doc.setFontSize(12);
-                doc.setTextColor(59, 130, 246);
-                doc.text("Resumen del Período", 14, 85);
-                doc.setTextColor(0, 0, 0);
-                doc.setFontSize(10);
-                doc.text(`Total de registros clínicos: ${stats.totalRecords}`, 14, 92);
-                doc.text(`Promedio SpO2: ${stats.avgSpo2}%`, 14, 99);
-                doc.text(`Promedio FC: ${stats.avgHR} lpm`, 14, 106);
-                doc.text(`Promedio Temp: ${stats.avgTemp} °C`, 14, 113);
-                doc.text(`Alertas Críticas detectadas: ${stats.criticalAlerts}`, 14, 120);
+                if (records.length === 0) {
+                    doc.text("No hay registros clínicos para el día de hoy.", 14, 80);
+                } else {
+                    doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Registros del Día", 14, 80);
+                    const tableData = records.map(r => {
+                        const time = new Date(r.created_at).toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'});
+                        return [time, r.blood_pressure || '--', r.heart_rate || '--', r.spo2 || '--', r.temperature || '--', r.eva_score ?? '--', r.notes ? r.notes.substring(0, 25) : '--'];
+                    });
+                    doc.autoTable({ startY: 85, head: [['Hora', 'PA', 'FC', 'SpO2', 'Temp', 'EVA', 'Novedades']], body: tableData, theme: 'striped', headStyles: { fillColor: [34, 197, 94] }, styles: { fontSize: 8 } });
+                }
                 
-                // Tabla de Registros
-                doc.setFontSize(12);
-                doc.setTextColor(59, 130, 246);
-                doc.text("Detalle de Registros Clínicos", 14, 135);
+                // Firmas
+                const finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 30 : 120;
+                doc.setDrawColor(0);
                 
-                const tableData = records.map(r => {
-                    const date = new Date(r.created_at).toLocaleDateString('es-CO');
-                    const time = new Date(r.created_at).toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'});
-                    return [
-                        `${date} ${time}`,
-                        r.blood_pressure || '--',
-                        r.heart_rate || '--',
-                        r.spo2 || '--',
-                        r.temperature || '--',
-                        r.eva_score ?? '--',
-                        r.notes ? r.notes.substring(0, 30) + (r.notes.length > 30 ? '...' : '') : '--'
-                    ];
-                });
+                // Firma Auxiliar
+                doc.line(14, finalY, 80, finalY);
+                doc.setFontSize(9);
+                doc.text(`Firma del Auxiliar`, 14, finalY + 5);
+                doc.text(`${currentUser.full_name}`, 14, finalY + 10);
+                doc.text(`CC: ${currentUser.document_number}`, 14, finalY + 15);
                 
-                doc.autoTable({
-                    startY: 140,
-                    head: [['Fecha/Hora', 'PA', 'FC', 'SpO2', 'Temp', 'EVA', 'Novedades']],
-                    body: tableData,
-                    theme: 'striped',
-                    headStyles: { fillColor: [34, 197, 94] },
-                    styles: { fontSize: 8 }
-                });
+                // Firma Familiar
+                doc.line(110, finalY, 180, finalY);
+                doc.text(`Firma del Familiar`, 110, finalY + 5);
+                doc.text(`${selectedPatient.family_name || '________________'}`, 110, finalY + 10);
+                doc.text(`CC: ${selectedPatient.family_id_number || '________________'}`, 110, finalY + 15);
                 
-                // Pie de página
-                const finalY = doc.lastAutoTable.finalY + 10;
-                doc.setFontSize(8);
-                doc.setTextColor(100);
-                doc.text(`Documento generado el ${new Date().toLocaleString('es-CO')} por Vital Hogar Pro.`, 105, finalY, null, null, "center");
-                doc.text("Este documento es un resumen clínico y debe ser revisado por un profesional de la salud.", 105, finalY + 5, null, null, "center");
+                doc.setFontSize(8); doc.setTextColor(100);
+                doc.text(`Documento generado el ${new Date().toLocaleString('es-CO')} por Vital Hogar Pro.`, 105, finalY + 30, null, null, "center");
                 
-                doc.save(`Informe_${patient.full_name.replace(/\s+/g, '_')}_${monthNames[parseInt(month)-1]}_${year}.pdf`);
-                statusDiv.innerText = '✅ PDF generado exitosamente';
-                
-            } catch (error) {
-                console.error(error);
-                statusDiv.innerText = '❌ Error al generar PDF: ' + error.message;
-            }
+                doc.save(`Resumen_Diario_${selectedPatient.full_name.replace(/\s+/g, '_')}_${new Date().toLocaleDateString('es-CO').replace(/\//g, '-')}.pdf`);
+            } catch (error) { console.error(error); alert(' Error al generar PDF: ' + error.message); }
         }
 
         // AUX FUNCTIONS
-        async function loadAuxPatients() {
-            const res = await fetch('/api/auxiliar/patients');
-            const d = await res.json();
-            
-            const patientsWithStatus = d.data.map(p => {
-                const lastRecord = p.clinical_records?.[0];
-                const now = new Date();
-                const lastRecordTime = lastRecord ? new Date(lastRecord.created_at) : null;
-                const hoursSinceLastRecord = lastRecordTime ? (now - lastRecordTime) / (1000 * 60 * 60) : Infinity;
-                
-                let status = 'estable';
-                if (lastRecord) {
-                    const spo2Min = p.altitude_profiles?.spo2_min_normal || 95;
-                    if (lastRecord.spo2 < spo2Min - 2) status = 'alerta';
-                    if (lastRecord.glucose < 60 || lastRecord.glucose > 200) status = 'critico';
-                    if (lastRecord.eva_score >= 7) status = 'critico';
-                    if (lastRecord.glasgow_eyes + lastRecord.glasgow_verbal + lastRecord.glasgow_motor < 9) status = 'critico';
-                }
-                if (hoursSinceLastRecord > 12) status = 'critico';
-                else if (hoursSinceLastRecord > 4) status = 'alerta';
-                
-                return { ...p, status };
-            });
-
-            document.getElementById('auxPatientList').innerHTML = patientsWithStatus.map(p => `
-                <div class="patient-card" style="border-left: 4px solid ${getStatusColor(p.status)};" onclick='selectPatient(${JSON.stringify(p)})'>
-                    <strong>${p.full_name}</strong> - ${p.altitude_profiles?.city_name || 'N/A'} 
-                    <span style="font-weight: bold; color: ${getStatusColor(p.status)}; float: right;">${getStatusEmoji(p.status)}</span>
-                    <br><small>${p.pathology_summary || 'Sin patología'}</small>
-                </div>
-            `).join('');
-        }
-
+        async function loadAuxPatients() { const res = await fetch('/api/auxiliar/patients'); const d = await res.json(); const patientsWithStatus = d.data.map(p => { const lastRecord = p.clinical_records?.[0]; const now = new Date(); const lastRecordTime = lastRecord ? new Date(lastRecord.created_at) : null; const hoursSinceLastRecord = lastRecordTime ? (now - lastRecordTime) / (1000 * 60 * 60) : Infinity; let status = 'estable'; if (lastRecord) { const spo2Min = p.altitude_profiles?.spo2_min_normal || 95; if (lastRecord.spo2 < spo2Min - 2) status = 'alerta'; if (lastRecord.glucose < 60 || lastRecord.glucose > 200) status = 'critico'; if (lastRecord.eva_score >= 7) status = 'critico'; if (lastRecord.glasgow_eyes + lastRecord.glasgow_verbal + lastRecord.glasgow_motor < 9) status = 'critico'; } if (hoursSinceLastRecord > 12) status = 'critico'; else if (hoursSinceLastRecord > 4) status = 'alerta'; return { ...p, status }; }); document.getElementById('auxPatientList').innerHTML = patientsWithStatus.map(p => `<div class="patient-card" style="border-left: 4px solid ${getStatusColor(p.status)};" onclick='selectPatient(${JSON.stringify(p)})'><strong>${p.full_name}</strong> - ${p.altitude_profiles?.city_name || 'N/A'} <span style="font-weight: bold; color: ${getStatusColor(p.status)}; float: right;">${getStatusEmoji(p.status)}</span><br><small>${p.pathology_summary || 'Sin patología'}</small></div>`).join(''); }
         function getStatusColor(status) { if (status === 'critico') return 'var(--danger)'; if (status === 'alerta') return 'var(--warning)'; return 'var(--primary)'; }
-        function getStatusEmoji(status) { if (status === 'critico') return ''; if (status === 'alerta') return '🟡'; return '🟢'; }
-
-        function selectPatient(patient) { 
-            selectedPatient = patient; 
-            document.getElementById('patientNameStart').innerText = patient.full_name; 
-            document.getElementById('patientSelection').classList.add('hidden'); 
-            document.getElementById('shiftStart').classList.remove('hidden'); 
-            loadDraft(); // Cargar borrador si existe
-        }
-
-        // NUEVO: Mostrar/ocultar campos de turno personalizado
-        function toggleCustomShift() {
-            const type = document.getElementById('shiftType').value;
-            const customDiv = document.getElementById('customShiftTimes');
-            if (type === 'personalizado') customDiv.classList.remove('hidden');
-            else customDiv.classList.add('hidden');
-        }
-
-        async function startShift() {
-            const shiftType = document.getElementById('shiftType').value;
-            let customStart = null, customEnd = null;
-            
-            if (shiftType === 'personalizado') {
-                customStart = document.getElementById('customStartTime').value;
-                customEnd = document.getElementById('customEndTime').value;
-                if (!customStart || !customEnd) return alert('⚠️ Debes definir la hora de inicio y fin para el turno personalizado');
-            }
-
-            const res = await fetch('/api/shifts/start', { 
-                method: 'POST', 
-                headers: {'Content-Type': 'application/json'}, 
-                body: JSON.stringify({ 
-                    patientId: selectedPatient.id, 
-                    professionalId: currentUser.id, 
-                    shiftType, 
-                    patientStatus: document.getElementById('patientReceivedStatus').value, 
-                    patientNotes: document.getElementById('patientReceivedNotes').value,
-                    customStartTime: customStart,
-                    customEndTime: customEnd
-                }) 
-            });
-            const d = await res.json();
-            if (d.success) {
-                currentShiftId = d.data.id;
-                document.getElementById('patientNameClinical').innerText = selectedPatient.full_name;
-                document.getElementById('shiftStart').classList.add('hidden');
-                document.getElementById('clinicalForm').classList.remove('hidden');
-                initSignatureCanvases(); 
-                loadDailyHistory();
-                startAutosave(); // Iniciar autoguardado
-            }
-        }
-
-        // NUEVO: Autoguardado
-        function startAutosave() {
-            clearInterval(autosaveInterval);
-            autosaveInterval = setInterval(() => {
-                const draft = {
-                    bp: document.getElementById('bloodPressure').value,
-                    hr: document.getElementById('heartRate').value,
-                    rr: document.getElementById('respiratoryRate').value,
-                    temp: document.getElementById('temperature').value,
-                    spo2: document.getElementById('spo2').value,
-                    glu: document.getElementById('glucose').value,
-                    notes: document.getElementById('clinicalNotes').value,
-                    eva: document.getElementById('evaScore').value
-                };
-                localStorage.setItem(`draft_${selectedPatient.id}`, JSON.stringify(draft));
-            }, 30000); // Cada 30 segundos
-        }
-
-        function loadDraft() {
-            const draftStr = localStorage.getItem(`draft_${selectedPatient.id}`);
-            if (draftStr) {
-                const draft = JSON.parse(draftStr);
-                if(confirm('¿Recuperar borrador no guardado de este paciente?')) {
-                    document.getElementById('bloodPressure').value = draft.bp || '';
-                    document.getElementById('heartRate').value = draft.hr || '';
-                    document.getElementById('respiratoryRate').value = draft.rr || '';
-                    document.getElementById('temperature').value = draft.temp || '';
-                    document.getElementById('spo2').value = draft.spo2 || '';
-                    document.getElementById('glucose').value = draft.glu || '';
-                    document.getElementById('clinicalNotes').value = draft.notes || '';
-                    document.getElementById('evaScore').value = draft.eva || 0;
-                    updateEVA();
-                }
-            }
-        }
-
-        function checkVital(type) {
-            const spo2Min = selectedPatient.altitude_profiles?.spo2_min_normal || 95;
-            const checks = {
-                bp: () => { const v = document.getElementById('bloodPressure').value; const m = v.match(/(\d+)\/(\d+)/); if (!m) return { status: 'none' }; const [s, d] = [parseInt(m[1]), parseInt(m[2])]; if (s < 80 || s >= 160 || d < 50 || d >= 100) return { status: 'danger', msg: ' CRÍTICO' }; if (s < 90 || s >= 140 || d < 60 || d >= 90) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: '🟢 Normal' }; },
-                hr: () => { const v = parseInt(document.getElementById('heartRate').value); if (!v) return { status: 'none' }; if (v < 50 || v >= 120) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < 60 || v > 100) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: '🟢 Normal' }; },
-                rr: () => { const v = parseInt(document.getElementById('respiratoryRate').value); if (!v) return { status: 'none' }; if (v < 10 || v >= 25) return { status: 'danger', msg: ' CRÍTICO' }; if (v < 12 || v > 20) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: ' Normal' }; },
-                temp: () => { const v = parseFloat(document.getElementById('temperature').value); if (!v) return { status: 'none' }; if (v < 35.5 || v >= 38.0) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < 36.1 || v > 37.2) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: ' Normal' }; },
-                spo2: () => { const v = parseInt(document.getElementById('spo2').value); if (!v) return { status: 'none' }; if (v < spo2Min - 3) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < spo2Min) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: '🟢 Normal' }; },
-                glu: () => { const v = parseInt(document.getElementById('glucose').value); if (!v) return { status: 'none' }; if (v < 60 || v >= 200) return { status: 'danger', msg: ' CRÍTICO' }; if (v < 70 || v > 140) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: '🟢 Normal' }; }
-            };
-            const r = checks[type]();
-            const inputMap = { bp: 'bloodPressure', hr: 'heartRate', rr: 'respiratoryRate', temp: 'temperature', spo2: 'spo2', glu: 'glucose' };
-            const alertMap = { bp: 'bpAlert', hr: 'hrAlert', rr: 'rrAlert', temp: 'tempAlert', spo2: 'spo2Alert', glu: 'gluAlert' };
-            const input = document.getElementById(inputMap[type]);
-            const alertDiv = document.getElementById(alertMap[type]);
-            if (r.status === 'none') { alertDiv.classList.remove('show'); input.className = ''; }
-            else { alertDiv.className = `vital-status show ${r.status}`; alertDiv.innerHTML = r.msg; input.className = `vital-${r.status}`; }
-        }
-
+        function getStatusEmoji(status) { if (status === 'critico') return '🔴'; if (status === 'alerta') return '🟡'; return '🟢'; }
+        function selectPatient(patient) { selectedPatient = patient; document.getElementById('patientNameStart').innerText = patient.full_name; document.getElementById('patientSelection').classList.add('hidden'); document.getElementById('shiftStart').classList.remove('hidden'); }
+        function toggleCustomShift() { const type = document.getElementById('shiftType').value; const customDiv = document.getElementById('customShiftTimes'); if (type === 'personalizado') customDiv.classList.remove('hidden'); else customDiv.classList.add('hidden'); }
+        async function startShift() { const shiftType = document.getElementById('shiftType').value; let customStart = null, customEnd = null; if (shiftType === 'personalizado') { customStart = document.getElementById('customStartTime').value; customEnd = document.getElementById('customEndTime').value; if (!customStart || !customEnd) return alert('️ Debes definir la hora de inicio y fin'); } const res = await fetch('/api/shifts/start', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ patientId: selectedPatient.id, professionalId: currentUser.id, shiftType, patientStatus: document.getElementById('patientReceivedStatus').value, patientNotes: document.getElementById('patientReceivedNotes').value, customStartTime: customStart, customEndTime: customEnd }) }); const d = await res.json(); if (d.success) { currentShiftId = d.data.id; document.getElementById('patientNameClinical').innerText = selectedPatient.full_name; document.getElementById('shiftStart').classList.add('hidden'); document.getElementById('clinicalForm').classList.remove('hidden'); initSignatureCanvases(); loadDailyHistory(); startAutosave(); } }
+        function startAutosave() { clearInterval(autosaveInterval); autosaveInterval = setInterval(() => { const draft = { bp: document.getElementById('bloodPressure').value, hr: document.getElementById('heartRate').value, notes: document.getElementById('clinicalNotes').value }; localStorage.setItem(`draft_${selectedPatient.id}`, JSON.stringify(draft)); }, 30000); }
+        function checkVital(type) { const spo2Min = selectedPatient.altitude_profiles?.spo2_min_normal || 95; const checks = { bp: () => { const v = document.getElementById('bloodPressure').value; const m = v.match(/(\d+)\/(\d+)/); if (!m) return { status: 'none' }; const [s, d] = [parseInt(m[1]), parseInt(m[2])]; if (s < 80 || s >= 160 || d < 50 || d >= 100) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (s < 90 || s >= 140 || d < 60 || d >= 90) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: '🟢 Normal' }; }, hr: () => { const v = parseInt(document.getElementById('heartRate').value); if (!v) return { status: 'none' }; if (v < 50 || v >= 120) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < 60 || v > 100) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: ' Normal' }; }, rr: () => { const v = parseInt(document.getElementById('respiratoryRate').value); if (!v) return { status: 'none' }; if (v < 10 || v >= 25) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < 12 || v > 20) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: '🟢 Normal' }; }, temp: () => { const v = parseFloat(document.getElementById('temperature').value); if (!v) return { status: 'none' }; if (v < 35.5 || v >= 38.0) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < 36.1 || v > 37.2) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: ' Normal' }; }, spo2: () => { const v = parseInt(document.getElementById('spo2').value); if (!v) return { status: 'none' }; if (v < spo2Min - 3) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < spo2Min) return { status: 'warning', msg: ' ALERTA' }; return { status: 'normal', msg: '🟢 Normal' }; }, glu: () => { const v = parseInt(document.getElementById('glucose').value); if (!v) return { status: 'none' }; if (v < 60 || v >= 200) return { status: 'danger', msg: '🔴 CRÍTICO' }; if (v < 70 || v > 140) return { status: 'warning', msg: '🟡 ALERTA' }; return { status: 'normal', msg: '🟢 Normal' }; } }; const r = checks[type](); const inputMap = { bp: 'bloodPressure', hr: 'heartRate', rr: 'respiratoryRate', temp: 'temperature', spo2: 'spo2', glu: 'glucose' }; const alertMap = { bp: 'bpAlert', hr: 'hrAlert', rr: 'rrAlert', temp: 'tempAlert', spo2: 'spo2Alert', glu: 'gluAlert' }; const input = document.getElementById(inputMap[type]); const alertDiv = document.getElementById(alertMap[type]); if (r.status === 'none') { alertDiv.classList.remove('show'); input.className = ''; } else { alertDiv.className = `vital-status show ${r.status}`; alertDiv.innerHTML = r.msg; input.className = `vital-${r.status}`; } }
         function updateEVA() { const v = document.getElementById('evaScore').value; let t = 'Sin dolor'; if (v >= 1 && v <= 3) t = 'Dolor leve'; if (v >= 4 && v <= 6) t = 'Dolor moderado'; if (v >= 7) t = 'Dolor severo'; document.getElementById('evaValue').innerText = `${v} - ${t}`; }
-        
         function toggleGlasgow() { document.getElementById('glasgowSection').classList.toggle('hidden'); if (!document.getElementById('glasgowSection').classList.contains('hidden')) calculateGlasgow(); }
-        function calculateGlasgow() { const t = (parseInt(document.getElementById('glasgowEyes').value)||0) + (parseInt(document.getElementById('glasgowVerbal').value)||0) + (parseInt(document.getElementById('glasgowMotor').value)||0); const d = document.getElementById('glasgowTotal'); let s = 'Normal', c = 'normal'; if (t >= 13 && t <= 14) { s = '⚠️ LEVE'; c = 'mild'; } else if (t >= 9 && t <= 12) { s = '️ MODERADA'; c = 'moderate'; } else if (t >= 3 && t <= 8) { s = '🚨 SEVERA'; c = 'severe'; } d.className = `glasgow-total ${c}`; d.innerHTML = `<h3>${t}/15</h3><p>${s}</p>`; }
-
+        function calculateGlasgow() { const t = (parseInt(document.getElementById('glasgowEyes').value)||0) + (parseInt(document.getElementById('glasgowVerbal').value)||0) + (parseInt(document.getElementById('glasgowMotor').value)||0); const d = document.getElementById('glasgowTotal'); let s = 'Normal', c = 'normal'; if (t >= 13 && t <= 14) { s = '⚠️ LEVE'; c = 'mild'; } else if (t >= 9 && t <= 12) { s = '⚠️ MODERADA'; c = 'moderate'; } else if (t >= 3 && t <= 8) { s = '🚨 SEVERA'; c = 'severe'; } d.className = `glasgow-total ${c}`; d.innerHTML = `<h3>${t}/15</h3><p>${s}</p>`; }
         function toggleBraden() { document.getElementById('bradenSection').classList.toggle('hidden'); if (!document.getElementById('bradenSection').classList.contains('hidden')) calculateBraden(); }
         function calculateBraden() { const ids = ['bradenSensory','bradenMoisture','bradenActivity','bradenMobility','bradenNutrition','bradenFriction']; const t = ids.reduce((s, id) => s + parseInt(document.getElementById(id).value), 0); const d = document.getElementById('bradenTotal'); let s = 'Sin riesgo', c = 'risk-none'; if (t <= 9) { s = '🔴 MUY ALTO'; c = 'risk-high'; } else if (t <= 12) { s = '🟠 ALTO'; c = 'risk-high'; } else if (t <= 14) { s = ' MODERADO'; c = 'risk-moderate'; } else if (t <= 18) { s = '🟢 LEVE'; c = 'risk-mild'; } d.className = `braden-total ${c}`; d.innerHTML = `<h3>${t}/24</h3><p>${s}</p>`; }
-
-        function toggleBristol() { document.getElementById('bristolSection').classList.toggle('hidden'); }
-        function selectBristol(type) { selectedBristolType = type; document.querySelectorAll('.bristol-option').forEach(o => o.classList.remove('selected')); event.currentTarget.classList.add('selected'); document.getElementById('bristolSelected').innerText = `✅ Tipo ${type} seleccionado`; }
-
         function toggleAccordion(header) { header.classList.toggle('active'); header.nextElementSibling.classList.toggle('open'); }
         function toggleSubFields(id) { document.getElementById(`fields-${id}`).classList.toggle('show', event.target.checked); }
-
-        function addMedication() { medications.push({ id: Date.now(), name: '', dose: '', route: 'oral', site: '', time: '' }); renderMedications(); }
+        function addMedication() { medications.push({ id: Date.now(), name: '', dose: '', route: 'oral', time: '' }); renderMedications(); }
         function removeMedication(id) { medications = medications.filter(m => m.id !== id); renderMedications(); }
         function updateMedication(id, field, value) { const med = medications.find(m => m.id === id); if (med) med[field] = value; }
-        function renderMedications() {
-            document.getElementById('medList').innerHTML = medications.map(m => `
-                <div class="med-item">
-                    <input type="text" placeholder="Nombre" value="${m.name}" oninput="updateMedication(${m.id}, 'name', this.value)">
-                    <input type="text" placeholder="Dosis" value="${m.dose}" oninput="updateMedication(${m.id}, 'dose', this.value)">
-                    <select onchange="updateMedication(${m.id}, 'route', this.value)">
-                        <option value="oral" ${m.route==='oral'?'selected':''}>Oral</option><option value="sublingual" ${m.route==='sublingual'?'selected':''}>Sublingual</option><option value="subcutanea" ${m.route==='subcutanea'?'selected':''}>SC</option><option value="intramuscular" ${m.route==='intramuscular'?'selected':''}>IM</option><option value="intravenosa" ${m.route==='intravenosa'?'selected':''}>IV</option><option value="topica" ${m.route==='topica'?'selected':''}>Tópica</option>
-                    </select>
-                    <input type="time" value="${m.time}" oninput="updateMedication(${m.id}, 'time', this.value)">
-                    <button class="btn-remove-med" onclick="removeMedication(${m.id})">✕</button>
-                </div>
-            `).join('');
-        }
-
-        function initSignatureCanvases() {
-            auxCanvas = document.getElementById('auxSigCanvas'); auxCtx = auxCanvas.getContext('2d'); auxCanvas.width = auxCanvas.offsetWidth; auxCanvas.height = 150; auxCtx.fillStyle = 'white'; auxCtx.fillRect(0, 0, auxCanvas.width, auxCanvas.height);
-            let d1 = false; auxCanvas.onmousedown = () => d1 = true; auxCanvas.onmouseup = () => d1 = false; auxCanvas.onmousemove = (e) => { if (!d1) return; const r = auxCanvas.getBoundingClientRect(); auxCtx.lineWidth = 2; auxCtx.lineCap = 'round'; auxCtx.strokeStyle = 'black'; auxCtx.lineTo(e.clientX - r.left, e.clientY - r.top); auxCtx.stroke(); auxCtx.beginPath(); auxCtx.moveTo(e.clientX - r.left, e.clientY - r.top); };
-            famCanvas = document.getElementById('famSigCanvas'); famCtx = famCanvas.getContext('2d'); famCanvas.width = famCanvas.offsetWidth; famCanvas.height = 150; famCtx.fillStyle = 'white'; famCtx.fillRect(0, 0, famCanvas.width, famCanvas.height);
-            let d2 = false; famCanvas.onmousedown = () => d2 = true; famCanvas.onmouseup = () => d2 = false; famCanvas.onmousemove = (e) => { if (!d2) return; const r = famCanvas.getBoundingClientRect(); famCtx.lineWidth = 2; famCtx.lineCap = 'round'; famCtx.strokeStyle = 'black'; famCtx.lineTo(e.clientX - r.left, e.clientY - r.top); famCtx.stroke(); famCtx.beginPath(); famCtx.moveTo(e.clientX - r.left, e.clientY - r.top); };
-        }
+        function renderMedications() { document.getElementById('medList').innerHTML = medications.map(m => `<div class="med-item"><input type="text" placeholder="Nombre" value="${m.name}" oninput="updateMedication(${m.id}, 'name', this.value)"><input type="text" placeholder="Dosis" value="${m.dose}" oninput="updateMedication(${m.id}, 'dose', this.value)"><select onchange="updateMedication(${m.id}, 'route', this.value)"><option value="oral" ${m.route==='oral'?'selected':''}>Oral</option><option value="sublingual" ${m.route==='sublingual'?'selected':''}>Sublingual</option><option value="subcutanea" ${m.route==='subcutanea'?'selected':''}>SC</option><option value="intramuscular" ${m.route==='intramuscular'?'selected':''}>IM</option><option value="intravenosa" ${m.route==='intravenosa'?'selected':''}>IV</option></select><input type="time" value="${m.time}" oninput="updateMedication(${m.id}, 'time', this.value)"><button class="btn-remove-med" onclick="removeMedication(${m.id})">✕</button></div>`).join(''); }
+        function initSignatureCanvases() { auxCanvas = document.getElementById('auxSigCanvas'); auxCtx = auxCanvas.getContext('2d'); auxCanvas.width = auxCanvas.offsetWidth; auxCanvas.height = 150; auxCtx.fillStyle = 'white'; auxCtx.fillRect(0, 0, auxCanvas.width, auxCanvas.height); let d1 = false; auxCanvas.onmousedown = () => d1 = true; auxCanvas.onmouseup = () => d1 = false; auxCanvas.onmousemove = (e) => { if (!d1) return; const r = auxCanvas.getBoundingClientRect(); auxCtx.lineWidth = 2; auxCtx.lineCap = 'round'; auxCtx.strokeStyle = 'black'; auxCtx.lineTo(e.clientX - r.left, e.clientY - r.top); auxCtx.stroke(); auxCtx.beginPath(); auxCtx.moveTo(e.clientX - r.left, e.clientY - r.top); }; famCanvas = document.getElementById('famSigCanvas'); famCtx = famCanvas.getContext('2d'); famCanvas.width = famCanvas.offsetWidth; famCanvas.height = 150; famCtx.fillStyle = 'white'; famCtx.fillRect(0, 0, famCanvas.width, famCanvas.height); let d2 = false; famCanvas.onmousedown = () => d2 = true; famCanvas.onmouseup = () => d2 = false; famCanvas.onmousemove = (e) => { if (!d2) return; const r = famCanvas.getBoundingClientRect(); famCtx.lineWidth = 2; famCtx.lineCap = 'round'; famCtx.strokeStyle = 'black'; famCtx.lineTo(e.clientX - r.left, e.clientY - r.top); famCtx.stroke(); famCtx.beginPath(); famCtx.moveTo(e.clientX - r.left, e.clientY - r.top); }; }
         function clearAuxSig() { auxCtx.fillStyle = 'white'; auxCtx.fillRect(0, 0, auxCanvas.width, auxCanvas.height); auxCtx.beginPath(); }
         function clearFamSig() { famCtx.fillStyle = 'white'; famCtx.fillRect(0, 0, famCanvas.width, famCanvas.height); famCtx.beginPath(); }
-
-        async function saveClinicalRecord() {
-            // VALIDACIÓN: Al menos un dato debe estar presente
-            const bp = document.getElementById('bloodPressure').value;
-            const hr = document.getElementById('heartRate').value;
-            const notes = document.getElementById('clinicalNotes').value;
-            const hasActivities = medications.length > 0 || document.getElementById('actBath').checked || document.getElementById('actOralFood').checked;
-            
-            if (!bp && !hr && !notes && !hasActivities) {
-                return alert('⚠️ Debes registrar al menos un signo vital, una actividad o una novedad antes de guardar.');
-            }
-
-            const activities = {
-                hygiene: { bath: document.getElementById('actBath').checked ? { done: true, time: document.getElementById('actBathTime').value, type: document.getElementById('bathType').value } : null, oral_hygiene: document.getElementById('actOralHygiene').checked ? { done: true, time: document.getElementById('actOralTime').value, type: document.getElementById('oralType').value } : null },
-                feeding: { oral: document.getElementById('actOralFood').checked ? { done: true, time: document.getElementById('actOralFoodTime').value, quantity: document.getElementById('oralFoodQty').value, diet: document.getElementById('oralFoodDiet').value } : null },
-                medications: medications.filter(m => m.name),
-                clinical: { wound: document.getElementById('actWound').checked ? { done: true, time: document.getElementById('actWoundTime').value, type: document.getElementById('woundType').value, state: document.getElementById('woundState').value } : null, oxygen: document.getElementById('actOxygen').checked ? { done: true, time: document.getElementById('actOxygenTime').value, lpm: parseFloat(document.getElementById('oxygenLpm').value), device: document.getElementById('oxygenDevice').value } : null },
-                mobility: { position_change: document.getElementById('actPosition').checked ? { done: true, time: document.getElementById('actPositionTime').value, position: document.getElementById('positionType').value } : null }
-            };
-
-            const wasteManagement = { sharps: document.getElementById('wasteSharps').checked, biohazard: document.getElementById('wasteBiohazard').checked };
-            const ppeUsed = { gloves: document.getElementById('ppeGloves').checked, mask: document.getElementById('ppeMask').checked, goggles: document.getElementById('ppeGoggles').checked, gown: document.getElementById('ppeGown').checked };
-
-            const bradenScore = document.getElementById('bradenSection').classList.contains('hidden') ? null : ['bradenSensory','bradenMoisture','bradenActivity','bradenMobility','bradenNutrition','bradenFriction'].reduce((s, id) => s + parseInt(document.getElementById(id).value), 0);
-
-            const payload = { shiftId: currentShiftId, patientId: selectedPatient.id, professionalId: currentUser.id, bloodPressure: bp, heartRate: parseInt(hr) || null, respiratoryRate: parseInt(document.getElementById('respiratoryRate').value) || null, temperature: parseFloat(document.getElementById('temperature').value) || null, spo2: parseInt(document.getElementById('spo2').value) || null, glucose: parseInt(document.getElementById('glucose').value) || null, evaScore: parseInt(document.getElementById('evaScore').value), consciousnessLevel: document.getElementById('consciousnessLevel').value, glasgowEyes: parseInt(document.getElementById('glasgowEyes').value) || null, glasgowVerbal: parseInt(document.getElementById('glasgowVerbal').value) || null, glasgowMotor: parseInt(document.getElementById('glasgowMotor').value) || null, bradenScore: bradenScore, bristolType: selectedBristolType, ppeUsed: ppeUsed, wasteManagement: wasteManagement, activitiesCompleted: activities, sbarSituation: document.getElementById('sbarSituation').value, sbarBackground: document.getElementById('sbarBackground').value, sbarAssessment: document.getElementById('sbarAssessment').value, sbarRecommendation: document.getElementById('sbarRecommendation').value, notes: notes };
-
-            const res = await fetch('/api/clinical-records', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
-            const d = await res.json();
-            if (d.success) { 
-                alert('✅ Registro guardado'); 
-                localStorage.removeItem(`draft_${selectedPatient.id}`); // Borrar borrador al guardar
-                loadDailyHistory(); 
-            } else { alert('❌ Error: ' + d.message); }
-        }
-
-        function getVitalStatus(type, value) {
-            const spo2Min = selectedPatient?.altitude_profiles?.spo2_min_normal || 95;
-            if (value === null || value === undefined || value === '') return { status: 'normal', label: '--' };
-            if (type === 'bp') { const m = String(value).match(/(\d+)\/(\d+)/); if (!m) return { status: 'normal', label: value }; const [s, d] = [parseInt(m[1]), parseInt(m[2])]; if (s < 80 || s >= 160 || d < 50 || d >= 100) return { status: 'danger', label: value }; if (s < 90 || s >= 140 || d < 60 || d >= 90) return { status: 'warning', label: value }; return { status: 'normal', label: value }; }
-            if (type === 'hr') { if (value < 50 || value >= 120) return { status: 'danger', label: value }; if (value < 60 || value > 100) return { status: 'warning', label: value }; return { status: 'normal', label: value }; }
-            if (type === 'rr') { if (value < 10 || value >= 25) return { status: 'danger', label: value }; if (value < 12 || value > 20) return { status: 'warning', label: value }; return { status: 'normal', label: value }; }
-            if (type === 'temp') { if (value < 35.5 || value >= 38.0) return { status: 'danger', label: value + '°C' }; if (value < 36.1 || value > 37.2) return { status: 'warning', label: value + '°C' }; return { status: 'normal', label: value + '°C' }; }
-            if (type === 'spo2') { if (value < spo2Min - 3) return { status: 'danger', label: value + '%' }; if (value < spo2Min) return { status: 'warning', label: value + '%' }; return { status: 'normal', label: value + '%' }; }
-            if (type === 'glu') { if (value < 60 || value >= 200) return { status: 'danger', label: value }; if (value < 70 || value > 140) return { status: 'warning', label: value }; return { status: 'normal', label: value }; }
-            if (type === 'eva') { if (value >= 7) return { status: 'danger', label: value }; if (value >= 4) return { status: 'warning', label: value }; return { status: 'normal', label: value }; }
-            return { status: 'normal', label: value };
-        }
-
-        function formatTime12h(timeStr) {
-            if (!timeStr) return '--:--';
-            if (timeStr.includes(':') && !timeStr.includes(' ')) { const [h, m] = timeStr.split(':'); const hour = parseInt(h); const ampm = hour >= 12 ? 'p. m.' : 'a. m.'; const hour12 = hour % 12 || 12; return `${String(hour12).padStart(2, '0')}:${m} ${ampm}`; }
-            return timeStr;
-        }
-
-        async function loadDailyHistory() {
-            const res = await fetch(`/api/patients/${selectedPatient.id}/daily-history`);
-            const d = await res.json();
-            if (!d.data || d.data.length === 0) { document.getElementById('dailyHistory').innerHTML = '<p style="color: #94a3b8; text-align: center;">No hay registros hoy</p>'; return; }
-            document.getElementById('dailyHistory').innerHTML = d.data.map(r => {
-                const date = new Date(r.created_at);
-                const timeStr = date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true });
-                const bp = getVitalStatus('bp', r.blood_pressure); const hr = getVitalStatus('hr', r.heart_rate); const rr = getVitalStatus('rr', r.respiratory_rate); const temp = getVitalStatus('temp', r.temperature); const spo2 = getVitalStatus('spo2', r.spo2); const glu = getVitalStatus('glu', r.glucose); const eva = getVitalStatus('eva', r.eva_score);
-                let glasgowHtml = ''; if (r.glasgow_eyes && r.glasgow_verbal && r.glasgow_motor) { const t = r.glasgow_eyes + r.glasgow_verbal + r.glasgow_motor; let s = 'normal'; if (t >= 13 && t <= 14) s = 'warning'; if (t >= 9 && t <= 12) s = 'warning'; if (t >= 3 && t <= 8) s = 'danger'; glasgowHtml = `<div class="history-vital-item v-${s}"><strong>${t}/15</strong><small>Glasgow</small></div>`; }
-                let activitiesHtml = '';
-                if (r.activities_completed) {
-                    const acts = r.activities_completed; const tags = [];
-                    if (acts.hygiene?.bath?.done) tags.push(`🛁 Baño (${formatTime12h(acts.hygiene.bath.time)})`);
-                    if (acts.feeding?.oral?.done) tags.push(`🥣 Alimentación (${formatTime12h(acts.feeding.oral.time)})`);
-                    if (acts.medications?.length > 0) tags.push(`💊 ${acts.medications.length} medicamento(s)`);
-                    if (acts.mobility?.position_change?.done) tags.push(`🔄 Cambio postural`);
-                    if (tags.length > 0) activitiesHtml = `<div style="margin: 10px 0;"><strong>✅ Actividades:</strong><br>${tags.map(t => `<span class="history-activity-tag">${t}</span>`).join('')}</div>`;
-                }
-                return `<div class="history-item"><div class="history-header"><span class="history-time">🕐 ${timeStr}</span><span style="color: #94a3b8;">${r.professionals?.full_name || 'Auxiliar'}</span></div><div class="history-vitals"><div class="history-vital-item v-${bp.status}"><strong>${bp.label || '--/--'}</strong><small>PA</small></div><div class="history-vital-item v-${hr.status}"><strong>${hr.label || '--'}</strong><small>FC</small></div><div class="history-vital-item v-${rr.status}"><strong>${rr.label || '--'}</strong><small>FR</small></div><div class="history-vital-item v-${temp.status}"><strong>${temp.label || '--'}</strong><small>Temp</small></div><div class="history-vital-item v-${spo2.status}"><strong>${spo2.label || '--'}</strong><small>SpO2</small></div><div class="history-vital-item v-${glu.status}"><strong>${glu.label || '--'}</strong><small>Glucosa</small></div><div class="history-vital-item v-${eva.status}"><strong>${eva.label ?? '--'}</strong><small>EVA</small></div>${glasgowHtml}</div>${activitiesHtml}${r.notes ? `<div class="history-notes">📝 ${r.notes}</div>` : ''}</div>`;
-            }).join('');
-        }
-
-        async function closeShift() {
-            const payload = { shiftId: currentShiftId, patientDeliveredStatus: document.getElementById('patientDeliveredStatus').value, patientDeliveredNotes: document.getElementById('patientDeliveredNotes').value, pendingTasks: document.getElementById('pendingTasks').value, pendingJustification: document.getElementById('pendingJustification').value, auxiliarySignature: auxCanvas.toDataURL(), auxiliaryName: currentUser.full_name, auxiliaryIdNumber: currentUser.document_number, familySignature: famCanvas.toDataURL(), familyName: document.getElementById('familySignName').value, familyIdNumber: document.getElementById('familySignId').value };
-            const res = await fetch('/api/shifts/close', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) });
-            const d = await res.json();
-            if (d.success) { alert('✅ Turno cerrado'); location.reload(); } else { alert('❌ Error: ' + d.message); }
-        }
-
+        async function saveClinicalRecord() { const bp = document.getElementById('bloodPressure').value; const hr = document.getElementById('heartRate').value; const notes = document.getElementById('clinicalNotes').value; const hasActivities = medications.length > 0 || document.getElementById('actBath').checked || document.getElementById('actOralFood').checked; if (!bp && !hr && !notes && !hasActivities) return alert('⚠️ Debes registrar al menos un signo vital, una actividad o una novedad.'); const activities = { hygiene: { bath: document.getElementById('actBath').checked ? { done: true, time: document.getElementById('actBathTime').value, type: document.getElementById('bathType').value } : null }, feeding: { oral: document.getElementById('actOralFood').checked ? { done: true, time: document.getElementById('actOralFoodTime').value, quantity: document.getElementById('oralFoodQty').value } : null }, medications: medications.filter(m => m.name), clinical: { wound: document.getElementById('actWound').checked ? { done: true, time: document.getElementById('actWoundTime').value, type: document.getElementById('woundType').value } : null }, mobility: { position_change: document.getElementById('actPosition').checked ? { done: true, time: document.getElementById('actPositionTime').value, position: document.getElementById('positionType').value } : null } }; const wasteManagement = { sharps: document.getElementById('wasteSharps').checked }; const ppeUsed = { gloves: document.getElementById('ppeGloves').checked, mask: document.getElementById('ppeMask').checked }; const bradenScore = document.getElementById('bradenSection').classList.contains('hidden') ? null : ['bradenSensory','bradenMoisture','bradenActivity','bradenMobility','bradenNutrition','bradenFriction'].reduce((s, id) => s + parseInt(document.getElementById(id).value), 0); const payload = { shiftId: currentShiftId, patientId: selectedPatient.id, professionalId: currentUser.id, bloodPressure: bp, heartRate: parseInt(hr) || null, respiratoryRate: parseInt(document.getElementById('respiratoryRate').value) || null, temperature: parseFloat(document.getElementById('temperature').value) || null, spo2: parseInt(document.getElementById('spo2').value) || null, glucose: parseInt(document.getElementById('glucose').value) || null, evaScore: parseInt(document.getElementById('evaScore').value), consciousnessLevel: document.getElementById('consciousnessLevel').value, glasgowEyes: parseInt(document.getElementById('glasgowEyes').value) || null, glasgowVerbal: parseInt(document.getElementById('glasgowVerbal').value) || null, glasgowMotor: parseInt(document.getElementById('glasgowMotor').value) || null, bradenScore: bradenScore, bristolType: selectedBristolType, ppeUsed: ppeUsed, wasteManagement: wasteManagement, activitiesCompleted: activities, sbarSituation: document.getElementById('sbarSituation').value, sbarBackground: document.getElementById('sbarBackground').value, sbarAssessment: document.getElementById('sbarAssessment').value, sbarRecommendation: document.getElementById('sbarRecommendation').value, notes: notes }; const res = await fetch('/api/clinical-records', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }); const d = await res.json(); if (d.success) { alert('✅ Registro guardado'); localStorage.removeItem(`draft_${selectedPatient.id}`); loadDailyHistory(); } else { alert('❌ Error: ' + d.message); } }
+        function getVitalStatus(type, value) { const spo2Min = selectedPatient?.altitude_profiles?.spo2_min_normal || 95; if (value === null || value === undefined || value === '') return { status: 'normal', label: '--' }; if (type === 'bp') { const m = String(value).match(/(\d+)\/(\d+)/); if (!m) return { status: 'normal', label: value }; const [s, d] = [parseInt(m[1]), parseInt(m[2])]; if (s < 80 || s >= 160 || d < 50 || d >= 100) return { status: 'danger', label: value }; if (s < 90 || s >= 140 || d < 60 || d >= 90) return { status: 'warning', label: value }; return { status: 'normal', label: value }; } if (type === 'hr') { if (value < 50 || value >= 120) return { status: 'danger', label: value }; if (value < 60 || value > 100) return { status: 'warning', label: value }; return { status: 'normal', label: value }; } if (type === 'rr') { if (value < 10 || value >= 25) return { status: 'danger', label: value }; if (value < 12 || value > 20) return { status: 'warning', label: value }; return { status: 'normal', label: value }; } if (type === 'temp') { if (value < 35.5 || value >= 38.0) return { status: 'danger', label: value + '°C' }; if (value < 36.1 || value > 37.2) return { status: 'warning', label: value + '°C' }; return { status: 'normal', label: value + '°C' }; } if (type === 'spo2') { if (value < spo2Min - 3) return { status: 'danger', label: value + '%' }; if (value < spo2Min) return { status: 'warning', label: value + '%' }; return { status: 'normal', label: value + '%' }; } if (type === 'glu') { if (value < 60 || value >= 200) return { status: 'danger', label: value }; if (value < 70 || value > 140) return { status: 'warning', label: value }; return { status: 'normal', label: value }; } if (type === 'eva') { if (value >= 7) return { status: 'danger', label: value }; if (value >= 4) return { status: 'warning', label: value }; return { status: 'normal', label: value }; } return { status: 'normal', label: value }; }
+        function formatTime12h(timeStr) { if (!timeStr) return '--:--'; if (timeStr.includes(':') && !timeStr.includes(' ')) { const [h, m] = timeStr.split(':'); const hour = parseInt(h); const ampm = hour >= 12 ? 'p. m.' : 'a. m.'; const hour12 = hour % 12 || 12; return `${String(hour12).padStart(2, '0')}:${m} ${ampm}`; } return timeStr; }
+        async function loadDailyHistory() { const res = await fetch(`/api/patients/${selectedPatient.id}/daily-history`); const d = await res.json(); if (!d.data.records || d.data.records.length === 0) { document.getElementById('dailyHistory').innerHTML = '<p style="color: #94a3b8; text-align: center;">No hay registros hoy</p>'; return; } document.getElementById('dailyHistory').innerHTML = d.data.records.map(r => { const date = new Date(r.created_at); const timeStr = date.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit', hour12: true }); const bp = getVitalStatus('bp', r.blood_pressure); const hr = getVitalStatus('hr', r.heart_rate); const rr = getVitalStatus('rr', r.respiratory_rate); const temp = getVitalStatus('temp', r.temperature); const spo2 = getVitalStatus('spo2', r.spo2); const glu = getVitalStatus('glu', r.glucose); const eva = getVitalStatus('eva', r.eva_score); let glasgowHtml = ''; if (r.glasgow_eyes && r.glasgow_verbal && r.glasgow_motor) { const t = r.glasgow_eyes + r.glasgow_verbal + r.glasgow_motor; let s = 'normal'; if (t >= 13 && t <= 14) s = 'warning'; if (t >= 9 && t <= 12) s = 'warning'; if (t >= 3 && t <= 8) s = 'danger'; glasgowHtml = `<div class="history-vital-item v-${s}"><strong>${t}/15</strong><small>Glasgow</small></div>`; } let activitiesHtml = ''; if (r.activities_completed) { const acts = r.activities_completed; const tags = []; if (acts.hygiene?.bath?.done) tags.push(`🛁 Baño (${formatTime12h(acts.hygiene.bath.time)})`); if (acts.feeding?.oral?.done) tags.push(`🥣 Alimentación (${formatTime12h(acts.feeding.oral.time)})`); if (acts.medications?.length > 0) tags.push(`💊 ${acts.medications.length} medicamento(s)`); if (acts.mobility?.position_change?.done) tags.push(`🔄 Cambio postural`); if (tags.length > 0) activitiesHtml = `<div style="margin: 10px 0;"><strong>✅ Actividades:</strong><br>${tags.map(t => `<span class="history-activity-tag">${t}</span>`).join('')}</div>`; } return `<div class="history-item"><div class="history-header"><span class="history-time">🕐 ${timeStr}</span><span style="color: #94a3b8;">${r.professionals?.full_name || 'Auxiliar'}</span></div><div class="history-vitals"><div class="history-vital-item v-${bp.status}"><strong>${bp.label || '--/--'}</strong><small>PA</small></div><div class="history-vital-item v-${hr.status}"><strong>${hr.label || '--'}</strong><small>FC</small></div><div class="history-vital-item v-${rr.status}"><strong>${rr.label || '--'}</strong><small>FR</small></div><div class="history-vital-item v-${temp.status}"><strong>${temp.label || '--'}</strong><small>Temp</small></div><div class="history-vital-item v-${spo2.status}"><strong>${spo2.label || '--'}</strong><small>SpO2</small></div><div class="history-vital-item v-${glu.status}"><strong>${glu.label || '--'}</strong><small>Glucosa</small></div><div class="history-vital-item v-${eva.status}"><strong>${eva.label ?? '--'}</strong><small>EVA</small></div>${glasgowHtml}</div>${activitiesHtml}${r.notes ? `<div class="history-notes"> ${r.notes}</div>` : ''}</div>`; }).join(''); }
+        async function closeShift() { const payload = { shiftId: currentShiftId, patientDeliveredStatus: document.getElementById('patientDeliveredStatus').value, patientDeliveredNotes: document.getElementById('patientDeliveredNotes').value, pendingTasks: document.getElementById('pendingTasks').value, pendingJustification: document.getElementById('pendingJustification').value, auxiliarySignature: auxCanvas.toDataURL(), auxiliaryName: currentUser.full_name, auxiliaryIdNumber: currentUser.document_number, familySignature: famCanvas.toDataURL(), familyName: document.getElementById('familySignName').value, familyIdNumber: document.getElementById('familySignId').value }; const res = await fetch('/api/shifts/close', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(payload) }); const d = await res.json(); if (d.success) { alert('✅ Turno cerrado'); location.reload(); } else { alert('❌ Error: ' + d.message); } }
         window.onload = () => { if(localStorage.getItem('user')) initApp(); };
     </script>
 </body>
