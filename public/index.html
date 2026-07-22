@@ -1236,34 +1236,195 @@ function renderMedications() {
 }
 
 function initSignatureCanvases() {
-    [ {canvas: 'auxSigCanvas', ctx: 'auxCtx'}, {canvas: 'famSigCanvas', ctx: 'famCtx'} ].forEach(item => {
-        const c = document.getElementById(item.canvas);
-        if (!c) return;
-        window[item.ctx] = c.getContext('2d');
-        c.width = c.offsetWidth || 400; c.height = 150;
-        window[item.ctx].fillStyle = 'white';
-        window[item.ctx].fillRect(0, 0, c.width, c.height);
-        let drawing = false;
-        c.onmousedown = () => drawing = true;
-        c.onmouseup = () => drawing = false;
-        c.onmouseleave = () => drawing = false;
-        c.ontouchstart = (e) => { e.preventDefault(); drawing = true; };
-        c.ontouchend = () => drawing = false;
-        c.onmousemove = (e) => {
-            if (!drawing) return;
-            const r = c.getBoundingClientRect();
-            window[item.ctx].lineWidth = 2; window[item.ctx].lineCap = 'round'; window[item.ctx].strokeStyle = 'black';
-            window[item.ctx].lineTo(e.clientX - r.left, e.clientY - r.top);
-            window[item.ctx].stroke(); window[item.ctx].beginPath(); window[item.ctx].moveTo(e.clientX - r.left, e.clientY - r.top);
-        };
-        c.ontouchmove = (e) => {
-            e.preventDefault(); if (!drawing) return;
-            const r = c.getBoundingClientRect(); const touch = e.touches[0];
-            window[item.ctx].lineWidth = 2; window[item.ctx].lineCap = 'round'; window[item.ctx].strokeStyle = 'black';
-            window[item.ctx].lineTo(touch.clientX - r.left, touch.clientY - r.top);
-            window[item.ctx].stroke(); window[item.ctx].beginPath(); window[item.ctx].moveTo(touch.clientX - r.left, touch.clientY - r.top);
-        };
-    });
+    console.log("🔍 Iniciando configuración de firmas...");
+    auxCanvas = document.getElementById('auxSigCanvas');
+    famCanvas = document.getElementById('famSigCanvas');
+    
+    if (!auxCanvas) console.error("❌ NO SE ENCONTRÓ: auxSigCanvas");
+    if (!famCanvas) console.error("❌ NO SE ENCONTRÓ: famSigCanvas");
+
+    if (auxCanvas) {
+        try {
+            auxCtx = auxCanvas.getContext('2d');
+            auxCanvas.width = auxCanvas.offsetWidth > 0 ? auxCanvas.offsetWidth : 400;
+            auxCanvas.height = 150;
+            auxCtx.fillStyle = 'white';
+            auxCtx.fillRect(0, 0, auxCanvas.width, auxCanvas.height);
+            
+            let d1 = false;
+            auxCanvas.onmousedown = () => d1 = true;
+            auxCanvas.onmouseup = () => d1 = false;
+            auxCanvas.onmouseleave = () => d1 = false;
+            auxCanvas.ontouchstart = (e) => { e.preventDefault(); d1 = true; };
+            auxCanvas.ontouchend = () => d1 = false;
+            auxCanvas.onmousemove = (e) => {
+                if (!d1) return;
+                const r = auxCanvas.getBoundingClientRect();
+                auxCtx.lineWidth = 2; auxCtx.lineCap = 'round'; auxCtx.strokeStyle = 'black';
+                auxCtx.lineTo(e.clientX - r.left, e.clientY - r.top);
+                auxCtx.stroke(); auxCtx.beginPath(); auxCtx.moveTo(e.clientX - r.left, e.clientY - r.top);
+            };
+            auxCanvas.ontouchmove = (e) => {
+                e.preventDefault(); if (!d1) return;
+                const r = auxCanvas.getBoundingClientRect(); const touch = e.touches[0];
+                auxCtx.lineWidth = 2; auxCtx.lineCap = 'round'; auxCtx.strokeStyle = 'black';
+                auxCtx.lineTo(touch.clientX - r.left, touch.clientY - r.top);
+                auxCtx.stroke(); auxCtx.beginPath(); auxCtx.moveTo(touch.clientX - r.left, touch.clientY - r.top);
+            };
+            console.log("✅ auxCanvas configurado correctamente");
+        } catch (e) { console.error("Error en auxCanvas:", e); }
+    }
+
+    if (famCanvas) {
+        try {
+            famCtx = famCanvas.getContext('2d');
+            famCanvas.width = famCanvas.offsetWidth > 0 ? famCanvas.offsetWidth : 400;
+            famCanvas.height = 150;
+            famCtx.fillStyle = 'white';
+            famCtx.fillRect(0, 0, famCanvas.width, famCanvas.height);
+            
+            let d2 = false;
+            famCanvas.onmousedown = () => d2 = true;
+            famCanvas.onmouseup = () => d2 = false;
+            famCanvas.onmouseleave = () => d2 = false;
+            famCanvas.ontouchstart = (e) => { e.preventDefault(); d2 = true; };
+            famCanvas.ontouchend = () => d2 = false;
+            famCanvas.onmousemove = (e) => {
+                if (!d2) return;
+                const r = famCanvas.getBoundingClientRect();
+                famCtx.lineWidth = 2; famCtx.lineCap = 'round'; famCtx.strokeStyle = 'black';
+                famCtx.lineTo(e.clientX - r.left, e.clientY - r.top);
+                famCtx.stroke(); famCtx.beginPath(); famCtx.moveTo(e.clientX - r.left, e.clientY - r.top);
+            };
+            famCanvas.ontouchmove = (e) => {
+                e.preventDefault(); if (!d2) return;
+                const r = famCanvas.getBoundingClientRect(); const touch = e.touches[0];
+                famCtx.lineWidth = 2; famCtx.lineCap = 'round'; famCtx.strokeStyle = 'black';
+                famCtx.lineTo(touch.clientX - r.left, touch.clientY - r.top);
+                famCtx.stroke(); famCtx.beginPath(); famCtx.moveTo(touch.clientX - r.left, touch.clientY - r.top);
+            };
+            console.log("✅ famCanvas configurado correctamente");
+        } catch (e) { console.error("Error en famCanvas:", e); }
+    }
+}
+
+function clearAuxSig() {
+    if (!auxCanvas || !auxCtx) {
+        console.warn("⚠️ No se puede borrar: auxCanvas no está listo");
+        return;
+    }
+    auxCtx.fillStyle = 'white';
+    auxCtx.fillRect(0, 0, auxCanvas.width, auxCanvas.height);
+    auxCtx.beginPath();
+}
+
+function clearFamSig() {
+    if (!famCanvas || !famCtx) {
+        console.warn("⚠️ No se puede borrar: famCanvas no está listo");
+        return;
+    }
+    famCtx.fillStyle = 'white';
+    famCtx.fillRect(0, 0, famCanvas.width, famCanvas.height);
+    famCtx.beginPath();
+}
+
+async function closeShift() {
+    // 1. Intentar recuperar los canvas si por alguna razón se perdieron
+    if (!auxCanvas || !famCanvas) {
+        console.warn("⚠️ Canvas no encontrados, intentando reinicializar...");
+        initSignatureCanvases();
+    }
+
+    // 2. Verificación final estricta
+    if (!auxCanvas || !famCanvas) {
+        alert('❌ ERROR CRÍTICO: El sistema no puede detectar los recuadros de firma.\n\nPor favor:\n1. Presiona Ctrl + Shift + R (Recarga Forzada).\n2. Desactiva bloqueadores de anuncios (AdBlock, Brave Shields).\n3. Intenta de nuevo.');
+        return;
+    }
+
+    const auxSignature = auxCanvas.toDataURL();
+    const famSignature = famCanvas.toDataURL();
+    
+    // Verificar si el canvas está realmente en blanco (firma vacía)
+    const blankCanvas = document.createElement('canvas');
+    blankCanvas.width = auxCanvas.width; blankCanvas.height = auxCanvas.height;
+    if (auxSignature === blankCanvas.toDataURL()) {
+        alert('⚠️ Debes firmar como auxiliar antes de cerrar el turno.');
+        return;
+    }
+
+    const familyName = getVal('familySignName');
+    const familyId = getVal('familySignId');
+    if (!familyName || !familyId) {
+        alert('⚠️ El familiar debe proporcionar nombre y cédula');
+        return;
+    }
+    if (!getChecked('familyAcceptsResponsibility')) {
+        alert('⚠️ El familiar debe aceptar la responsabilidad del paciente');
+        return;
+    }
+
+    const patientLeaves = getChecked('patientLeavesHome');
+    const leaveData = patientLeaves ? {
+        destination: getVal('leaveDestination'),
+        time: getVal('leaveTime'),
+        returnTime: getVal('leaveReturnTime'),
+        notes: getVal('leaveNotes')
+    } : null;
+    
+    const familyReceivedEducation = getChecked('familyReceivedEducation');
+    const educationTopics = familyReceivedEducation ? getVal('educationTopicsGiven') : null;
+
+    const payload = {
+        shiftId: currentShiftId,
+        patientDeliveredStatus: getVal('patientDeliveredStatus'),
+        patientDeliveredNotes: getVal('patientDeliveredNotes'),
+        pendingTasks: getVal('pendingTasks'),
+        pendingJustification: getVal('pendingJustification'),
+        auxiliarySignature: auxSignature,
+        auxiliaryName: currentUser.full_name || 'Auxiliar',
+        auxiliaryIdNumber: currentUser.document_number || 'N/A',
+        auxiliaryProfessionalCard: currentUser.professional_card || null,
+        familySignature: famSignature,
+        familyName: familyName,
+        familyIdNumber: familyId,
+        familyRelationship: getVal('familyRelationship'),
+        familyPhone: getVal('familyPhone'),
+        patientLeavesHome: patientLeaves,
+        leaveData: leaveData,
+        familyAcceptsResponsibility: true,
+        familyReceivedEducation: familyReceivedEducation,
+        educationTopicsGiven: educationTopics
+    };
+
+    try {
+        const res = await fetch('/api/shifts/close', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(payload)
+        });
+        const d = await res.json();
+        if (d.success) {
+            alert('✅ Turno cerrado exitosamente');
+            lastClosedShiftId = d.data.shiftId;
+            document.getElementById('generateClosurePDFBtn').style.display = 'block';
+            clearInterval(autosaveInterval);
+            
+            // Limpiar formulario
+            document.querySelectorAll('#clinicalForm input, #clinicalForm textarea, #clinicalForm select').forEach(el => {
+                if (el.type !== 'checkbox' && el.type !== 'radio') el.value = '';
+                if (el.type === 'checkbox') el.checked = false;
+            });
+            document.querySelectorAll('.sub-activity-fields').forEach(f => f.classList.remove('show'));
+            medications = [];
+            renderMedications();
+            clearAuxSig();
+            clearFamSig();
+        } else {
+            alert('❌ Error: ' + (d.message || 'Error desconocido'));
+        }
+    } catch (error) {
+        alert('❌ Error de conexión: ' + error.message);
+    }
 }
 function clearAuxSig() { if (window.auxCtx && auxCanvas) { window.auxCtx.fillStyle = 'white'; window.auxCtx.fillRect(0, 0, auxCanvas.width, auxCanvas.height); window.auxCtx.beginPath(); } }
 function clearFamSig() { if (window.famCtx && famCanvas) { window.famCtx.fillStyle = 'white'; window.famCtx.fillRect(0, 0, famCanvas.width, famCanvas.height); window.famCtx.beginPath(); } }
