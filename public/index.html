@@ -100,8 +100,10 @@
         .education-card { background: var(--card-bg); padding: 15px; border-radius: 8px; margin-bottom: 10px; border-left: 4px solid var(--info); }
         .education-card h4 { margin: 0 0 5px 0; color: var(--primary); }
         .education-card .meta { color: #94a3b8; font-size: 0.85rem; }
-        .filter-section { display: flex; gap: 10px; margin-bottom: 15px; flex-wrap: wrap; }
-        .filter-section input, .filter-section select { width: auto; flex: 1; min-width: 150px; }
+        .legal-warning { background: #1e293b; border: 2px solid var(--warning); padding: 15px; border-radius: 8px; margin: 15px 0; }
+        .legal-warning h4 { color: var(--warning); margin: 0 0 10px 0; }
+        .legal-warning label { display: block; margin: 5px 0; }
+        .legal-warning input[type="checkbox"] { width: auto; margin-right: 10px; }
     </style>
 </head>
 <body>
@@ -324,10 +326,9 @@
                     <div id="bradenTotal" class="braden-total risk-none"><h3>24/24</h3><p>Sin riesgo</p></div>
                 </div>
                 
-                <!-- ACTIVIDADES REALIZADAS - SECCIÓN COMPLETA -->
+                <!-- ACTIVIDADES REALIZADAS -->
                 <h4><i class="fas fa-tasks"></i> Actividades Realizadas</h4>
                 
-                <!-- Higiene -->
                 <div class="accordion">
                     <div class="accordion-header" onclick="toggleAccordion(this)">
                         <span>🧼 Higiene y Confort</span>
@@ -343,9 +344,9 @@
                             <div class="sub-activity-fields" id="fields-bath">
                                 <label>Tipo:</label>
                                 <select id="bathType">
-                                    <option value="en_cama">En cama</option>
-                                    <option value="en_ducha">En ducha</option>
-                                    <option value="en_silla">En silla</option>
+                                    <option value="en cama">En cama</option>
+                                    <option value="en ducha">En ducha</option>
+                                    <option value="en silla">En silla</option>
                                     <option value="parcial">Parcial</option>
                                 </select>
                             </div>
@@ -367,21 +368,6 @@
                         </div>
                         <div class="sub-activity">
                             <div class="sub-activity-header">
-                                <input type="checkbox" id="actGrooming" onchange="toggleSubFields('groom')">
-                                <label><strong>💇 Arreglo Personal</strong></label>
-                                <input type="time" id="actGroomTime" style="width:120px;margin:0;">
-                            </div>
-                            <div class="sub-activity-fields" id="fields-groom">
-                                <label>Tipo:</label>
-                                <select id="groomType">
-                                    <option value="peinado">Peinado</option>
-                                    <option value="afeitado">Afeitado</option>
-                                    <option value="unas">Corte uñas</option>
-                                </select>
-                            </div>
-                        </div>
-                        <div class="sub-activity">
-                            <div class="sub-activity-header">
                                 <input type="checkbox" id="actDiaper" onchange="toggleSubFields('diaper')">
                                 <label><strong>🧻 Cambio Pañal</strong></label>
                                 <input type="time" id="actDiaperTime" style="width:120px;margin:0;">
@@ -389,16 +375,15 @@
                             <div class="sub-activity-fields" id="fields-diaper">
                                 <label>Tipo:</label>
                                 <select id="diaperType">
-                                    <option value="panal">Pañal</option>
-                                    <option value="ropa_interior">Ropa interior</option>
-                                    <option value="ropa_completa">Ropa completa</option>
+                                    <option value="pañal">Pañal</option>
+                                    <option value="ropa interior">Ropa interior</option>
+                                    <option value="ropa completa">Ropa completa</option>
                                 </select>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Alimentación -->
                 <div class="accordion">
                     <div class="accordion-header" onclick="toggleAccordion(this)">
                         <span>🍽️ Alimentación</span>
@@ -430,19 +415,6 @@
                         </div>
                         <div class="sub-activity">
                             <div class="sub-activity-header">
-                                <input type="checkbox" id="actTubeFood" onchange="toggleSubFields('tubefood')">
-                                <label><strong>🧪 Sonda</strong></label>
-                                <input type="time" id="actTubeFoodTime" style="width:120px;margin:0;">
-                            </div>
-                            <div class="sub-activity-fields" id="fields-tubefood">
-                                <label>mL:</label>
-                                <input type="number" id="tubeFoodMl">
-                                <label>Fórmula:</label>
-                                <input type="text" id="tubeFoodFormula">
-                            </div>
-                        </div>
-                        <div class="sub-activity">
-                            <div class="sub-activity-header">
                                 <input type="checkbox" id="actHydration" onchange="toggleSubFields('hydration')">
                                 <label><strong>💧 Hidratación</strong></label>
                                 <input type="time" id="actHydrationTime" style="width:120px;margin:0;">
@@ -455,7 +427,6 @@
                     </div>
                 </div>
                 
-                <!-- Medicamentos -->
                 <div class="accordion">
                     <div class="accordion-header" onclick="toggleAccordion(this)">
                         <span>💊 Medicamentos</span>
@@ -467,7 +438,6 @@
                     </div>
                 </div>
                 
-                <!-- Cuidados Clínicos -->
                 <div class="accordion">
                     <div class="accordion-header" onclick="toggleAccordion(this)">
                         <span>🩺 Cuidados Clínicos</span>
@@ -483,14 +453,14 @@
                             <div class="sub-activity-fields" id="fields-wound">
                                 <label>Tipo:</label>
                                 <select id="woundType">
-                                    <option value="upp">Úlcera por presión</option>
-                                    <option value="quirurgica">Quirúrgica</option>
-                                    <option value="diabetica">Diabética</option>
+                                    <option value="úlcera por presión">Úlcera por presión</option>
+                                    <option value="quirúrgica">Quirúrgica</option>
+                                    <option value="diabética">Diabética</option>
                                 </select>
                                 <label>Estado:</label>
                                 <select id="woundState">
                                     <option value="limpia">Limpia</option>
-                                    <option value="exudado">Con exudado</option>
+                                    <option value="con exudado">Con exudado</option>
                                     <option value="infectada">Infectada</option>
                                 </select>
                             </div>
@@ -506,34 +476,14 @@
                                 <input type="number" id="oxygenLpm" step="0.5">
                                 <label>Dispositivo:</label>
                                 <select id="oxygenDevice">
-                                    <option value="canula">Cánula nasal</option>
+                                    <option value="cánula nasal">Cánula nasal</option>
                                     <option value="mascarilla">Mascarilla</option>
                                 </select>
-                            </div>
-                        </div>
-                        <div class="sub-activity">
-                            <div class="sub-activity-header">
-                                <input type="checkbox" id="actUrinaryOutput" onchange="toggleSubFields('urine')">
-                                <label><strong>🚽 Control de Egresos</strong></label>
-                                <input type="time" id="actUrineTime" style="width:120px;margin:0;">
-                            </div>
-                            <div class="sub-activity-fields" id="fields-urine">
-                                <div class="grid">
-                                    <div><label>Orina (mL):</label><input type="number" id="urineMl"></div>
-                                    <div><label>Heces:</label>
-                                        <select id="fecesAmount">
-                                            <option value="ninguna">Ninguna</option>
-                                            <option value="normal">Normal</option>
-                                            <option value="abundante">Abundante</option>
-                                        </select>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
                 
-                <!-- Movilización -->
                 <div class="accordion">
                     <div class="accordion-header" onclick="toggleAccordion(this)">
                         <span>🚶 Movilización</span>
@@ -550,9 +500,9 @@
                                 <label>Posición:</label>
                                 <select id="positionType">
                                     <option value="supino">Supino</option>
-                                    <option value="lateral_derecho">Lateral derecho</option>
-                                    <option value="lateral_izquierdo">Lateral izquierdo</option>
-                                    <option value="semifowler">Semi-Fowler</option>
+                                    <option value="lateral derecho">Lateral derecho</option>
+                                    <option value="lateral izquierdo">Lateral izquierdo</option>
+                                    <option value="semi-Fowler">Semi-Fowler</option>
                                 </select>
                             </div>
                         </div>
@@ -567,7 +517,7 @@
                                 <input type="number" id="walkingDistance">
                                 <label>Ayuda:</label>
                                 <select id="walkingHelp">
-                                    <option value="si">Sí</option>
+                                    <option value="sí">Sí</option>
                                     <option value="no">No</option>
                                 </select>
                             </div>
@@ -611,24 +561,73 @@
                 <div id="dailyHistory"></div>
             </div>
 
-            <!-- Cierre de Turno -->
+            <!-- CIERRE DE TURNO CON TODAS LAS FUNCIONALIDADES -->
             <div class="card">
                 <h3><i class="fas fa-sign-out-alt"></i> Cierre de Turno</h3>
+                
                 <label>Estado de entrega:</label>
                 <select id="patientDeliveredStatus">
                     <option value="estable">🟢 Estable</option>
                     <option value="con_novedades">🟡 Con Novedades</option>
                     <option value="critico">🔴 Crítico</option>
                 </select>
-                <label>Descripción:</label>
+                
+                <label>Descripción de entrega:</label>
                 <div class="mic-wrapper">
                     <textarea id="patientDeliveredNotes" rows="3" placeholder="Estado en que se entrega al paciente"></textarea>
                     <button class="mic-btn" onclick="startDictation('patientDeliveredNotes')"><i class="fas fa-microphone"></i></button>
                 </div>
+                
                 <label>Pendientes:</label>
-                <input type="text" id="pendingTasks" placeholder="Tareas pendientes">
-                <label>Justificación:</label>
-                <input type="text" id="pendingJustification" placeholder="Justificación">
+                <input type="text" id="pendingTasks" placeholder="Tareas pendientes para el próximo turno">
+                
+                <label>Justificación de pendientes:</label>
+                <input type="text" id="pendingJustification" placeholder="Justificación de tareas no realizadas">
+
+                <!-- ⚠️ ADVERTENCIA DE SALIDA A LA CALLE -->
+                <div class="legal-warning">
+                    <h4><i class="fas fa-exclamation-triangle" style="color: var(--warning);"></i> ADVERTENCIA DE SALIDA CON EL PACIENTE</h4>
+                    <p style="color: #94a3b8; font-size: 0.9rem;">
+                        Si el paciente será trasladado fuera del domicilio durante el turno, el auxiliar 
+                        <strong>asume la responsabilidad total</strong> por la seguridad y bienestar del paciente 
+                        durante la salida. El familiar debe firmar la autorización.
+                    </p>
+                    <div style="margin: 10px 0;">
+                        <input type="checkbox" id="patientLeavesHome" style="width: auto; margin-right: 10px;">
+                        <label for="patientLeavesHome"><strong>El paciente saldrá del domicilio durante este turno</strong></label>
+                    </div>
+                    <div id="leaveDetails" class="hidden" style="margin-top: 10px; padding: 10px; background: #0f172a; border-radius: 6px;">
+                        <label>Destino de la salida:</label>
+                        <input type="text" id="leaveDestination" placeholder="Ej: Cita médica, paseo, visita familiar...">
+                        <label>Hora de salida:</label>
+                        <input type="time" id="leaveTime">
+                        <label>Hora de regreso estimada:</label>
+                        <input type="time" id="leaveReturnTime">
+                        <label>Observaciones de la salida:</label>
+                        <textarea id="leaveNotes" rows="2" placeholder="Detalles adicionales de la salida"></textarea>
+                    </div>
+                </div>
+
+                <!-- 📋 RESPONSABILIDAD DEL FAMILIAR -->
+                <div class="legal-warning" style="border-color: var(--info);">
+                    <h4><i class="fas fa-handshake" style="color: var(--info);"></i> RESPONSABILIDAD DEL FAMILIAR</h4>
+                    <p style="color: #94a3b8; font-size: 0.9rem;">
+                        El familiar responsable declara que recibe al paciente en las condiciones descritas 
+                        y asume la responsabilidad de su cuidado una vez finalizado el turno.
+                    </p>
+                    <div style="margin: 10px 0;">
+                        <input type="checkbox" id="familyAcceptsResponsibility" style="width: auto; margin-right: 10px;">
+                        <label for="familyAcceptsResponsibility"><strong>El familiar acepta la responsabilidad del paciente al finalizar el turno</strong></label>
+                    </div>
+                    <div style="margin: 10px 0;">
+                        <input type="checkbox" id="familyReceivedEducation" style="width: auto; margin-right: 10px;">
+                        <label for="familyReceivedEducation"><strong>El familiar recibió educación sobre los cuidados del paciente</strong></label>
+                    </div>
+                    <div id="educationDetails" class="hidden" style="margin-top: 10px; padding: 10px; background: #0f172a; border-radius: 6px;">
+                        <label>Temas de educación impartidos:</label>
+                        <textarea id="educationTopicsGiven" rows="2" placeholder="Ej: Manejo de sonda, administración de medicamentos, signos de alerta..."></textarea>
+                    </div>
+                </div>
                 
                 <h4>✍️ Firma Auxiliar</h4>
                 <canvas id="auxSigCanvas" class="signature-canvas"></canvas>
@@ -704,7 +703,7 @@
     }
 
     function formatTime12h(timeStr) { 
-        if (!timeStr) return '--:--'; 
+        if (!timeStr) return 'No registrada'; 
         if (timeStr.includes(':')) { 
             const [h, m] = timeStr.split(':'); 
             const hour = parseInt(h); 
@@ -842,9 +841,6 @@
                 const textarea = document.getElementById(elementId);
                 if (textarea) {
                     textarea.value = transcript;
-                    if (e.results[0].isFinal) {
-                        // Mantener el valor final
-                    }
                 }
             }; 
             
@@ -1134,7 +1130,7 @@
     }
 
     // ============================================================
-    // EDUCACIÓN - COMPLETAMENTE CORREGIDA
+    // EDUCACIÓN
     // ============================================================
     async function loadEduResps() { 
         try {
@@ -1269,8 +1265,6 @@
                     if (lastRecord.spo2 < spo2Min - 2) { status = 'alerta'; warningMsg = '⚠️ SpO2 baja'; }
                     if (lastRecord.glucose < 60 || lastRecord.glucose > 200) { status = 'critico'; warningMsg = '🔴 Glucosa alterada'; }
                     if (lastRecord.eva_score >= 7) { status = 'critico'; warningMsg = '🔴 Dolor severo'; }
-                    const glasgowTotal = (lastRecord.glasgow_eyes || 0) + (lastRecord.glasgow_verbal || 0) + (lastRecord.glasgow_motor || 0);
-                    if (glasgowTotal > 0 && glasgowTotal < 9) { status = 'critico'; warningMsg = '🔴 Glasgow bajo'; }
                 } 
                 if (hoursSinceLastRecord > 12) { status = 'critico'; warningMsg = '🔴 Sin registro >12h'; }
                 else if (hoursSinceLastRecord > 4) { status = 'alerta'; warningMsg = '⚠️ Sin registro reciente'; }
@@ -1555,7 +1549,7 @@
                 <select onchange="updateMedication(${m.id}, 'route', this.value)">
                     <option value="oral" ${m.route==='oral'?'selected':''}>Oral</option>
                     <option value="sublingual" ${m.route==='sublingual'?'selected':''}>Sublingual</option>
-                    <option value="subcutanea" ${m.route==='subcutanea'?'selected':''}>SC</option>
+                    <option value="subcutánea" ${m.route==='subcutánea'?'selected':''}>SC</option>
                     <option value="intramuscular" ${m.route==='intramuscular'?'selected':''}>IM</option>
                     <option value="intravenosa" ${m.route==='intravenosa'?'selected':''}>IV</option>
                 </select>
@@ -1730,24 +1724,20 @@
             return;
         }
 
-        // Recolectar TODAS las actividades
         const activities = {
             hygiene: { 
                 bath: getChecked('actBath') ? { done: true, time: getVal('actBathTime'), type: getVal('bathType') } : null, 
                 oral_hygiene: getChecked('actOralHygiene') ? { done: true, time: getVal('actOralTime'), type: getVal('oralType') } : null, 
-                grooming: getChecked('actGrooming') ? { done: true, time: getVal('actGroomTime'), type: getVal('groomType') } : null, 
                 diaper: getChecked('actDiaper') ? { done: true, time: getVal('actDiaperTime'), type: getVal('diaperType') } : null
             },
             feeding: { 
                 oral: getChecked('actOralFood') ? { done: true, time: getVal('actOralFoodTime'), quantity: getVal('oralFoodQty'), diet: getVal('oralFoodDiet') } : null, 
-                tube: getChecked('actTubeFood') ? { done: true, time: getVal('actTubeFoodTime'), ml: parseInt(getVal('tubeFoodMl')) || 0, formula: getVal('tubeFoodFormula') } : null, 
                 hydration: getChecked('actHydration') ? { done: true, time: getVal('actHydrationTime'), ml: parseInt(getVal('hydrationMl')) || 0 } : null 
             },
             medications: medications.filter(m => m.name && m.dose).map(m => ({ name: m.name, dose: m.dose, route: m.route, time: m.time })),
             clinical: { 
                 wound: getChecked('actWound') ? { done: true, time: getVal('actWoundTime'), type: getVal('woundType'), state: getVal('woundState') } : null, 
-                oxygen: getChecked('actOxygen') ? { done: true, time: getVal('actOxygenTime'), lpm: parseFloat(getVal('oxygenLpm')) || 0, device: getVal('oxygenDevice') } : null, 
-                urinary_output: getChecked('actUrinaryOutput') ? { done: true, time: getVal('actUrineTime'), urine_ml: parseInt(getVal('urineMl')) || 0, feces: getVal('fecesAmount') } : null 
+                oxygen: getChecked('actOxygen') ? { done: true, time: getVal('actOxygenTime'), lpm: parseFloat(getVal('oxygenLpm')) || 0, device: getVal('oxygenDevice') } : null
             },
             mobility: { 
                 position_change: getChecked('actPosition') ? { done: true, time: getVal('actPositionTime'), position: getVal('positionType') } : null, 
@@ -1778,9 +1768,7 @@
             sbarBackground: getVal('sbarBackground'),
             sbarAssessment: getVal('sbarAssessment'), 
             sbarRecommendation: getVal('sbarRecommendation'),
-            notes: notes,
-            ppeUsed: {},
-            wasteManagement: {}
+            notes: notes
         };
 
         try {
@@ -1795,7 +1783,6 @@
                 try { localStorage.removeItem(`draft_${selectedPatient.id}`); } catch (e) {}
                 loadDailyHistory(); 
                 
-                // Limpiar actividades
                 document.querySelectorAll('.sub-activity input[type="checkbox"]').forEach(cb => cb.checked = false);
                 document.querySelectorAll('.sub-activity-fields').forEach(f => f.classList.remove('show'));
                 medications = [];
@@ -1844,20 +1831,18 @@
                     glasgowHtml = `<div class="history-vital-item v-${s}"><strong>${t}/15</strong><small>Glasgow</small></div>`; 
                 } 
                 
-                // MOSTRAR ACTIVIDADES EN EL HISTORIAL
                 let activitiesHtml = ''; 
                 if (r.activities_completed) { 
                     const acts = r.activities_completed; 
                     const tags = []; 
-                    if (acts.hygiene?.bath?.done) tags.push(`🛁 Baño (${formatTime12h(acts.hygiene.bath.time)})`); 
-                    if (acts.hygiene?.oral_hygiene?.done) tags.push(`🦷 Higiene Bucal (${formatTime12h(acts.hygiene.oral_hygiene.time)})`);
-                    if (acts.feeding?.oral?.done) tags.push(`🥣 Alimentación (${formatTime12h(acts.feeding.oral.time)})`); 
-                    if (acts.feeding?.tube?.done) tags.push(`🧪 Sonda (${formatTime12h(acts.feeding.tube.time)})`);
-                    if (acts.medications && acts.medications.length > 0) tags.push(`💊 ${acts.medications.length} medicamento(s)`); 
-                    if (acts.mobility?.position_change?.done) tags.push(`🔄 Cambio postural (${formatTime12h(acts.mobility.position_change.time)})`); 
-                    if (acts.mobility?.walking?.done) tags.push(`🚶 Deambulación (${acts.mobility.walking.distance || 0}m)`);
-                    if (acts.clinical?.wound?.done) tags.push(`🩹 Curación (${formatTime12h(acts.clinical.wound.time)})`);
-                    if (acts.clinical?.oxygen?.done) tags.push(`💨 Oxígeno (${acts.clinical.oxygen.lpm || 0}L/min)`);
+                    if (acts.hygiene?.bath?.done) tags.push(`Baño (${formatTime12h(acts.hygiene.bath.time)})`); 
+                    if (acts.hygiene?.oral_hygiene?.done) tags.push(`Higiene Bucal (${formatTime12h(acts.hygiene.oral_hygiene.time)})`);
+                    if (acts.feeding?.oral?.done) tags.push(`Alimentación (${formatTime12h(acts.feeding.oral.time)})`);
+                    if (acts.medications && acts.medications.length > 0) tags.push(`${acts.medications.length} medicamento(s)`); 
+                    if (acts.mobility?.position_change?.done) tags.push(`Cambio postural (${formatTime12h(acts.mobility.position_change.time)})`);
+                    if (acts.mobility?.walking?.done) tags.push(`Deambulación (${acts.mobility.walking.distance || 0}m)`);
+                    if (acts.clinical?.wound?.done) tags.push(`Curación (${formatTime12h(acts.clinical.wound.time)})`);
+                    if (acts.clinical?.oxygen?.done) tags.push(`Oxígeno (${acts.clinical.oxygen.lpm || 0}L/min)`);
                     
                     if (tags.length > 0) activitiesHtml = `<div style="margin: 10px 0;"><strong>✅ Actividades:</strong><br>${tags.map(t => `<span class="history-activity-tag">${t}</span>`).join('')}</div>`; 
                 } 
@@ -1887,7 +1872,7 @@
     }
 
     // ============================================================
-    // AUXILIAR - CIERRE DE TURNO
+    // AUXILIAR - CIERRE DE TURNO COMPLETO
     // ============================================================
     async function closeShift() {
         if (!auxCanvas || !famCanvas) {
@@ -1916,6 +1901,24 @@
             return;
         }
         
+        if (!getChecked('familyAcceptsResponsibility')) {
+            alert('⚠️ El familiar debe aceptar la responsabilidad del paciente');
+            return;
+        }
+        
+        // Datos de salida a la calle
+        const patientLeaves = getChecked('patientLeavesHome');
+        const leaveData = patientLeaves ? {
+            destination: getVal('leaveDestination'),
+            time: getVal('leaveTime'),
+            returnTime: getVal('leaveReturnTime'),
+            notes: getVal('leaveNotes')
+        } : null;
+        
+        // Datos de educación
+        const familyReceivedEducation = getChecked('familyReceivedEducation');
+        const educationTopics = familyReceivedEducation ? getVal('educationTopicsGiven') : null;
+        
         const payload = {
             shiftId: currentShiftId,
             patientDeliveredStatus: getVal('patientDeliveredStatus'),
@@ -1930,7 +1933,12 @@
             familyName: familyName,
             familyIdNumber: familyId,
             familyRelationship: getVal('familyRelationship'),
-            familyPhone: getVal('familyPhone')
+            familyPhone: getVal('familyPhone'),
+            patientLeavesHome: patientLeaves,
+            leaveData: leaveData,
+            familyAcceptsResponsibility: true,
+            familyReceivedEducation: familyReceivedEducation,
+            educationTopicsGiven: educationTopics
         };
         
         try {
@@ -1946,7 +1954,6 @@
                 document.getElementById('generateClosurePDFBtn').style.display = 'block';
                 clearInterval(autosaveInterval);
                 
-                // Limpiar formulario
                 document.querySelectorAll('#clinicalForm input, #clinicalForm textarea, #clinicalForm select').forEach(el => {
                     if (el.type !== 'checkbox' && el.type !== 'radio') {
                         el.value = '';
@@ -1970,7 +1977,7 @@
     }
 
     // ============================================================
-    // GENERAR PDF - MENSUAL
+    // GENERAR PDF - MENSUAL (CON FIRMA DEL ADMINISTRADOR)
     // ============================================================
     async function generateMonthlyPDF() {
         const patientId = document.getElementById('reportPatient').value;
@@ -2028,20 +2035,23 @@
             let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 30 : 200;
             if (finalY > 240) { doc.addPage(); finalY = 30; }
             
+            // FIRMA DEL ADMINISTRADOR (para el informe final mensual)
             doc.setDrawColor(0);
             doc.setLineWidth(0.5);
-            doc.rect(14, finalY, 80, 40);
+            doc.rect(14, finalY, 80, 45);
             doc.setFontSize(9); doc.setTextColor(0, 0, 0);
-            doc.text("FIRMA PROFESIONAL", 18, finalY + 6);
+            doc.text("FIRMA DEL ADMINISTRADOR", 18, finalY + 6);
+            doc.text("(Informe mensual validado)", 18, finalY + 12);
+            
             if (currentUser?.signature_data) {
-                try { doc.addImage(currentUser.signature_data, 'PNG', 20, finalY + 10, 40, 15); } catch(e) {}
+                try { doc.addImage(currentUser.signature_data, 'PNG', 20, finalY + 16, 50, 20); } catch(e) {}
             }
-            doc.text(`Nombre: ${currentUser?.full_name || '________________'}`, 18, finalY + 30);
-            doc.text(`Cargo: ${currentUser?.specialty_name || '________'}`, 18, finalY + 35);
-            doc.text(`CC: ${currentUser?.document_number || '________'}`, 18, finalY + 40);
+            doc.text(`Nombre: ${currentUser?.full_name || '________________'}`, 18, finalY + 38);
+            doc.text(`Cargo: ${currentUser?.specialty_name || 'Administrador'}`, 18, finalY + 43);
             
             doc.setFontSize(8); doc.setTextColor(100);
-            doc.text(`Generado el ${new Date().toLocaleString('es-CO')} por Vital Hogar Pro.`, 105, finalY + 50, null, null, "center");
+            doc.text(`Generado el ${new Date().toLocaleString('es-CO')} por Vital Hogar Pro.`, 105, finalY + 55, null, null, "center");
+            doc.text("Este informe es un resumen clínico validado por el administrador.", 105, finalY + 60, null, null, "center");
             
             doc.save(`Informe_${patient.full_name.replace(/\s+/g, '_')}_${monthNames[parseInt(month)-1]}_${year}.pdf`);
             statusDiv.innerText = '✅ PDF generado';
@@ -2052,7 +2062,7 @@
     }
 
     // ============================================================
-    // GENERAR PDF - DIARIO
+    // GENERAR PDF - DIARIO (CON TODAS LAS ACTIVIDADES)
     // ============================================================
     async function generateDailyPDF() {
         if (!selectedPatient) {
@@ -2072,7 +2082,7 @@
             try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
             
             doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
-            doc.setFontSize(10); doc.setTextColor(100); doc.text("Resumen Diario", 105, 35, null, null, "center");
+            doc.setFontSize(10); doc.setTextColor(100); doc.text("Resumen Diario de Actividades", 105, 35, null, null, "center");
             doc.setFontSize(10);
             doc.text(`Paciente: ${selectedPatient.full_name || 'N/A'}`, 14, 55);
             doc.text(`Fecha: ${new Date().toLocaleDateString('es-CO')}`, 14, 62);
@@ -2081,14 +2091,14 @@
             if (records.length === 0) {
                 doc.text("No hay registros para hoy.", 14, 85);
             } else {
-                doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Registros", 14, 85);
+                doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Registros Clínicos", 14, 85);
                 const tableData = records.map(r => {
                     const time = new Date(r.created_at).toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'});
                     return [time, r.blood_pressure || '--', r.heart_rate || '--', r.spo2 || '--', r.temperature || '--', r.eva_score ?? '--'];
                 });
                 doc.autoTable({ startY: 90, head: [['Hora', 'PA', 'FC', 'SpO2', 'Temp', 'EVA']], body: tableData, theme: 'striped', headStyles: { fillColor: [34, 197, 94] }, styles: { fontSize: 8 } });
                 
-                // ACTIVIDADES EN PDF DIARIO
+                // ACTIVIDADES DETALLADAS
                 let actY = doc.lastAutoTable.finalY + 15;
                 if (actY > 220) { doc.addPage(); actY = 30; }
                 
@@ -2097,32 +2107,68 @@
                 actY += 7;
                 
                 records.forEach((r, index) => {
-                    if (r.activities_completed && actY < 260) {
+                    if (r.activities_completed && actY < 250) {
                         const acts = r.activities_completed;
                         let actText = `Registro ${index + 1} (${new Date(r.created_at).toLocaleTimeString()}):\n`;
                         
-                        if (acts.hygiene?.bath?.done) actText += `- 🛁 Baño (${acts.hygiene.bath.type || 'Normal'}) ${formatTime12h(acts.hygiene.bath.time)}\n`;
-                        if (acts.hygiene?.oral_hygiene?.done) actText += `- 🦷 Higiene Bucal ${formatTime12h(acts.hygiene.oral_hygiene.time)}\n`;
-                        if (acts.feeding?.oral?.done) actText += `- 🥣 Alimentación (${acts.feeding.oral.quantity || '100%'}) ${formatTime12h(acts.feeding.oral.time)}\n`;
+                        if (acts.hygiene?.bath?.done) actText += `- Baño: ${acts.hygiene.bath.type || 'Normal'} a las ${formatTime12h(acts.hygiene.bath.time)}\n`;
+                        if (acts.hygiene?.oral_hygiene?.done) actText += `- Higiene Bucal: ${acts.hygiene.oral_hygiene.type || 'Propia'} a las ${formatTime12h(acts.hygiene.oral_hygiene.time)}\n`;
+                        if (acts.hygiene?.diaper?.done) actText += `- Cambio de Pañal: ${acts.hygiene.diaper.type || 'Pañal'} a las ${formatTime12h(acts.hygiene.diaper.time)}\n`;
+                        if (acts.feeding?.oral?.done) actText += `- Alimentación Oral: ${acts.feeding.oral.quantity || '100%'} (${acts.feeding.oral.diet || 'Normal'}) a las ${formatTime12h(acts.feeding.oral.time)}\n`;
+                        if (acts.feeding?.hydration?.done) actText += `- Hidratación: ${acts.feeding.hydration.ml || 0} mL a las ${formatTime12h(acts.feeding.hydration.time)}\n`;
                         if (acts.medications && acts.medications.length > 0) {
                             acts.medications.forEach(med => {
-                                actText += `- 💊 ${med.name} ${med.dose} (${med.route}) ${formatTime12h(med.time)}\n`;
+                                actText += `- Medicamento: ${med.name} ${med.dose} (${med.route}) a las ${formatTime12h(med.time)}\n`;
                             });
                         }
-                        if (acts.mobility?.position_change?.done) actText += `- 🔄 Cambio Postural ${formatTime12h(acts.mobility.position_change.time)}\n`;
-                        if (acts.mobility?.walking?.done) actText += `- 🚶 Deambulación (${acts.mobility.walking.distance || 0}m)\n`;
-                        if (acts.clinical?.wound?.done) actText += `- 🩹 Curación (${acts.clinical.wound.type || 'N/A'}) ${formatTime12h(acts.clinical.wound.time)}\n`;
-                        if (acts.clinical?.oxygen?.done) actText += `- 💨 Oxígeno (${acts.clinical.oxygen.lpm || 0}L/min) ${formatTime12h(acts.clinical.oxygen.time)}\n`;
+                        if (acts.clinical?.wound?.done) actText += `- Curación: ${acts.clinical.wound.type || 'N/A'} (${acts.clinical.wound.state || 'N/A'}) a las ${formatTime12h(acts.clinical.wound.time)}\n`;
+                        if (acts.clinical?.oxygen?.done) actText += `- Oxigenoterapia: ${acts.clinical.oxygen.lpm || 0} L/min (${acts.clinical.oxygen.device || 'N/A'}) a las ${formatTime12h(acts.clinical.oxygen.time)}\n`;
+                        if (acts.mobility?.position_change?.done) actText += `- Cambio Postural: ${acts.mobility.position_change.position || 'N/A'} a las ${formatTime12h(acts.mobility.position_change.time)}\n`;
+                        if (acts.mobility?.walking?.done) actText += `- Deambulación: ${acts.mobility.walking.distance || 0} metros (ayuda: ${acts.mobility.walking.help || 'N/A'}) a las ${formatTime12h(acts.mobility.walking.time)}\n`;
+                        
+                        if (r.notes) actText += `- Novedades: ${r.notes}\n`;
                         
                         const splitText = doc.splitTextToSize(actText, 180);
                         doc.text(splitText, 14, actY);
                         actY += (splitText.length * 4) + 5;
                     }
                 });
+                
+                // SBAR
+                const sbarRecords = records.filter(r => r.sbar_situation || r.sbar_background || r.sbar_assessment || r.sbar_recommendation);
+                if (sbarRecords.length > 0 && actY < 250) {
+                    actY += 5;
+                    doc.setFontSize(11); doc.setTextColor(59, 130, 246); doc.text("Comunicación SBAR", 14, actY);
+                    actY += 5;
+                    doc.setTextColor(0, 0, 0); doc.setFontSize(8);
+                    
+                    sbarRecords.forEach((r, idx) => {
+                        if (actY > 250) { doc.addPage(); actY = 30; }
+                        doc.text(`Registro ${idx + 1}:`, 14, actY);
+                        actY += 4;
+                        if (r.sbar_situation) {
+                            doc.text(`S - Situación: ${r.sbar_situation}`, 16, actY);
+                            actY += 4;
+                        }
+                        if (r.sbar_background) {
+                            doc.text(`B - Antecedentes: ${r.sbar_background}`, 16, actY);
+                            actY += 4;
+                        }
+                        if (r.sbar_assessment) {
+                            doc.text(`A - Evaluación: ${r.sbar_assessment}`, 16, actY);
+                            actY += 4;
+                        }
+                        if (r.sbar_recommendation) {
+                            doc.text(`R - Recomendación: ${r.sbar_recommendation}`, 16, actY);
+                            actY += 4;
+                        }
+                        actY += 3;
+                    });
+                }
             }
             
-            let finalY = doc.lastAutoTable ? Math.max(doc.lastAutoTable.finalY + 30, actY + 10) : 120;
-            if (finalY > 230) { doc.addPage(); finalY = 30; }
+            let finalY = Math.max((doc.lastAutoTable ? doc.lastAutoTable.finalY + 30 : 120), actY + 15);
+            if (finalY > 240) { doc.addPage(); finalY = 30; }
             
             doc.setDrawColor(0);
             doc.setLineWidth(0.5);
@@ -2134,6 +2180,7 @@
             }
             doc.text(`${currentUser?.full_name || '________________'}`, 18, finalY + 33);
             doc.text(`CC: ${currentUser?.document_number || '________'}`, 18, finalY + 38);
+            doc.text(`TP: ${currentUser?.professional_card || '________'}`, 18, finalY + 43);
             
             doc.rect(110, finalY, 80, 45);
             doc.text("FIRMA FAMILIAR", 114, finalY + 6);
@@ -2143,6 +2190,7 @@
             }
             doc.text(`${lastSig?.family_name || selectedPatient?.family_name || '________________'}`, 114, finalY + 33);
             doc.text(`CC: ${lastSig?.family_id_number || '________'}`, 114, finalY + 38);
+            doc.text(`Parentesco: ${lastSig?.family_relationship || '________'}`, 114, finalY + 43);
             
             doc.setFontSize(8); doc.setTextColor(100);
             doc.text(`Generado el ${new Date().toLocaleString('es-CO')}`, 105, finalY + 55, null, null, "center");
@@ -2155,7 +2203,7 @@
     }
 
     // ============================================================
-    // GENERAR PDF - CIERRE DE TURNO
+    // GENERAR PDF - CIERRE DE TURNO (COMPLETO)
     // ============================================================
     async function generateClosurePDF() {
         if (!lastClosedShiftId) {
@@ -2183,30 +2231,31 @@
             doc.text(`Inicio: ${new Date(shift?.start_time).toLocaleTimeString('es-CO', {hour:'2-digit',minute:'2-digit'})}`, 14, 76);
             doc.text(`Fin: ${shift?.end_time ? new Date(shift?.end_time).toLocaleTimeString('es-CO', {hour:'2-digit',minute:'2-digit'}) : 'N/A'}`, 14, 83);
             
-            doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Resumen", 14, 95);
-            doc.setTextColor(0, 0, 0); doc.setFontSize(10);
-            doc.text(`Total registros: ${records.length || 0}`, 14, 102);
-            
-            // ACTIVIDADES EN PDF DE CIERRE
-            let actY = 115;
+            // ACTIVIDADES
+            let actY = 100;
             doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Actividades Realizadas", 14, actY);
             doc.setTextColor(0, 0, 0); doc.setFontSize(9);
             actY += 7;
             
             records.forEach((r, index) => {
-                if (r.activities_completed && actY < 250) {
+                if (r.activities_completed && actY < 240) {
                     const acts = r.activities_completed;
                     let actText = `Registro ${index + 1} (${new Date(r.created_at).toLocaleTimeString()}):\n`;
                     
-                    if (acts.hygiene?.bath?.done) actText += `- 🛁 Baño ${formatTime12h(acts.hygiene.bath.time)}\n`;
-                    if (acts.feeding?.oral?.done) actText += `- 🥣 Alimentación ${formatTime12h(acts.feeding.oral.time)}\n`;
+                    if (acts.hygiene?.bath?.done) actText += `- Baño: ${acts.hygiene.bath.type || 'Normal'} a las ${formatTime12h(acts.hygiene.bath.time)}\n`;
+                    if (acts.hygiene?.oral_hygiene?.done) actText += `- Higiene Bucal a las ${formatTime12h(acts.hygiene.oral_hygiene.time)}\n`;
+                    if (acts.feeding?.oral?.done) actText += `- Alimentación: ${acts.feeding.oral.quantity || '100%'} a las ${formatTime12h(acts.feeding.oral.time)}\n`;
                     if (acts.medications && acts.medications.length > 0) {
                         acts.medications.forEach(med => {
-                            actText += `- 💊 ${med.name} ${med.dose} ${formatTime12h(med.time)}\n`;
+                            actText += `- ${med.name} ${med.dose} (${med.route}) a las ${formatTime12h(med.time)}\n`;
                         });
                     }
-                    if (acts.mobility?.position_change?.done) actText += `- 🔄 Cambio Postural ${formatTime12h(acts.mobility.position_change.time)}\n`;
-                    if (acts.mobility?.walking?.done) actText += `- 🚶 Deambulación ${formatTime12h(acts.mobility.walking.time)}\n`;
+                    if (acts.mobility?.position_change?.done) actText += `- Cambio Postural a las ${formatTime12h(acts.mobility.position_change.time)}\n`;
+                    if (acts.mobility?.walking?.done) actText += `- Deambulación (${acts.mobility.walking.distance || 0}m) a las ${formatTime12h(acts.mobility.walking.time)}\n`;
+                    if (acts.clinical?.wound?.done) actText += `- Curación a las ${formatTime12h(acts.clinical.wound.time)}\n`;
+                    if (acts.clinical?.oxygen?.done) actText += `- Oxígeno (${acts.clinical.oxygen.lpm || 0}L/min) a las ${formatTime12h(acts.clinical.oxygen.time)}\n`;
+                    
+                    if (r.notes) actText += `- Novedades: ${r.notes}\n`;
                     
                     const splitText = doc.splitTextToSize(actText, 180);
                     doc.text(splitText, 14, actY);
@@ -2214,14 +2263,16 @@
                 }
             });
             
-            let finalY = Math.max(actY + 10, 200);
+            // Entrega
+            let finalY = Math.max(actY + 15, 200);
             if (finalY > 240) { doc.addPage(); finalY = 30; }
             
-            doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Entrega", 14, finalY);
+            doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Estado de Entrega", 14, finalY);
             doc.setTextColor(0, 0, 0); doc.setFontSize(10);
             doc.text(`Estado: ${shift?.patient_delivered_status || 'N/A'}`, 14, finalY + 10);
             doc.text(`Descripción: ${shift?.patient_delivered_notes || 'N/A'}`, 14, finalY + 17);
             doc.text(`Pendientes: ${shift?.pending_tasks || 'Ninguno'}`, 14, finalY + 24);
+            doc.text(`Justificación: ${shift?.pending_justification || 'N/A'}`, 14, finalY + 31);
             
             finalY += 45;
             if (finalY > 220) { doc.addPage(); finalY = 30; }
@@ -2230,25 +2281,57 @@
             doc.setLineWidth(0.5);
             
             const lastSig = signatures?.[0];
-            doc.rect(14, finalY, 80, 45);
+            doc.rect(14, finalY, 80, 50);
             doc.setFontSize(9); doc.setTextColor(0, 0, 0);
             doc.text("FIRMA AUXILIAR", 18, finalY + 6);
             if (lastSig?.auxiliary_signature) {
                 try { doc.addImage(lastSig.auxiliary_signature, 'PNG', 20, finalY + 10, 50, 18); } catch(e) {}
             }
-            doc.text(`${lastSig?.auxiliary_name || '________________'}`, 18, finalY + 33);
+            doc.text(`Nombre: ${lastSig?.auxiliary_name || '________________'}`, 18, finalY + 33);
             doc.text(`CC: ${lastSig?.auxiliary_id_number || '________'}`, 18, finalY + 38);
+            doc.text(`TP: ${lastSig?.auxiliary_professional_card || '________'}`, 18, finalY + 43);
             
-            doc.rect(110, finalY, 80, 45);
+            doc.rect(110, finalY, 80, 50);
             doc.text("FIRMA FAMILIAR", 114, finalY + 6);
             if (lastSig?.family_signature) {
                 try { doc.addImage(lastSig.family_signature, 'PNG', 116, finalY + 10, 50, 18); } catch(e) {}
             }
-            doc.text(`${lastSig?.family_name || '________________'}`, 114, finalY + 33);
+            doc.text(`Nombre: ${lastSig?.family_name || '________________'}`, 114, finalY + 33);
             doc.text(`CC: ${lastSig?.family_id_number || '________'}`, 114, finalY + 38);
+            doc.text(`Parentesco: ${lastSig?.family_relationship || '________'}`, 114, finalY + 43);
+            
+            // ⚠️ ADVERTENCIA DE SALIDA
+            if (lastSig?.patient_leaves_home) {
+                const leaveY = finalY + 55;
+                if (leaveY > 280) { doc.addPage(); }
+                doc.setFontSize(10); doc.setTextColor(200, 100, 0);
+                doc.text("⚠️ ADVERTENCIA: El paciente salió del domicilio durante el turno", 14, leaveY);
+                doc.setTextColor(0, 0, 0); doc.setFontSize(8);
+                if (lastSig?.leave_data) {
+                    const ld = lastSig.leave_data;
+                    doc.text(`Destino: ${ld.destination || 'N/A'}`, 14, leaveY + 7);
+                    doc.text(`Salida: ${ld.time || 'N/A'} - Regreso estimado: ${ld.returnTime || 'N/A'}`, 14, leaveY + 12);
+                    if (ld.notes) doc.text(`Observaciones: ${ld.notes}`, 14, leaveY + 17);
+                }
+                doc.text("El auxiliar asume la responsabilidad total durante la salida.", 14, leaveY + 24);
+            }
+            
+            // 📋 EDUCACIÓN AL FAMILIAR
+            if (lastSig?.family_received_education) {
+                const eduY = (lastSig?.patient_leaves_home ? finalY + 35 : finalY + 55);
+                if (eduY > 280) { doc.addPage(); }
+                doc.setFontSize(10); doc.setTextColor(59, 130, 246);
+                doc.text("📋 Educación al Familiar", 14, eduY);
+                doc.setTextColor(0, 0, 0); doc.setFontSize(8);
+                doc.text("El familiar recibió educación sobre los cuidados del paciente.", 14, eduY + 7);
+                if (lastSig?.education_topics_given) {
+                    doc.text(`Temas: ${lastSig.education_topics_given}`, 14, eduY + 12);
+                }
+                doc.text(`Responsabilidad aceptada por: ${lastSig?.family_name || 'N/A'}`, 14, eduY + 19);
+            }
             
             doc.setFontSize(8); doc.setTextColor(100);
-            doc.text(`Generado el ${new Date().toLocaleString('es-CO')}`, 105, finalY + 55, null, null, "center");
+            doc.text(`Generado el ${new Date().toLocaleString('es-CO')}`, 105, 285, null, null, "center");
             
             doc.save(`Cierre_Turno_${shift?.patients?.full_name.replace(/\s+/g, '_')}_${new Date().toLocaleDateString('es-CO').replace(/\//g, '-')}.pdf`);
         } catch (error) { 
@@ -2256,6 +2339,21 @@
             alert('❌ Error: ' + error.message); 
         }
     }
+
+    // ============================================================
+    // EVENTOS DE SALIDA Y EDUCACIÓN
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        // Mostrar/ocultar detalles de salida
+        document.getElementById('patientLeavesHome')?.addEventListener('change', function() {
+            document.getElementById('leaveDetails').classList.toggle('hidden', !this.checked);
+        });
+        
+        // Mostrar/ocultar detalles de educación
+        document.getElementById('familyReceivedEducation')?.addEventListener('change', function() {
+            document.getElementById('educationDetails').classList.toggle('hidden', !this.checked);
+        });
+    });
 
     // ============================================================
     // INICIALIZACIÓN
