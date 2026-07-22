@@ -42,13 +42,20 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
         }
 
+        // 👇 AGREGA ESTA LÍNEA 👇
+        console.log('✅ Auth exitoso. User ID recibido:', authData.user.id);
+
         const { data: profData, error: profError } = await supabase
             .from('professionals')
             .select('*, specialties(name)')
             .eq('user_id', authData.user.id)
             .single();
 
+        // 👇 AGREGA ESTA LÍNEA 👇
+        console.log('🔍 Resultado de la búsqueda en BD:', { profData, profError });
+
         if (profError || !profData) {
+            console.error('❌ Detalle del error al buscar perfil:', profError);
             return res.status(404).json({ success: false, message: 'Perfil no encontrado' });
         }
 
