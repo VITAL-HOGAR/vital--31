@@ -36,7 +36,7 @@ h4 { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-top: 20
 .toast.show { opacity: 1; transform: translateX(0); }
 .toast.error { border-left-color: var(--danger); }
 .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; overflow-x: auto; padding-bottom: 5px; }
-.tab { padding: 8px 16px; background: var(--card-bg); border-radius: 30px; cursor: pointer; font-size: 0.8rem; border: 1px solid transparent; white-space: nowrap; }
+.tab { padding: 8px 16px; background: var(--card-bg); border-radius: 30px; cursor: pointer; font-size: 0.8rem; border: 1px solid transparent; white-space: normal; text-align: center; }
 .tab.active { background: var(--primary); color: white; border-color: var(--primary); }
 .login-container { max-width: 420px; margin: 40px auto; }
 .password-toggle { position: absolute; right: 12px; top: 38px; background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.2rem; }
@@ -80,6 +80,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .legal-warning h4 { color: var(--warning); margin: 0 0 10px 0; border: none; }
 .eva-slider { width: 100%; margin: 10px 0; }
 .eva-faces { display: flex; justify-content: space-between; font-size: 1.5rem; margin-top: 5px; }
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
 </style>
 </head>
 <body>
@@ -105,16 +106,34 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="card-title">🔐 Acceso al Sistema</div>
 <div class="form-group">
 <label>📧 Email</label>
-<input type="email" id="loginEmail" placeholder="usuario@vitalhogar.com">
+<input type="email" id="loginEmail" placeholder="usuario@vitalhogar.com" autocomplete="off">
 </div>
 <div class="form-group">
 <label>🔒 Contraseña</label>
-<input type="password" id="loginPassword" placeholder="Ingrese su contraseña">
+<input type="password" id="loginPassword" placeholder="Ingrese su contraseña" autocomplete="new-password">
 <button type="button" class="password-toggle" id="togglePassword">👁️</button>
 </div>
 <div id="loginError" style="color:var(--danger); font-size:0.85rem; margin-bottom:10px; text-align:center;"></div>
 <button class="btn-primary" id="loginBtn">Ingresar</button>
+<div style="text-align: center; margin-top: 15px;">
+<a href="#" onclick="openResetModal()" style="color:var(--info); text-decoration:none; font-size:0.9rem; font-weight:bold;">¿Olvidaste tu contraseña?</a>
 </div>
+</div>
+</div>
+
+<!-- MODAL RECUPERACIÓN -->
+<div id="resetModal" class="modal-overlay hidden">
+    <div class="card" style="max-width: 400px; width: 100%;">
+        <h3 style="text-align:center; color: var(--primary);">Recuperar Contraseña</h3>
+        <p style="font-size: 0.9rem; color: #94a3b8; text-align: center;">Ingresa tu correo y te enviaremos un enlace para restablecerla.</p>
+        <div class="form-group" style="margin-top: 15px;">
+            <label>📧 Email</label>
+            <input type="email" id="resetEmail" autocomplete="off">
+        </div>
+        <div id="resetMsg" style="text-align:center; font-size:0.85rem; margin-bottom:10px; color:var(--primary);"></div>
+        <button class="btn-primary" onclick="sendResetEmail()">Enviar Enlace</button>
+        <button class="btn-primary btn-secondary" onclick="closeResetModal()" style="margin-top:5px;">Cancelar</button>
+    </div>
 </div>
 
 <!-- MAIN APP -->
@@ -138,8 +157,8 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="form-group"><label>Nombre Completo *</label><input type="text" id="pName"></div>
 <div class="form-group"><label>Cédula *</label><input type="text" id="pDoc"></div>
 <div class="form-group"><label>Tarjeta Profesional / RETHUS</label><input type="text" id="pCard"></div>
-<div class="form-group"><label>Correo *</label><input type="email" id="pEmail"></div>
-<div class="form-group"><label>Contraseña *</label><input type="password" id="pPass"></div>
+<div class="form-group"><label>Correo *</label><input type="email" id="pEmail" autocomplete="off"></div>
+<div class="form-group"><label>Contraseña *</label><input type="password" id="pPass" autocomplete="new-password"></div>
 <div class="form-group"><label>Especialidad</label>
 <select id="pSpec">
 <option value="ADMINISTRACION">Administración</option>
@@ -362,6 +381,7 @@ const CIUDADES_COLOMBIA = {
     'Cali': { altitud: 1018, spo2_min: 96, spo2_max: 100 },
     'Barranquilla': { altitud: 18, spo2_min: 97, spo2_max: 100 },
     'Cartagena': { altitud: 2, spo2_min: 97, spo2_max: 100 },
+    'Cúcuta': { altitud: 320, spo2_min: 96, spo2_max: 100 },
     'Bucaramanga': { altitud: 959, spo2_min: 96, spo2_max: 100 },
     'Pereira': { altitud: 1467, spo2_min: 95, spo2_max: 99 },
     'Manizales': { altitud: 2150, spo2_min: 94, spo2_max: 98 },
@@ -387,7 +407,42 @@ function showToast(msg, type = 'success') {
 function getVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
 function getChecked(id) { const el = document.getElementById(id); return el ? el.checked : false; }
 function getRangoSpO2(ciudad) { return CIUDADES_COLOMBIA[ciudad] || CIUDADES_COLOMBIA['Bogotá']; }
-function formatTime12h(t) { if(!t) return 'N/A'; const [h,m] = t.split(':'); const hr = parseInt(h); return `${hr%12||12}:${m} ${hr>=12?'PM':'AM'}`; }
+
+// ===== MODAL RECUPERACIÓN =====
+function openResetModal() {
+    document.getElementById('resetModal').classList.remove('hidden');
+    document.getElementById('resetMsg').innerText = '';
+}
+function closeResetModal() {
+    document.getElementById('resetModal').classList.add('hidden');
+    document.getElementById('resetEmail').value = '';
+}
+async function sendResetEmail() {
+    const email = document.getElementById('resetEmail').value.trim();
+    if (!email) return showToast('Ingresa un correo', 'error');
+    
+    document.getElementById('resetMsg').innerText = 'Enviando...';
+    document.getElementById('resetMsg').style.color = 'var(--info)';
+    
+    try {
+        const res = await fetch(`${API_URL}/api/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        
+        document.getElementById('resetMsg').style.color = data.success ? 'var(--primary)' : 'var(--danger)';
+        document.getElementById('resetMsg').innerText = data.message || 'Error';
+        
+        if (data.success) {
+            setTimeout(closeResetModal, 3000);
+        }
+    } catch (e) {
+        document.getElementById('resetMsg').style.color = 'var(--danger)';
+        document.getElementById('resetMsg').innerText = 'Error de conexión';
+    }
+}
 
 // ===== AUTENTICACIÓN =====
 async function login() {
@@ -456,7 +511,7 @@ function initApp() {
     
     if (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE') {
         document.getElementById('adminPanel').classList.remove('hidden');
-        loadProfs(); loadPats(); loadReportPatients();
+        loadDashboard(); loadProfs(); loadPats(); loadReportPatients();
         setTimeout(() => initSigCanvas('adminSigCanvas'), 100);
     } else {
         document.getElementById('auxPanel').classList.remove('hidden');
@@ -471,6 +526,19 @@ function showAdminTab(tab, btn) {
     document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
     if (tab === 'reports') setTimeout(() => initSigCanvas('adminSigCanvas'), 100);
+}
+
+// ===== ADMIN: DASHBOARD =====
+async function loadDashboard() {
+    try {
+        const res = await fetch(`${API_URL}/api/dashboard/stats`);
+        const d = await res.json();
+        if (d.success) {
+            document.getElementById('statPat').innerText = d.data.patients || 0;
+            document.getElementById('statProf').innerText = d.data.professionals || 0;
+            document.getElementById('statReports').innerText = d.data.pendingReports || 0;
+        }
+    } catch (e) { console.error(e); }
 }
 
 // ===== ADMIN: PROFESIONALES =====
@@ -498,12 +566,12 @@ async function createProf() {
         const res = await fetch(`${API_URL}/api/professionals`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         const d = await res.json();
         showToast(d.message, d.success ? 'success' : 'error');
-        if (d.success) { ['pName','pDoc','pCard','pEmail','pPass'].forEach(id => document.getElementById(id).value = ''); loadProfs(); }
+        if (d.success) { ['pName','pDoc','pCard','pEmail','pPass'].forEach(id => document.getElementById(id).value = ''); loadProfs(); loadDashboard(); }
     } catch (e) { showToast('Error de conexión', 'error'); }
 }
 
 async function toggleProf(id, status) {
-    try { await fetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !status }) }); loadProfs(); } catch (e) { showToast('Error', 'error'); }
+    try { await fetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !status }) }); loadProfs(); loadDashboard(); } catch (e) { showToast('Error', 'error'); }
 }
 
 // ===== ADMIN: PACIENTES =====
@@ -528,7 +596,7 @@ async function createPat() {
         const res = await fetch(`${API_URL}/api/patients`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
         const d = await res.json();
         showToast(d.message, d.success ? 'success' : 'error');
-        if (d.success) { ['patName','patDoc','famName','famCel'].forEach(id => document.getElementById(id).value = ''); loadPats(); }
+        if (d.success) { ['patName','patDoc','famName','famCel'].forEach(id => document.getElementById(id).value = ''); loadPats(); loadDashboard(); }
     } catch (e) { showToast('Error', 'error'); }
 }
 
@@ -547,14 +615,17 @@ async function generateMonthlyPDF() {
     const patientId = getVal('reportPatient');
     const month = getVal('reportMonth');
     const year = getVal('reportYear');
-    if (!patientId) return showToast('Seleccione un paciente', 'error');
     
-    document.getElementById('pdfStatus').innerText = 'Generando...';
+    if (!patientId) return showToast('Seleccione un paciente primero', 'error');
+    
+    document.getElementById('pdfStatus').innerText = 'Generando PDF...';
+    document.getElementById('pdfStatus').style.color = 'var(--info)';
     
     try {
         const res = await fetch(`${API_URL}/api/reports/${patientId}/${month}/${year}`);
+        if (!res.ok) throw new Error('Error en el servidor');
         const result = await res.json();
-        if (!result.success) throw new Error(result.message);
+        if (!result.success) throw new Error(result.message || 'Paciente no encontrado');
         
         const { patient, records } = result.data;
         const { jsPDF } = window.jspdf;
@@ -571,11 +642,12 @@ async function generateMonthlyPDF() {
         
         if (records && records.length > 0) {
             const tableData = records.map(r => [new Date(r.created_at).toLocaleDateString('es-CO'), r.blood_pressure || '--', r.heart_rate || '--', r.spo2 || '--', r.temperature || '--']);
-            // Fix para autoTable usando el método directo
             doc.autoTable({ startY: 70, head: [['Fecha', 'PA', 'FC', 'SpO2', 'Temp']], body: tableData, headStyles: { fillColor: [34, 197, 94] } });
+        } else {
+            doc.text("Sin registros en este período.", 14, 70);
         }
         
-        let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 : 150;
+        let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 : 80;
         if (finalY > 240) { doc.addPage(); finalY = 30; }
         
         doc.setDrawColor(0); doc.setLineWidth(0.5);
@@ -590,10 +662,12 @@ async function generateMonthlyPDF() {
         doc.text(`Cargo: ${currentUser?.specialty_name || 'Admin'}`, 18, finalY + 38);
         
         doc.save(`Informe_${patient.full_name}_${month}_${year}.pdf`);
-        document.getElementById('pdfStatus').innerText = '✅ PDF generado';
+        document.getElementById('pdfStatus').innerText = '✅ PDF generado exitosamente';
+        document.getElementById('pdfStatus').style.color = 'var(--primary)';
         showToast('PDF generado exitosamente');
     } catch (error) {
         document.getElementById('pdfStatus').innerText = '❌ Error: ' + error.message;
+        document.getElementById('pdfStatus').style.color = 'var(--danger)';
         showToast('Error al generar PDF', 'error');
     }
 }
