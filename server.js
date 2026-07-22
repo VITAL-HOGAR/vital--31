@@ -42,20 +42,13 @@ app.post('/api/auth/login', async (req, res) => {
             return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
         }
 
-        // 👇 AGREGA ESTA LÍNEA 👇
-        console.log('✅ Auth exitoso. User ID recibido:', authData.user.id);
-
         const { data: profData, error: profError } = await supabase
             .from('professionals')
             .select('*, specialties(name)')
             .eq('user_id', authData.user.id)
             .single();
 
-        // 👇 AGREGA ESTA LÍNEA 👇
-        console.log('🔍 Resultado de la búsqueda en BD:', { profData, profError });
-
         if (profError || !profData) {
-            console.error('❌ Detalle del error al buscar perfil:', profError);
             return res.status(404).json({ success: false, message: 'Perfil no encontrado' });
         }
 
@@ -149,17 +142,31 @@ app.patch('/api/professionals/:id/deactivate', async (req, res) => {
 });
 
 // ==========================================
-// 4. PACIENTES
+// 4. PACIENTES (CON FALLBACK A PRUEBA DE ERRORES)
 // ==========================================
 app.get('/api/patients', async (req, res) => {
     try {
-        const { data, error } = await supabase
+        // Intentamos con la relación
+        let { data, error } = await supabase
             .from('patients')
             .select('*, altitude_profiles(city_name)')
             .order('created_at', { ascending: false });
+            
+        // Si la relación falla (ej: falta la clave foránea en Supabase), usamos un fallback
+        if (error) {
+            console.warn('⚠️ Join con altitude_profiles falló, usando consulta alternativa:', error.message);
+            const fallback = await supabase
+                .from('patients')
+                .select('*')
+                .order('created_at', { ascending: false });
+            data = fallback.data;
+            error = fallback.error;
+        }
+        
         if (error) throw error;
         res.json({ success: true, data: data || [] });
     } catch (error) {
+        console.error('❌ Error en /api/patients:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });
@@ -266,16 +273,16 @@ app.post('/api/education/topics', async (req, res) => {
 });
 
 // ==========================================
-// 6. AUXILIAR - TURNOS Y REGISTROS
+// 6. AUXILIAR - TURNOS Y REGISTROS (CON FALLBACK)
 // ==========================================
 app.get('/api/auxiliar/patients', async (req, res) => {
     try {
-        const { data, error } = await supabase
+        let { data, error } = await supabase
             .from('patients')
             .select(`
                 *,
                 altitude_profiles(city_name, spo2_min_normal),
-                clinical_records!inner(
+                clinical_records(
                     created_at,
                     spo2,
                     glucose,
@@ -287,6 +294,18 @@ app.get('/api/auxiliar/patients', async (req, res) => {
             `)
             .eq('is_active', true)
             .order('created_at', { ascending: false });
+
+        // Fallback si las relaciones no están configuradas en Supabase
+        if (error) {
+            console.warn('⚠️ Join falló en auxiliar, usando fallback:', error.message);
+            const fallback = await supabase
+                .from('patients')
+                .select('*')
+                .eq('is_active', true)
+                .order('created_at', { ascending: false });
+            data = fallback.data;
+            error = fallback.error;
+        }
 
         if (error) throw error;
 
@@ -302,6 +321,7 @@ app.get('/api/auxiliar/patients', async (req, res) => {
 
         res.json({ success: true, data: data || [] });
     } catch (error) {
+        console.error('❌ Error en /api/auxiliar/patients:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });
@@ -352,7 +372,6 @@ app.post('/api/clinical-records', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Datos incompletos' });
         }
 
-        // Asegurar que activitiesCompleted sea un objeto válido
         const activities = activitiesCompleted || {};
 
         const { data, error } = await supabase.from('clinical_records').insert([{
