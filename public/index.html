@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=1.0">
-<title>Vital Hogar Pro </title>
+<title>Vital Hogar Pro IPS</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -81,6 +81,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .eva-slider { width: 100%; margin: 10px 0; }
 .eva-faces { display: flex; justify-content: space-between; font-size: 1.5rem; margin-top: 5px; }
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
+.photo-preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-top: 10px; border: 2px solid var(--info); }
 </style>
 </head>
 <body>
@@ -89,7 +90,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="logo-area">
 <img src="https://i.imgur.com/01YZxey.jpeg" alt="Vital Hogar" onerror="this.style.display='none'">
 <div>
-<h1>VITAL HOGAR PRO </h1>
+<h1>VITAL HOGAR PRO IPS</h1>
 <div class="subtitle">Cuidados Domiciliarios</div>
 </div>
 </div>
@@ -147,6 +148,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="tabs" id="adminTabs">
 <div class="tab active" onclick="showAdminTab('prof', this)">👥 Profesionales</div>
 <div class="tab" onclick="showAdminTab('pat', this)">🏥 Pacientes</div>
+<div class="tab" onclick="showAdminTab('edu', this)">🎓 Educación</div>
 <div class="tab" onclick="showAdminTab('reports', this)">📄 Informes</div>
 </div>
 
@@ -159,13 +161,18 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="form-group"><label>Tarjeta Profesional / RETHUS</label><input type="text" id="pCard"></div>
 <div class="form-group"><label>Correo *</label><input type="email" id="pEmail" autocomplete="off"></div>
 <div class="form-group"><label>Contraseña *</label><input type="password" id="pPass" autocomplete="new-password"></div>
-<div class="form-group"><label>Especialidad</label>
+<div class="form-group"><label>Especialidad (Ley Colombiana)</label>
 <select id="pSpec">
 <option value="ADMINISTRACION">Administración</option>
+<option value="ENFERMERIA_JEFE">Enfermería Jefe</option>
 <option value="AUXILIAR_ENFERMERIA">Auxiliar de Enfermería</option>
-<option value="ENFERMERIA_JEFE">Jefe de Enfermería</option>
-<option value="MEDICINA">Médico</option>
-<option value="FISIOTERAPIA">Fisioterapeuta</option>
+<option value="MEDICINA">Medicina</option>
+<option value="FISIOTERAPIA">Fisioterapia</option>
+<option value="FONOAUDIOLOGIA">Fonoaudiología</option>
+<option value="TERAPIA_OCUPACIONAL">Terapia Ocupacional</option>
+<option value="PSICOLOGIA">Psicología</option>
+<option value="NUTRICION">Nutrición</option>
+<option value="TRABAJO_SOCIAL">Trabajo Social</option>
 </select>
 </div>
 </div>
@@ -190,6 +197,19 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 </div>
 <div class="card">
 <table id="patTable"><thead><tr><th>Nombre</th><th>Ciudad</th><th>Familiar</th><th>Celular</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+</div>
+</div>
+
+<div id="admin_edu" class="hidden">
+<div class="card">
+<h3>Asignar Tema Educativo</h3>
+<div class="form-group"><label>Título del Tema *</label><input type="text" id="eduTitle" placeholder="Ej: Manejo de sonda vesical"></div>
+<div class="form-group"><label>Descripción</label><textarea id="eduDesc" rows="2"></textarea></div>
+<button class="btn-primary" onclick="createEdu()"><i class="fas fa-save"></i> Guardar Tema</button>
+</div>
+<div class="card">
+<h3>Temas Educativos Registrados</h3>
+<div id="eduList"></div>
 </div>
 </div>
 
@@ -229,12 +249,25 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="card">
 <h3>Iniciar Turno - <span id="patientNameStart" style="color: var(--primary);"></span></h3>
 <div class="form-group"><label>Tipo de Turno</label>
-<select id="shiftType"><option value="12h_diurno">☀️ 12h Diurno</option><option value="12h_nocturno">🌙 12h Nocturno</option><option value="24h">🔄 24h</option></select>
+<select id="shiftType" onchange="toggleCustomShift()">
+    <option value="6h_diurno">☀️ 6h Diurno</option>
+    <option value="8h_diurno">☀️ 8h Diurno</option>
+    <option value="12h_diurno">☀️ 12h Diurno</option>
+    <option value="6h_nocturno">🌙 6h Nocturno</option>
+    <option value="8h_nocturno">🌙 8h Nocturno</option>
+    <option value="12h_nocturno">🌙 12h Nocturno</option>
+    <option value="24h">🔄 24h</option>
+    <option value="personalizado">⚙️ Personalizado</option>
+</select>
+</div>
+<div id="customShiftTimes" class="hidden grid">
+<div class="form-group"><label>Hora Inicio</label><input type="time" id="customStartTime"></div>
+<div class="form-group"><label>Hora Fin</label><input type="time" id="customEndTime"></div>
 </div>
 <div class="form-group"><label>Estado de recepción</label>
 <select id="patientReceivedStatus"><option value="estable">🟢 Estable</option><option value="con_novedades">🟡 Con Novedades</option><option value="critico">🔴 Crítico</option></select>
 </div>
-<div class="form-group"><label>Observaciones</label>
+<div class="form-group"><label>Observaciones de Recepción</label>
 <div style="display:flex; gap:5px;"><textarea id="patientReceivedNotes" rows="2"></textarea><button class="mic-btn" onclick="startDictation('patientReceivedNotes')"><i class="fas fa-microphone"></i></button></div>
 </div>
 <button class="btn-primary btn-info" onclick="startShift()"><i class="fas fa-play"></i> Iniciar Turno</button>
@@ -347,7 +380,13 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div style="margin: 10px 0;"><input type="checkbox" id="familyAcceptsResponsibility" style="width:auto; margin-right:10px;"><label for="familyAcceptsResponsibility" style="display:inline;">El familiar acepta la responsabilidad</label></div>
 <div style="margin: 10px 0;"><input type="checkbox" id="familyReceivedEducation" style="width:auto; margin-right:10px;" onchange="document.getElementById('educationDetails').classList.toggle('hidden', !this.checked)"><label for="familyReceivedEducation" style="display:inline;">Se brindó educación al familiar</label></div>
 <div id="educationDetails" class="hidden">
-<div class="form-group"><label>Temas tratados</label><textarea id="educationTopicsGiven" rows="2"></textarea></div>
+    <div class="form-group"><label>Tema Educativo Impartido</label><select id="educationTopicSelect"></select></div>
+    <div class="form-group">
+        <label>📸 Evidencia Fotográfica</label>
+        <input type="file" id="eduPhoto" accept="image/*" capture="environment" style="display:none;" onchange="previewPhoto(this)">
+        <button class="btn-small btn-info" onclick="document.getElementById('eduPhoto').click()"><i class="fas fa-camera"></i> Tomar Foto</button>
+        <img id="eduPhotoPreview" class="photo-preview hidden">
+    </div>
 </div>
 </div>
 
@@ -394,7 +433,7 @@ const CIUDADES_COLOMBIA = {
 };
 
 let currentUser = null, selectedPatient = null, currentShiftId = null, lastClosedShiftId = null;
-let shiftTimerInterval = null, shiftStartTime = null, medications = [];
+let shiftTimerInterval = null, shiftStartTime = null, medications = [], eduPhotoBase64 = null;
 
 // ===== UTILIDADES =====
 function showToast(msg, type = 'success') {
@@ -409,35 +448,20 @@ function getChecked(id) { const el = document.getElementById(id); return el ? el
 function getRangoSpO2(ciudad) { return CIUDADES_COLOMBIA[ciudad] || CIUDADES_COLOMBIA['Bogotá']; }
 
 // ===== MODAL RECUPERACIÓN =====
-function openResetModal() {
-    document.getElementById('resetModal').classList.remove('hidden');
-    document.getElementById('resetMsg').innerText = '';
-}
-function closeResetModal() {
-    document.getElementById('resetModal').classList.add('hidden');
-    document.getElementById('resetEmail').value = '';
-}
+function openResetModal() { document.getElementById('resetModal').classList.remove('hidden'); document.getElementById('resetMsg').innerText = ''; }
+function closeResetModal() { document.getElementById('resetModal').classList.add('hidden'); document.getElementById('resetEmail').value = ''; }
+
 async function sendResetEmail() {
     const email = document.getElementById('resetEmail').value.trim();
     if (!email) return showToast('Ingresa un correo', 'error');
-    
     document.getElementById('resetMsg').innerText = 'Enviando...';
     document.getElementById('resetMsg').style.color = 'var(--info)';
-    
     try {
-        const res = await fetch(`${API_URL}/api/auth/reset-password`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email })
-        });
+        const res = await fetch(`${API_URL}/api/auth/reset-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
         const data = await res.json();
-        
         document.getElementById('resetMsg').style.color = data.success ? 'var(--primary)' : 'var(--danger)';
         document.getElementById('resetMsg').innerText = data.message || 'Error';
-        
-        if (data.success) {
-            setTimeout(closeResetModal, 3000);
-        }
+        if (data.success) setTimeout(closeResetModal, 3000);
     } catch (e) {
         document.getElementById('resetMsg').style.color = 'var(--danger)';
         document.getElementById('resetMsg').innerText = 'Error de conexión';
@@ -450,68 +474,38 @@ async function login() {
     const password = document.getElementById('loginPassword').value;
     const errorDiv = document.getElementById('loginError');
     errorDiv.style.display = 'none';
-    
     if (!email || !password) { errorDiv.textContent = 'Complete todos los campos'; errorDiv.style.display = 'block'; return; }
-    
     document.getElementById('loginBtn').innerHTML = 'Verificando...';
-    
     try {
-        const res = await fetch(`${API_URL}/api/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ email, password })
-        });
+        const res = await fetch(`${API_URL}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
         const data = await res.json();
-        
         if (data.success) {
             const specRes = await fetch(`${API_URL}/api/professionals`);
             const specData = await specRes.json();
             const prof = specData.data.find(p => p.id === data.data.user.id);
-            
-            currentUser = {
-                ...data.data.user,
-                specialty_name: prof?.specialties?.name,
-                professional_card: prof?.professional_card,
-                full_name: prof?.full_name,
-                document_number: prof?.document_number
-            };
-            
+            currentUser = { ...data.data.user, specialty_name: prof?.specialties?.name, professional_card: prof?.professional_card, full_name: prof?.full_name, document_number: prof?.document_number };
             localStorage.setItem('vital_user', JSON.stringify(currentUser));
             showToast('Bienvenido ' + currentUser.full_name);
             initApp();
-        } else {
-            errorDiv.textContent = data.message || 'Credenciales inválidas';
-            errorDiv.style.display = 'block';
-        }
-    } catch (error) {
-        errorDiv.textContent = 'Error de conexión con el servidor';
-        errorDiv.style.display = 'block';
-    } finally {
-        document.getElementById('loginBtn').innerHTML = 'Ingresar';
-    }
+        } else { errorDiv.textContent = data.message || 'Credenciales inválidas'; errorDiv.style.display = 'block'; }
+    } catch (error) { errorDiv.textContent = 'Error de conexión con el servidor'; errorDiv.style.display = 'block'; }
+    finally { document.getElementById('loginBtn').innerHTML = 'Ingresar'; }
 }
 
-function logout() {
-    clearInterval(shiftTimerInterval);
-    localStorage.removeItem('vital_user');
-    currentUser = null;
-    location.reload();
-}
+function logout() { clearInterval(shiftTimerInterval); localStorage.removeItem('vital_user'); currentUser = null; location.reload(); }
 
 function initApp() {
     const userStr = localStorage.getItem('vital_user');
     if (!userStr) return;
     currentUser = JSON.parse(userStr);
-    
     document.getElementById('loginScreen').classList.add('hidden');
     document.getElementById('mainScreen').classList.remove('hidden');
     document.getElementById('userInfo').classList.remove('hidden');
     document.getElementById('userName').textContent = currentUser.full_name || currentUser.name;
     document.getElementById('userRoleDisplay').textContent = currentUser.specialty_name || currentUser.role;
-    
     if (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE') {
         document.getElementById('adminPanel').classList.remove('hidden');
-        loadDashboard(); loadProfs(); loadPats(); loadReportPatients();
+        loadDashboard(); loadProfs(); loadPats(); loadReportPatients(); loadEdus();
         setTimeout(() => initSigCanvas('adminSigCanvas'), 100);
     } else {
         document.getElementById('auxPanel').classList.remove('hidden');
@@ -521,7 +515,7 @@ function initApp() {
 
 // ===== NAVEGACIÓN ADMIN =====
 function showAdminTab(tab, btn) {
-    ['admin_prof', 'admin_pat', 'admin_reports'].forEach(t => document.getElementById(t).classList.add('hidden'));
+    ['admin_prof', 'admin_pat', 'admin_edu', 'admin_reports'].forEach(t => document.getElementById(t).classList.add('hidden'));
     document.getElementById('admin_' + tab).classList.remove('hidden');
     document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active'));
     btn.classList.add('active');
@@ -557,10 +551,7 @@ async function loadProfs() {
 }
 
 async function createProf() {
-    const payload = {
-        fullName: getVal('pName'), documentNumber: getVal('pDoc'), professionalCard: getVal('pCard'),
-        email: getVal('pEmail'), password: getVal('pPass'), specialtyName: getVal('pSpec')
-    };
+    const payload = { fullName: getVal('pName'), documentNumber: getVal('pDoc'), professionalCard: getVal('pCard'), email: getVal('pEmail'), password: getVal('pPass'), specialtyName: getVal('pSpec') };
     if (!payload.fullName || !payload.documentNumber || !payload.email || !payload.password) return showToast('Complete los campos obligatorios', 'error');
     try {
         const res = await fetch(`${API_URL}/api/professionals`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -600,6 +591,30 @@ async function createPat() {
     } catch (e) { showToast('Error', 'error'); }
 }
 
+// ===== ADMIN: EDUCACIÓN =====
+async function loadEdus() {
+    try {
+        const res = await fetch(`${API_URL}/api/education/topics`);
+        const d = await res.json();
+        const container = document.getElementById('eduList');
+        container.innerHTML = d.data.map(t => `<div class="sub-activity"><strong>${t.title}</strong><br><small>${t.description || ''}</small></div>`).join('');
+        const auxSelect = document.getElementById('educationTopicSelect');
+        auxSelect.innerHTML = '<option value="">Seleccionar tema...</option>';
+        d.data.forEach(t => auxSelect.innerHTML += `<option value="${t.title}">${t.title}</option>`);
+    } catch (e) { console.error(e); }
+}
+
+async function createEdu() {
+    const payload = { title: getVal('eduTitle'), description: getVal('eduDesc') };
+    if (!payload.title) return showToast('El título es obligatorio', 'error');
+    try {
+        const res = await fetch(`${API_URL}/api/education/topics`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const d = await res.json();
+        showToast(d.message, d.success ? 'success' : 'error');
+        if (d.success) { document.getElementById('eduTitle').value = ''; document.getElementById('eduDesc').value = ''; loadEdus(); }
+    } catch (e) { showToast('Error', 'error'); }
+}
+
 // ===== ADMIN: INFORMES PDF =====
 async function loadReportPatients() {
     try {
@@ -615,52 +630,37 @@ async function generateMonthlyPDF() {
     const patientId = getVal('reportPatient');
     const month = getVal('reportMonth');
     const year = getVal('reportYear');
-    
     if (!patientId) return showToast('Seleccione un paciente primero', 'error');
-    
     document.getElementById('pdfStatus').innerText = 'Generando PDF...';
     document.getElementById('pdfStatus').style.color = 'var(--info)';
-    
     try {
         const res = await fetch(`${API_URL}/api/reports/${patientId}/${month}/${year}`);
         if (!res.ok) throw new Error('Error en el servidor');
         const result = await res.json();
         if (!result.success) throw new Error(result.message || 'Paciente no encontrado');
-        
         const { patient, records } = result.data;
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        
         try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
         doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
         doc.setFontSize(10); doc.setTextColor(100); doc.text("Informe Clínico Mensual", 105, 27, null, null, "center");
-        
         doc.setFontSize(10); doc.setTextColor(0);
         doc.text(`Paciente: ${patient.full_name || 'N/A'}`, 14, 50);
         doc.text(`Cédula: ${patient.document_number || 'N/A'}`, 14, 57);
         doc.text(`Período: ${month}/${year}`, 14, 64);
-        
         if (records && records.length > 0) {
             const tableData = records.map(r => [new Date(r.created_at).toLocaleDateString('es-CO'), r.blood_pressure || '--', r.heart_rate || '--', r.spo2 || '--', r.temperature || '--']);
             doc.autoTable({ startY: 70, head: [['Fecha', 'PA', 'FC', 'SpO2', 'Temp']], body: tableData, headStyles: { fillColor: [34, 197, 94] } });
-        } else {
-            doc.text("Sin registros en este período.", 14, 70);
-        }
-        
+        } else { doc.text("Sin registros en este período.", 14, 70); }
         let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 : 80;
         if (finalY > 240) { doc.addPage(); finalY = 30; }
-        
         doc.setDrawColor(0); doc.setLineWidth(0.5);
         doc.rect(14, finalY, 80, 40);
         doc.text("FIRMA PROFESIONAL VALIDADOR", 18, finalY + 6);
-        
         const adminSig = document.getElementById('adminSigCanvas').toDataURL();
-        if (adminSig && adminSig !== 'data:,') {
-            try { doc.addImage(adminSig, 'PNG', 20, finalY + 8, 50, 20); } catch(e) {}
-        }
+        if (adminSig && adminSig !== 'data:,') { try { doc.addImage(adminSig, 'PNG', 20, finalY + 8, 50, 20); } catch(e) {} }
         doc.text(`Nombre: ${currentUser?.full_name || '________________'}`, 18, finalY + 33);
         doc.text(`Cargo: ${currentUser?.specialty_name || 'Admin'}`, 18, finalY + 38);
-        
         doc.save(`Informe_${patient.full_name}_${month}_${year}.pdf`);
         document.getElementById('pdfStatus').innerText = '✅ PDF generado exitosamente';
         document.getElementById('pdfStatus').style.color = 'var(--primary)';
@@ -673,6 +673,11 @@ async function generateMonthlyPDF() {
 }
 
 // ===== AUXILIAR: TURNOS =====
+function toggleCustomShift() {
+    const type = getVal('shiftType');
+    document.getElementById('customShiftTimes').classList.toggle('hidden', type !== 'personalizado');
+}
+
 async function loadAuxPatients() {
     try {
         const res = await fetch(`${API_URL}/api/auxiliar/patients`);
@@ -695,15 +700,22 @@ function selectPatient(patient) {
 }
 
 async function startShift() {
+    const shiftType = getVal('shiftType');
+    let customStart = null, customEnd = null;
+    if (shiftType === 'personalizado') {
+        if (!getVal('customStartTime') || !getVal('customEndTime')) return showToast('Debe ingresar hora de inicio y fin', 'error');
+        const today = new Date().toISOString().split('T')[0];
+        customStart = `${today}T${getVal('customStartTime')}:00`;
+        customEnd = `${today}T${getVal('customEndTime')}:00`;
+    }
     try {
         const res = await fetch(`${API_URL}/api/shifts/start`, {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ patientId: selectedPatient.id, professionalId: currentUser.id, shiftType: getVal('shiftType'), patientStatus: getVal('patientReceivedStatus'), patientNotes: getVal('patientReceivedNotes') })
+            body: JSON.stringify({ patientId: selectedPatient.id, professionalId: currentUser.id, shiftType, patientStatus: getVal('patientReceivedStatus'), patientNotes: getVal('patientReceivedNotes'), customStartTime: customStart, customEndTime: customEnd })
         });
         const d = await res.json();
         if (d.success) {
-            currentShiftId = d.data.id;
-            shiftStartTime = new Date();
+            currentShiftId = d.data.id; shiftStartTime = new Date();
             document.getElementById('patientNameClinical').innerText = selectedPatient.full_name;
             document.getElementById('auxShiftStart').classList.add('hidden');
             document.getElementById('auxClinicalForm').classList.remove('hidden');
@@ -746,60 +758,41 @@ function checkVital(type) {
 }
 
 function updateEVA() {
-    const v = parseInt(getVal('evaScore')) || 0;
-    let t = 'Sin dolor';
-    if (v >= 1 && v <= 3) t = 'Dolor leve';
-    if (v >= 4 && v <= 6) t = 'Dolor moderado';
-    if (v >= 7) t = 'Dolor severo';
+    const v = parseInt(getVal('evaScore')) || 0; let t = 'Sin dolor';
+    if (v >= 1 && v <= 3) t = 'Dolor leve'; if (v >= 4 && v <= 6) t = 'Dolor moderado'; if (v >= 7) t = 'Dolor severo';
     document.getElementById('evaValue').innerText = `${v} - ${t}`;
 }
 
 function calculateGlasgow() {
     const total = (parseInt(getVal('glasgowEyes'))||0) + (parseInt(getVal('glasgowVerbal'))||0) + (parseInt(getVal('glasgowMotor'))||0);
-    const d = document.getElementById('glasgowTotal');
-    let s = 'Normal', c = 'normal';
-    if (total >= 13 && total <= 14) { s = '⚠️ LEVE'; c = 'mild'; }
-    else if (total >= 9 && total <= 12) { s = '⚠️ MODERADA'; c = 'moderate'; }
-    else if (total >= 3 && total <= 8) { s = '🚨 SEVERA'; c = 'severe'; }
+    const d = document.getElementById('glasgowTotal'); let s = 'Normal', c = 'normal';
+    if (total >= 13 && total <= 14) { s = '⚠️ LEVE'; c = 'mild'; } else if (total >= 9 && total <= 12) { s = '⚠️ MODERADA'; c = 'moderate'; } else if (total >= 3 && total <= 8) { s = '🚨 SEVERA'; c = 'severe'; }
     d.className = `glasgow-total ${c}`; d.innerHTML = `<h3>${total}/15</h3><p>${s}</p>`;
 }
 
 function calculateBraden() {
     const ids = ['bradenSensory','bradenMoisture','bradenActivity','bradenMobility','bradenNutrition','bradenFriction'];
     const total = ids.reduce((s, id) => s + (parseInt(getVal(id))||0), 0);
-    const d = document.getElementById('bradenTotal');
-    let s = 'Sin riesgo', c = 'risk-none';
-    if (total <= 9) { s = '🔴 MUY ALTO'; c = 'risk-high'; }
-    else if (total <= 12) { s = '🟠 ALTO'; c = 'risk-high'; }
-    else if (total <= 14) { s = '🟡 MODERADO'; c = 'risk-moderate'; }
-    else if (total <= 18) { s = '🟢 LEVE'; c = 'risk-mild'; }
+    const d = document.getElementById('bradenTotal'); let s = 'Sin riesgo', c = 'risk-none';
+    if (total <= 9) { s = '🔴 MUY ALTO'; c = 'risk-high'; } else if (total <= 12) { s = '🟠 ALTO'; c = 'risk-high'; } else if (total <= 14) { s = '🟡 MODERADO'; c = 'risk-moderate'; } else if (total <= 18) { s = '🟢 LEVE'; c = 'risk-mild'; }
     d.className = `braden-total ${c}`; d.innerHTML = `<h3>${total}/24</h3><p>${s}</p>`;
 }
 
 // ===== AUXILIAR: ACTIVIDADES =====
-function toggleAccordion(header) {
-    header.classList.toggle('active');
-    header.nextElementSibling.classList.toggle('open');
-}
-function toggleSubFields(id, checkbox) {
-    const fields = document.getElementById(`fields-${id}`);
-    if (fields) fields.classList.toggle('show', checkbox.checked);
-}
+function toggleAccordion(header) { header.classList.toggle('active'); header.nextElementSibling.classList.toggle('open'); }
+function toggleSubFields(id, checkbox) { const fields = document.getElementById(`fields-${id}`); if (fields) fields.classList.toggle('show', checkbox.checked); }
 function addMedication() { medications.push({ id: Date.now(), name: '', dose: '', route: 'oral', time: '' }); renderMedications(); }
 function removeMedication(id) { medications = medications.filter(m => m.id !== id); renderMedications(); }
 function updateMedication(id, field, value) { const m = medications.find(m => m.id === id); if(m) m[field] = value; }
 function renderMedications() {
     const c = document.getElementById('medList');
     if (medications.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay medicamentos</p>'; return; }
-    c.innerHTML = medications.map(m => `
-        <div class="med-item">
-            <input type="text" placeholder="Nombre" value="${m.name}" oninput="updateMedication(${m.id}, 'name', this.value)">
-            <input type="text" placeholder="Dosis" value="${m.dose}" oninput="updateMedication(${m.id}, 'dose', this.value)">
-            <select onchange="updateMedication(${m.id}, 'route', this.value)">
-                <option value="oral" ${m.route==='oral'?'selected':''}>Oral</option><option value="IV" ${m.route==='IV'?'selected':''}>IV</option><option value="SC" ${m.route==='SC'?'selected':''}>SC</option>
-            </select>
-            <button class="btn-small btn-danger" onclick="removeMedication(${m.id})">✕</button>
-        </div>`).join('');
+    c.innerHTML = medications.map(m => `<div class="med-item">
+        <input type="text" placeholder="Nombre" value="${m.name}" oninput="updateMedication(${m.id}, 'name', this.value)">
+        <input type="text" placeholder="Dosis" value="${m.dose}" oninput="updateMedication(${m.id}, 'dose', this.value)">
+        <select onchange="updateMedication(${m.id}, 'route', this.value)"><option value="oral" ${m.route==='oral'?'selected':''}>Oral</option><option value="IV" ${m.route==='IV'?'selected':''}>IV</option><option value="SC" ${m.route==='SC'?'selected':''}>SC</option></select>
+        <button class="btn-small btn-danger" onclick="removeMedication(${m.id})">✕</button>
+    </div>`).join('');
 }
 
 // ===== AUXILIAR: GUARDAR REGISTRO =====
@@ -813,8 +806,7 @@ async function saveClinicalRecord() {
         shiftId: currentShiftId, patientId: selectedPatient.id, professionalId: currentUser.id,
         bloodPressure: getVal('bloodPressure') || null, heartRate: parseInt(getVal('heartRate')) || null,
         respiratoryRate: parseInt(getVal('respiratoryRate')) || null, temperature: parseFloat(getVal('temperature')) || null,
-        spo2: parseInt(getVal('spo2')) || null, glucose: parseInt(getVal('glucose')) || null,
-        evaScore: parseInt(getVal('evaScore')) || 0,
+        spo2: parseInt(getVal('spo2')) || null, glucose: parseInt(getVal('glucose')) || null, evaScore: parseInt(getVal('evaScore')) || 0,
         glasgowEyes: parseInt(getVal('glasgowEyes')) || null, glasgowVerbal: parseInt(getVal('glasgowVerbal')) || null, glasgowMotor: parseInt(getVal('glasgowMotor')) || null,
         bradenScore: ['bradenSensory','bradenMoisture','bradenActivity','bradenMobility','bradenNutrition','bradenFriction'].reduce((s, id) => s + (parseInt(getVal(id))||0), 0),
         activitiesCompleted: acts, sbarSituation: getVal('sbarSituation'), sbarBackground: getVal('sbarBackground'), sbarAssessment: getVal('sbarAssessment'), sbarRecommendation: getVal('sbarRecommendation'),
@@ -850,28 +842,41 @@ async function loadDailyHistory() {
     } catch (e) { console.error(e); }
 }
 
+// ===== AUXILIAR: EVIDENCIA FOTOGRÁFICA =====
+function previewPhoto(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        eduPhotoBase64 = e.target.result;
+        const preview = document.getElementById('eduPhotoPreview');
+        preview.src = eduPhotoBase64;
+        preview.classList.remove('hidden');
+    };
+    reader.readAsDataURL(file);
+}
+
 // ===== AUXILIAR: CIERRE DE TURNO =====
 async function closeShift() {
     if (!getChecked('familyAcceptsResponsibility')) return showToast('El familiar debe aceptar la responsabilidad', 'error');
     if (!getVal('familySignName') || !getVal('familySignId')) return showToast('Nombre y cédula del familiar son obligatorios', 'error');
-    
     const auxSig = document.getElementById('auxSigCanvas').toDataURL();
     const famSig = document.getElementById('famSigCanvas').toDataURL();
-    
     const patientLeaves = getChecked('patientLeavesHome');
     const leaveData = patientLeaves ? { destination: getVal('leaveDestination'), time: getVal('leaveTime'), returnTime: getVal('leaveReturnTime') } : null;
     const familyReceivedEducation = getChecked('familyReceivedEducation');
-    const educationTopics = familyReceivedEducation ? getVal('educationTopicsGiven') : null;
-    
+    const educationTopic = familyReceivedEducation ? getVal('educationTopicSelect') : null;
+    const educationPhoto = familyReceivedEducation ? eduPhotoBase64 : null;
+
     const payload = {
         shiftId: currentShiftId, patientDeliveredStatus: getVal('patientDeliveredStatus'),
         patientDeliveredNotes: getVal('patientDeliveredNotes'), pendingTasks: getVal('pendingTasks'),
         auxiliarySignature: auxSig, auxiliaryName: currentUser.full_name, auxiliaryIdNumber: currentUser.document_number,
         familySignature: famSig, familyName: getVal('familySignName'), familyIdNumber: getVal('familySignId'),
         patientLeavesHome: patientLeaves, leaveData: leaveData, 
-        familyAcceptsResponsibility: true, familyReceivedEducation: familyReceivedEducation, educationTopicsGiven: educationTopics
+        familyAcceptsResponsibility: true, familyReceivedEducation: familyReceivedEducation, 
+        educationTopicGiven: educationTopic, educationPhotoData: educationPhoto
     };
-    
     try {
         const res = await fetch(`${API_URL}/api/shifts/close`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const d = await res.json();
@@ -886,11 +891,9 @@ async function closeShift() {
 
 // ===== FIRMAS CANVAS =====
 function initSigCanvas(canvasId) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
+    const canvas = document.getElementById(canvasId); if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    canvas.width = canvas.offsetWidth > 0 ? canvas.offsetWidth : 400;
-    canvas.height = 150;
+    canvas.width = canvas.offsetWidth > 0 ? canvas.offsetWidth : 400; canvas.height = 150;
     ctx.fillStyle = 'white'; ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.strokeStyle = 'black'; ctx.lineWidth = 2; ctx.lineCap = 'round';
     let drawing = false;
@@ -901,10 +904,7 @@ function initSigCanvas(canvasId) {
     canvas.onmousedown = start; canvas.onmousemove = move; canvas.onmouseup = end; canvas.onmouseleave = end;
     canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
 }
-function clearSig(canvasId) {
-    const canvas = document.getElementById(canvasId); const ctx = canvas.getContext('2d');
-    ctx.fillStyle = 'white'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-}
+function clearSig(canvasId) { const canvas = document.getElementById(canvasId); const ctx = canvas.getContext('2d'); ctx.fillStyle = 'white'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
 
 // ===== PDF CIERRE =====
 async function generateClosurePDF() {
@@ -913,43 +913,46 @@ async function generateClosurePDF() {
         const res = await fetch(`${API_URL}/api/shifts/${lastClosedShiftId}/closure-data`);
         const result = await res.json();
         if (!result.success) throw new Error(result.message);
-        
         const { shift, signatures } = result.data;
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
-        
         try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
         doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
         doc.setFontSize(12); doc.setTextColor(0); doc.text("Resumen Diario de Atención", 105, 30, null, null, "center");
-        
         doc.text(`Paciente: ${shift?.patients?.full_name || 'N/A'}`, 14, 50);
         doc.text(`Fecha: ${new Date(shift?.start_time).toLocaleDateString('es-CO')}`, 14, 57);
         doc.text(`Turno: ${shift?.shift_type || 'N/A'}`, 14, 64);
-        
         let finalY = 80;
         doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Estado de Entrega", 14, finalY);
         doc.setFontSize(10); doc.setTextColor(0);
         doc.text(`Estado: ${shift?.patient_delivered_status || 'N/A'}`, 14, finalY + 7);
         doc.text(`Notas: ${shift?.patient_delivered_notes || 'N/A'}`, 14, finalY + 14);
         doc.text(`Pendientes: ${shift?.pending_tasks || 'Ninguno'}`, 14, finalY + 21);
-        
-        finalY += 40;
-        if (finalY > 220) { doc.addPage(); finalY = 30; }
-        
-        doc.setDrawColor(0); doc.setLineWidth(0.5);
+        finalY += 35;
+
+        // Sección de Educación
         const sig = signatures?.[0];
-        
+        if (sig?.family_received_education) {
+            doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Educación Impartida", 14, finalY);
+            doc.setFontSize(10); doc.setTextColor(0);
+            doc.text(`Tema: ${sig.education_topic_given || 'N/A'}`, 14, finalY + 7);
+            if (sig.education_photo_data) {
+                try { doc.addImage(sig.education_photo_data, 'JPEG', 14, finalY + 12, 60, 40); } catch(e) {}
+            }
+            finalY += 60;
+        }
+
+        if (finalY > 220) { doc.addPage(); finalY = 30; }
+        doc.setDrawColor(0); doc.setLineWidth(0.5);
         doc.rect(14, finalY, 80, 40);
         doc.text("FIRMA AUXILIAR", 18, finalY + 6);
         if (sig?.auxiliary_signature) { try { doc.addImage(sig.auxiliary_signature, 'PNG', 20, finalY + 8, 50, 20); } catch(e) {} }
         doc.text(`Nombre: ${sig?.auxiliary_name || '________________'}`, 18, finalY + 33);
-        
         doc.rect(110, finalY, 80, 40);
         doc.text("FIRMA FAMILIAR", 114, finalY + 6);
         if (sig?.family_signature) { try { doc.addImage(sig.family_signature, 'PNG', 116, finalY + 8, 50, 20); } catch(e) {} }
         doc.text(`Nombre: ${sig?.family_name || '________________'}`, 114, finalY + 33);
         doc.text(`C.C.: ${sig?.family_id_number || '________'}`, 114, finalY + 38);
-        
         doc.save(`Resumen_${shift?.patients?.full_name || 'paciente'}.pdf`);
         showToast('PDF generado');
     } catch (e) { showToast('Error: ' + e.message, 'error'); }
@@ -959,8 +962,7 @@ async function generateClosurePDF() {
 function startDictation(elementId) {
     const btn = event.target.closest('button');
     if (!('webkitSpeechRecognition' in window)) return showToast('Navegador no soporta dictado', 'error');
-    const rec = new webkitSpeechRecognition();
-    rec.lang = 'es-CO'; rec.continuous = false; rec.interimResults = true;
+    const rec = new webkitSpeechRecognition(); rec.lang = 'es-CO'; rec.continuous = false; rec.interimResults = true;
     btn.classList.add('recording'); rec.start();
     rec.onresult = (e) => { document.getElementById(elementId).value = e.results[0][0].transcript; };
     rec.onerror = () => btn.classList.remove('recording');
@@ -974,14 +976,9 @@ document.addEventListener('DOMContentLoaded', () => {
         input.type = input.type === 'password' ? 'text' : 'password';
         this.textContent = input.type === 'password' ? '👁️' : '🙈';
     });
-    
     document.getElementById('loginBtn').addEventListener('click', login);
-    
     const patCitySelect = document.getElementById('patCity');
-    if (patCitySelect) {
-        Object.keys(CIUDADES_COLOMBIA).forEach(city => { patCitySelect.innerHTML += `<option value="${city}">${city}</option>`; });
-    }
-    
+    if (patCitySelect) { Object.keys(CIUDADES_COLOMBIA).forEach(city => { patCitySelect.innerHTML += `<option value="${city}">${city}</option>`; }); }
     if (localStorage.getItem('vital_user')) initApp();
 });
 </script>
