@@ -142,23 +142,18 @@ app.patch('/api/professionals/:id/deactivate', async (req, res) => {
 });
 
 // ==========================================
-// 4. PACIENTES (CON FALLBACK A PRUEBA DE ERRORES)
+// 4. PACIENTES (CON FALLBACK)
 // ==========================================
 app.get('/api/patients', async (req, res) => {
     try {
-        // Intentamos con la relación
         let { data, error } = await supabase
             .from('patients')
             .select('*, altitude_profiles(city_name)')
             .order('created_at', { ascending: false });
             
-        // Si la relación falla (ej: falta la clave foránea en Supabase), usamos un fallback
         if (error) {
-            console.warn('⚠️ Join con altitude_profiles falló, usando consulta alternativa:', error.message);
-            const fallback = await supabase
-                .from('patients')
-                .select('*')
-                .order('created_at', { ascending: false });
+            console.warn('⚠️ Join falló, usando fallback:', error.message);
+            const fallback = await supabase.from('patients').select('*').order('created_at', { ascending: false });
             data = fallback.data;
             error = fallback.error;
         }
@@ -240,10 +235,7 @@ app.get('/api/education/topics', async (req, res) => {
     try {
         const { data, error } = await supabase
             .from('education_topics')
-            .select(`
-                *,
-                professionals!education_topics_created_by_fkey(full_name, document_number, professional_card)
-            `)
+            .select(`*, professionals!education_topics_created_by_fkey(full_name, document_number, professional_card)`)
             .order('created_at', { ascending: false });
         if (error) throw error;
         res.json({ success: true, data: data || [] });
@@ -255,9 +247,7 @@ app.get('/api/education/topics', async (req, res) => {
 app.post('/api/education/topics', async (req, res) => {
     try {
         const { title, description, responsibleId } = req.body;
-        if (!title) {
-            return res.status(400).json({ success: false, message: 'El título es requerido' });
-        }
+        if (!title) return res.status(400).json({ success: false, message: 'El título es requerido' });
 
         const { error } = await supabase.from('education_topics').insert([{
             title,
@@ -273,36 +263,19 @@ app.post('/api/education/topics', async (req, res) => {
 });
 
 // ==========================================
-// 6. AUXILIAR - TURNOS Y REGISTROS (CON FALLBACK)
+// 6. AUXILIAR - TURNOS Y REGISTROS
 // ==========================================
 app.get('/api/auxiliar/patients', async (req, res) => {
     try {
         let { data, error } = await supabase
             .from('patients')
-            .select(`
-                *,
-                altitude_profiles(city_name, spo2_min_normal),
-                clinical_records(
-                    created_at,
-                    spo2,
-                    glucose,
-                    eva_score,
-                    glasgow_eyes,
-                    glasgow_verbal,
-                    glasgow_motor
-                )
-            `)
+            .select(`*, altitude_profiles(city_name, spo2_min_normal), clinical_records(created_at, spo2, glucose, eva_score, glasgow_eyes, glasgow_verbal, glasgow_motor)`)
             .eq('is_active', true)
             .order('created_at', { ascending: false });
 
-        // Fallback si las relaciones no están configuradas en Supabase
         if (error) {
             console.warn('⚠️ Join falló en auxiliar, usando fallback:', error.message);
-            const fallback = await supabase
-                .from('patients')
-                .select('*')
-                .eq('is_active', true)
-                .order('created_at', { ascending: false });
+            const fallback = await supabase.from('patients').select('*').eq('is_active', true).order('created_at', { ascending: false });
             data = fallback.data;
             error = fallback.error;
         }
@@ -312,9 +285,7 @@ app.get('/api/auxiliar/patients', async (req, res) => {
         if (data) {
             data.forEach(patient => {
                 if (patient.clinical_records) {
-                    patient.clinical_records.sort((a, b) => 
-                        new Date(b.created_at) - new Date(a.created_at)
-                    );
+                    patient.clinical_records.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
                 }
             });
         }
@@ -372,8 +343,6 @@ app.post('/api/clinical-records', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Datos incompletos' });
         }
 
-        const activities = activitiesCompleted || {};
-
         const { data, error } = await supabase.from('clinical_records').insert([{
             shift_id: shiftId,
             patient_id: patientId,
@@ -394,7 +363,7 @@ app.post('/api/clinical-records', async (req, res) => {
             ppe_used: ppeUsed || {},
             waste_management: wasteManagement || {},
             external_accompaniment: externalAccompaniment || null,
-            activities_completed: activities,
+            activities_completed: activitiesCompleted || {},
             sbar_situation: sbarSituation || null,
             sbar_background: sbarBackground || null,
             sbar_assessment: sbarAssessment || null,
@@ -440,20 +409,9 @@ app.get('/api/patients/:id/daily-history', async (req, res) => {
 app.post('/api/shifts/close', async (req, res) => {
     try {
         const {
-            shiftId,
-            patientDeliveredStatus,
-            patientDeliveredNotes,
-            pendingTasks,
-            pendingJustification,
-            auxiliarySignature,
-            auxiliaryName,
-            auxiliaryIdNumber,
-            auxiliaryProfessionalCard,
-            familySignature,
-            familyName,
-            familyIdNumber,
-            familyRelationship,
-            familyPhone
+            shiftId, patientDeliveredStatus, patientDeliveredNotes, pendingTasks, pendingJustification,
+            auxiliarySignature, auxiliaryName, auxiliaryIdNumber, auxiliaryProfessionalCard,
+            familySignature, familyName, familyIdNumber, familyRelationship, familyPhone
         } = req.body;
 
         if (!shiftId || !auxiliarySignature || !auxiliaryName || !auxiliaryIdNumber) {
@@ -580,18 +538,9 @@ app.get('/api/reports/:patientId/:month/:year', async (req, res) => {
             let spo2Count = 0, hrCount = 0, tempCount = 0;
 
             records.forEach(record => {
-                if (record.spo2 !== null && record.spo2 !== undefined) {
-                    spo2Sum += record.spo2;
-                    spo2Count++;
-                }
-                if (record.heart_rate !== null && record.heart_rate !== undefined) {
-                    hrSum += record.heart_rate;
-                    hrCount++;
-                }
-                if (record.temperature !== null && record.temperature !== undefined) {
-                    tempSum += record.temperature;
-                    tempCount++;
-                }
+                if (record.spo2 !== null && record.spo2 !== undefined) { spo2Sum += record.spo2; spo2Count++; }
+                if (record.heart_rate !== null && record.heart_rate !== undefined) { hrSum += record.heart_rate; hrCount++; }
+                if (record.temperature !== null && record.temperature !== undefined) { tempSum += record.temperature; tempCount++; }
 
                 const spo2Min = patient?.altitude_profiles?.spo2_min_normal || 95;
                 if (record.spo2 < (spo2Min - 3) || record.glucose > 200 || (record.glucose < 60 && record.glucose > 0)) {
