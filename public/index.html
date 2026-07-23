@@ -3,9 +3,15 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=1.0">
+<!-- ETIQUETAS PARA CONVERTIR EN APP (PWA) -->
+<meta name="theme-color" content="#22c55e">
+<link rel="manifest" href="/manifest.json">
+<link rel="apple-touch-icon" href="https://i.imgur.com/01YZxey.jpeg">
 <title>Vital Hogar Pro</title>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
 <style>
@@ -20,7 +26,7 @@ body { font-family: -apple-system, 'Segoe UI', Roboto, sans-serif; background: v
 .hidden { display: none !important; }
 .card { background: var(--card-bg); border-radius: 16px; padding: 20px; margin-bottom: 16px; border: 1px solid var(--border); }
 .card-title { color: var(--primary); font-weight: bold; margin-bottom: 16px; font-size: 1.2rem; text-align: center; }
-h3 { margin-top: 0; color: var(--text-main); }
+h3 { margin-top: 0; color: var(--text-main); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
 h4 { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-top: 20px; }
 .btn-primary { background: var(--primary); color: white; padding: 12px 20px; border-radius: 12px; font-weight: 600; cursor: pointer; border: none; width: 100%; font-size: 1rem; transition: 0.2s; margin-top: 10px; }
 .btn-primary:hover { background: #16a34a; }
@@ -46,7 +52,7 @@ th, td { padding: 10px; border-bottom: 1px solid var(--border); text-align: left
 th { background: var(--card-bg); color: #94a3b8; }
 .btn-small { padding: 6px 12px; margin: 2px; font-size: 0.8rem; width: auto; display: inline-block; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; }
 .stat-card { text-align: center; border-left: 5px solid var(--primary); }
-.stat-card h3 { color: #94a3b8; font-size: 0.9rem; margin-bottom: 10px; text-transform: uppercase; }
+.stat-card h3 { color: #94a3b8; font-size: 0.9rem; margin-bottom: 10px; text-transform: uppercase; cursor: default; }
 .stat-card h2 { font-size: 2.5rem; margin: 0; color: var(--primary); }
 .vital-status { padding: 8px; border-radius: 6px; margin-top: 5px; font-size: 0.85rem; font-weight: bold; display: none; }
 .vital-status.show { display: block; }
@@ -57,7 +63,7 @@ input.vital-normal { border-color: var(--primary) !important; }
 input.vital-warning { border-color: var(--warning) !important; background: #422006 !important; }
 input.vital-danger { border-color: var(--danger) !important; background: #450a0a !important; }
 .glasgow-total, .braden-total { background: var(--bg-dark); padding: 15px; border-radius: 8px; margin-top: 15px; text-align: center; border: 2px solid var(--border); }
-.glasgow-total h3, .braden-total h3 { margin: 0; font-size: 2rem; }
+.glasgow-total h3, .braden-total h3 { margin: 0; font-size: 2rem; cursor: default; }
 .glasgow-total.normal, .braden-total.risk-none { border-color: var(--primary); color: var(--primary); }
 .glasgow-total.mild, .braden-total.risk-mild { border-color: var(--warning); color: var(--warning); }
 .glasgow-total.moderate, .braden-total.risk-moderate { border-color: #f97316; color: #f97316; }
@@ -90,6 +96,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .message-bubble.them { background: #334155; color: var(--text-main); align-self: flex-start; border-bottom-left-radius: 2px; }
 .message-bubble.alert { background: var(--danger); color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
 .message-bubble small { display: block; font-size: 0.7rem; opacity: 0.8; margin-top: 4px; text-align: right; }
+.chart-wrapper { background: var(--bg-dark); padding: 15px; border-radius: 8px; margin-top: 10px; position: relative; height: 300px; }
 </style>
 </head>
 <body>
@@ -179,6 +186,14 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             <div class="card stat-card" style="border-left-color: var(--info);"><h3><i class="fas fa-user-md"></i> Profesionales</h3><h2 id="statProf" style="color:var(--info);">0</h2></div>
             <div class="card stat-card" style="border-left-color: var(--warning);"><h3><i class="fas fa-file-medical"></i> Informes</h3><h2 id="statReports" style="color:var(--warning);">0</h2></div>
         </div>
+        
+        <div class="card">
+            <h3>📊 Estadísticas Generales</h3>
+            <div class="chart-wrapper">
+                <canvas id="adminDashboardChart"></canvas>
+            </div>
+        </div>
+
         <div class="tabs" id="adminTabs">
             <div class="tab active" onclick="showAdminTab('prof', this)">👥 Profesionales</div>
             <div class="tab" onclick="showAdminTab('pat', this)">🏥 Pacientes</div>
@@ -419,19 +434,24 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
         </div>
         <div id="auxClinicalForm" class="hidden">
             
-            <!-- CHAT PARA AUXILIAR -->
+            <!-- CHAT PARA AUXILIAR CON FUNCIÓN MINIMIZAR -->
             <div class="card">
-                <h3>💬 Chat con Coordinación</h3>
-                <div id="auxMessageList" class="chat-container"></div>
-                <div class="form-group" style="display: flex; gap: 5px; margin-bottom: 0;">
-                    <input type="text" id="auxMsgInput" placeholder="Escribe un mensaje o alerta..." style="flex: 1;" onkeypress="if(event.key==='Enter') sendAuxMessage()">
-                    <button class="btn-primary btn-danger" style="width: auto; margin-top: 0; padding: 0 20px;" onclick="sendAuxMessage()"><i class="fas fa-paper-plane"></i></button>
+                <h3 onclick="toggleAuxChat()" style="cursor:pointer;">
+                    <span>💬 Chat con Coordinación</span> 
+                    <i class="fas fa-chevron-down" id="chatToggleIcon" style="float:right;"></i>
+                </h3>
+                <div id="auxChatBody">
+                    <div id="auxMessageList" class="chat-container"></div>
+                    <div class="form-group" style="display: flex; gap: 5px; margin-bottom: 0;">
+                        <input type="text" id="auxMsgInput" placeholder="Escribe un mensaje o alerta..." style="flex: 1;" onkeypress="if(event.key==='Enter') sendAuxMessage()">
+                        <button class="btn-primary btn-danger" style="width: auto; margin-top: 0; padding: 0 20px;" onclick="sendAuxMessage()"><i class="fas fa-paper-plane"></i></button>
+                    </div>
                 </div>
             </div>
 
             <div class="card">
                 <div style="text-align: center; font-size: 1.2rem; font-weight: bold; color: var(--primary); margin-bottom: 10px;">⏱️ Tiempo: <span id="timerDisplay">00:00:00</span></div>
-                <h3>Registro Clínico - <span id="patientNameClinical" style="color: var(--primary);"></span></h3>
+                <h3 style="cursor:default;">Registro Clínico - <span id="patientNameClinical" style="color: var(--primary);"></span></h3>
                 <h4>🩺 Signos Vitales</h4>
                 <div class="grid">
                     <div class="form-group"><label>PA (mmHg)</label><input type="text" id="bloodPressure" placeholder="120/80" oninput="checkVital('bp')"><div id="bpAlert" class="vital-status"></div></div>
@@ -578,11 +598,11 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 <button class="btn-primary" onclick="saveClinicalRecord()"><i class="fas fa-save"></i> Guardar Registro</button>
             </div>
             <div class="card">
-                <h3>Historial del Día</h3>
+                <h3 style="cursor:default;">Historial del Día</h3>
                 <div id="dailyHistory"></div>
             </div>
             <div class="card">
-                <h3>🔒 Cierre de Turno</h3>
+                <h3 style="cursor:default;">🔒 Cierre de Turno</h3>
                 <div class="form-group"><label>Estado de entrega</label>
                     <select id="patientDeliveredStatus"><option value="estable">🟢 Estable</option><option value="con_novedades">🟡 Con Novedades</option><option value="critico">🔴 Crítico</option></select>
                 </div>
@@ -653,12 +673,12 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     <!-- PROFESSIONAL PANEL (FASE 2) -->
     <div id="profPanel" class="hidden">
         <div id="profPatientSelection" class="card">
-            <h3>Selecciona un Paciente para Valoración</h3>
+            <h3 style="cursor:default;">Selecciona un Paciente para Valoración</h3>
             <div id="profPatientList"></div>
         </div>
         <div id="profClinicalForm" class="hidden">
             <div class="card">
-                <h3>Nota de Evolución - <span id="profPatientName" style="color: var(--primary);"></span></h3>
+                <h3 style="cursor:default;">Nota de Evolución - <span id="profPatientName" style="color: var(--primary);"></span></h3>
                 <h4>Signos Vitales y Antropometría</h4>
                 <div class="grid">
                     <div class="form-group"><label>PA (mmHg)</label><input type="text" id="profBP" placeholder="120/80" oninput="checkProfVital('bp')"><div id="profBPAlert" class="vital-status"></div></div>
@@ -732,6 +752,7 @@ let lastLiquidationData = null;
 let lastInvoiceData = null;
 let messagePollingInterval = null;
 let auxMessagePollingInterval = null;
+let dashboardChart = null;
 
 // ===== UTILIDADES =====
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
@@ -789,7 +810,40 @@ function initApp() {
 
 // ===== ADMIN =====
 function showAdminTab(tab, btn) { ['admin_prof', 'admin_pat', 'admin_edu', 'admin_reports', 'admin_finance', 'admin_agenda', 'admin_messages'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById('admin_'+tab).classList.remove('hidden'); document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); if (tab === 'reports') setTimeout(() => initSigCanvas('adminSigCanvas'), 100); }
-async function loadDashboard() { try { const r = await fetch(`${API_URL}/api/dashboard/stats`); const d = await r.json(); if (d.success) { document.getElementById('statPat').innerText = d.data.patients || 0; document.getElementById('statProf').innerText = d.data.professionals || 0; document.getElementById('statReports').innerText = d.data.pendingReports || 0; } } catch (e) {} }
+async function loadDashboard() { 
+    try { 
+        const r = await fetch(`${API_URL}/api/dashboard/stats`); 
+        const d = await r.json(); 
+        if (d.success) { 
+            document.getElementById('statPat').innerText = d.data.patients || 0; 
+            document.getElementById('statProf').innerText = d.data.professionals || 0; 
+            document.getElementById('statReports').innerText = d.data.pendingReports || 0;
+            renderDashboardChart(d.data);
+        } 
+    } catch (e) {} 
+}
+function renderDashboardChart(data) {
+    const ctx = document.getElementById('adminDashboardChart').getContext('2d');
+    if (dashboardChart) dashboardChart.destroy();
+    dashboardChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Pacientes Activos', 'Profesionales Activos', 'Informes Pendientes'],
+            datasets: [{
+                data: [data.patients || 0, data.professionals || 0, data.pendingReports || 0],
+                backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'bottom', labels: { color: '#e2e8f0', font: { size: 12 } } }
+            }
+        }
+    });
+}
 async function loadProfs() { try { const r = await fetch(`${API_URL}/api/professionals`); const d = await r.json(); document.querySelector('#profTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.document_number}</td><td>${p.specialties?.name||'N/A'}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-warning" onclick="openEditModal('prof','${p.id}','${p.full_name}','${p.document_number}','${p.professional_card||''}','${p.specialties?.name||''}')">Editar</button> <button class="btn-small ${p.is_active?'btn-danger':'btn-secondary'}" onclick="toggleProf('${p.id}', ${p.is_active})">${p.is_active?'Desactivar':'Activar'}</button></td></tr>`).join(''); const eduRespSelect = document.getElementById('eduResp'); eduRespSelect.innerHTML = '<option value="">Seleccionar profesional...</option>'; const liqProfSelect = document.getElementById('liquidationProf'); liqProfSelect.innerHTML = '<option value="">Seleccionar...</option>'; const schedProfSelect = document.getElementById('schedProf'); schedProfSelect.innerHTML = '<option value="">Seleccionar...</option>'; d.data.filter(p => p.is_active).forEach(p => { eduRespSelect.innerHTML += `<option value="${p.id}">${p.full_name} (${p.specialties?.name || 'N/A'})</option>`; liqProfSelect.innerHTML += `<option value="${p.id}">${p.full_name} (${p.specialties?.name || 'N/A'})</option>`; schedProfSelect.innerHTML += `<option value="${p.id}">${p.full_name} (${p.specialties?.name || 'N/A'})</option>`; }); } catch (e) {} }
 async function createProf() { const p = { fullName: getVal('pName'), documentNumber: getVal('pDoc'), professionalCard: getVal('pCard'), email: getVal('pEmail'), password: getVal('pPass'), specialtyName: getVal('pSpec') }; if (!p.fullName || !p.email || !p.password) return showToast('Campos obligatorios', 'error'); try { const r = await fetch(`${API_URL}/api/professionals`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); if(d.success) { ['pName','pDoc','pCard','pEmail','pPass'].forEach(id => document.getElementById(id).value=''); loadProfs(); loadDashboard(); } } catch (e) {} }
 async function toggleProf(id, s) { try { await fetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: !s }) }); loadProfs(); loadDashboard(); } catch (e) {} }
@@ -918,37 +972,17 @@ async function generateMonthlyPDF() {
 
 // ===== FINANZAS =====
 async function loadFinanceParams() {
-    try {
-        const r = await fetch(`${API_URL}/api/finance/parameters`);
-        const d = await r.json();
-        if (d.success && d.data) {
-            document.getElementById('finParamId').value = d.data.id;
-            document.getElementById('finYear').value = d.data.year;
-            document.getElementById('finSmmlv').value = d.data.smmlv;
-            document.getElementById('finSubsidy').value = d.data.subsidy_transport;
-            document.getElementById('finNightPct').value = d.data.night_surcharge_percentage;
-            document.getElementById('finSunPct').value = d.data.holiday_surcharge_percentage;
-            document.getElementById('finNightStart').value = d.data.night_start_hour;
-            document.getElementById('finNightEnd').value = d.data.night_end_hour;
-        }
-    } catch (e) { console.error(e); }
+    try { const r = await fetch(`${API_URL}/api/finance/parameters`); const d = await r.json(); if (d.success && d.data) { document.getElementById('finParamId').value = d.data.id; document.getElementById('finYear').value = d.data.year; document.getElementById('finSmmlv').value = d.data.smmlv; document.getElementById('finSubsidy').value = d.data.subsidy_transport; document.getElementById('finNightPct').value = d.data.night_surcharge_percentage; document.getElementById('finSunPct').value = d.data.holiday_surcharge_percentage; document.getElementById('finNightStart').value = d.data.night_start_hour; document.getElementById('finNightEnd').value = d.data.night_end_hour; } } catch (e) { console.error(e); }
 }
 async function saveFinanceParams() {
-    const id = getVal('finParamId');
-    const payload = {
-        year: parseInt(getVal('finYear')) || 2026, smmlv: parseFloat(getVal('finSmmlv')) || 0,
-        subsidy_transport: parseFloat(getVal('finSubsidy')) || 0, night_surcharge_percentage: parseFloat(getVal('finNightPct')) || 0,
-        holiday_surcharge_percentage: parseFloat(getVal('finSunPct')) || 0, night_start_hour: parseInt(getVal('finNightStart')) || 19,
-        night_end_hour: parseInt(getVal('finNightEnd')) || 7
-    };
+    const id = getVal('finParamId'); const payload = { year: parseInt(getVal('finYear')) || 2026, smmlv: parseFloat(getVal('finSmmlv')) || 0, subsidy_transport: parseFloat(getVal('finSubsidy')) || 0, night_surcharge_percentage: parseFloat(getVal('finNightPct')) || 0, holiday_surcharge_percentage: parseFloat(getVal('finSunPct')) || 0, night_start_hour: parseInt(getVal('finNightStart')) || 19, night_end_hour: parseInt(getVal('finNightEnd')) || 7 };
     try { const r = await fetch(`${API_URL}/api/finance/parameters/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); } catch (e) { showToast('Error', 'error'); }
 }
 async function loadClientTariffs() {
     try { const r = await fetch(`${API_URL}/api/finance/tariffs`); const d = await r.json(); if (d.success && d.data) { document.getElementById('tariffId').value = d.data.id; document.getElementById('t_6h_diurno').value = d.data.t_6h_diurno; document.getElementById('t_6h_nocturno').value = d.data.t_6h_nocturno; document.getElementById('t_8h_diurno').value = d.data.t_8h_diurno; document.getElementById('t_8h_nocturno').value = d.data.t_8h_nocturno; document.getElementById('t_12h_diurno').value = d.data.t_12h_diurno; document.getElementById('t_12h_nocturno').value = d.data.t_12h_nocturno; document.getElementById('t_24h').value = d.data.t_24h; } } catch (e) { console.error(e); }
 }
 async function saveClientTariffs() {
-    const id = getVal('tariffId');
-    const payload = { t_6h_diurno: parseFloat(getVal('t_6h_diurno')) || 0, t_6h_nocturno: parseFloat(getVal('t_6h_nocturno')) || 0, t_8h_diurno: parseFloat(getVal('t_8h_diurno')) || 0, t_8h_nocturno: parseFloat(getVal('t_8h_nocturno')) || 0, t_12h_diurno: parseFloat(getVal('t_12h_diurno')) || 0, t_12h_nocturno: parseFloat(getVal('t_12h_nocturno')) || 0, t_24h: parseFloat(getVal('t_24h')) || 0 };
+    const id = getVal('tariffId'); const payload = { t_6h_diurno: parseFloat(getVal('t_6h_diurno')) || 0, t_6h_nocturno: parseFloat(getVal('t_6h_nocturno')) || 0, t_8h_diurno: parseFloat(getVal('t_8h_diurno')) || 0, t_8h_nocturno: parseFloat(getVal('t_8h_nocturno')) || 0, t_12h_diurno: parseFloat(getVal('t_12h_diurno')) || 0, t_12h_nocturno: parseFloat(getVal('t_12h_nocturno')) || 0, t_24h: parseFloat(getVal('t_24h')) || 0 };
     try { const r = await fetch(`${API_URL}/api/finance/tariffs/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); } catch (e) { showToast('Error', 'error'); }
 }
 async function calculateLiquidation() {
@@ -1020,6 +1054,13 @@ async function loadAuxScheduledShifts() {
 }
 
 // ===== MENSAJERÍA =====
+function toggleAuxChat() {
+    const body = document.getElementById('auxChatBody');
+    const icon = document.getElementById('chatToggleIcon');
+    body.classList.toggle('hidden');
+    icon.classList.toggle('fa-chevron-down');
+    icon.classList.toggle('fa-chevron-up');
+}
 async function loadAdminMessages() {
     try {
         const r = await fetch(`${API_URL}/api/messages`);
