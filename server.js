@@ -124,9 +124,10 @@ app.post('/api/professionals', async (req, res) => {
     }
 });
 
+// EDITAR PROFESIONAL (CON CONTRASEÑA)
 app.patch('/api/professionals/:id', async (req, res) => {
     try {
-        const { fullName, documentNumber, professionalCard, specialtyName } = req.body;
+        const { fullName, documentNumber, professionalCard, specialtyName, newPassword } = req.body;
         const updateData = {};
         if (fullName) updateData.full_name = fullName;
         if (documentNumber) updateData.document_number = documentNumber;
@@ -135,9 +136,20 @@ app.patch('/api/professionals/:id', async (req, res) => {
             const { data: spec } = await supabase.from('specialties').select('id').eq('name', specialtyName).single();
             if (spec) updateData.specialty_id = spec.id;
         }
+        
         const { error } = await supabase.from('professionals').update(updateData).eq('id', req.params.id);
         if (error) throw error;
-        res.json({ success: true, message: 'Profesional actualizado' });
+
+        // SI EL ADMIN INGRESÓ UNA NUEVA CONTRASEÑA, LA ACTUALIZAMOS EN SUPABASE AUTH
+        if (newPassword) {
+            const { data: profData } = await supabase.from('professionals').select('user_id').eq('id', req.params.id).single();
+            if (profData && profData.user_id) {
+                const { error: passError } = await supabase.auth.admin.updateUserById(profData.user_id, { password: newPassword });
+                if (passError) throw new Error('No se pudo actualizar la contraseña: ' + passError.message);
+            }
+        }
+        
+        res.json({ success: true, message: 'Profesional actualizado' + (newPassword ? ' (Contraseña modificada)' : '') });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -430,7 +442,7 @@ app.post('/api/professional-records', async (req, res) => {
 });
 
 // ==========================================
-// 8. MÓDULO FINANCIERO (FASE 3 - LEY 2026)
+// 8. MÓDULO FINANCIERO
 // ==========================================
 app.get('/api/finance/parameters', async (req, res) => {
     try {
@@ -481,8 +493,7 @@ app.patch('/api/finance/tariffs/:id', async (req, res) => {
 app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res) => {
     try {
         const { professionalId, month, year } = req.params;
-        const monthNum = parseInt(month);
-        const yearNum = parseInt(year);
+        const monthNum = parseInt(month); const yearNum = parseInt(year);
 
         const { data: params } = await supabase.from('financial_parameters').select('*').eq('is_active', true).single();
         if (!params) return res.status(404).json({ success: false, message: 'Parámetros financieros no configurados' });
@@ -490,86 +501,31 @@ app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res
         const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`;
         const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59).toISOString();
 
-        const { data: shifts, error: shiftError } = await supabase
-            .from('shifts')
-            .select('*, patients(full_name)')
-            .eq('professional_id', professionalId)
-            .eq('is_closed', true)
-            .gte('start_time', startDate)
-            .lte('start_time', endDate)
-            .order('start_time', { ascending: true });
-
+        const { data: shifts, error: shiftError } = await supabase.from('shifts').select('*, patients(full_name)').eq('professional_id', professionalId).eq('is_closed', true).gte('start_time', startDate).lte('start_time', endDate).order('start_time', { ascending: true });
         if (shiftError) throw shiftError;
 
-        const smmlv = parseFloat(params.smmlv);
-        const dailyRate = smmlv / 30;
-        const hourlyRate = dailyRate / 8; 
-        
-        const nightStart = params.night_start_hour; 
-        const nightEnd = params.night_end_hour;     
-        const nightPct = parseFloat(params.night_surcharge_percentage) / 100;
-        const sundayPct = parseFloat(params.holiday_surcharge_percentage) / 100;
+        const smmlv = parseFloat(params.smmlv); const dailyRate = smmlv / 30; const hourlyRate = dailyRate / 8; 
+        const nightStart = params.night_start_hour; const nightEnd = params.night_end_hour;     
+        const nightPct = parseFloat(params.night_surcharge_percentage) / 100; const sundayPct = parseFloat(params.holiday_surcharge_percentage) / 100;
 
-        let totalAmount = 0;
-        let details = [];
+        let totalAmount = 0; let details = [];
 
         shifts.forEach(shift => {
-            const start = new Date(shift.start_time);
-            const end = shift.end_time ? new Date(shift.end_time) : new Date(start.getTime() + 12 * 3600000); 
-            
-            let totalHours = (end - start) / (1000 * 60 * 60);
-            if (isNaN(totalHours) || totalHours <= 0) totalHours = 0;
-            
-            let shiftBase = totalHours * hourlyRate;
-            let nightBonus = 0;
-            let sundayBonus = 0;
-
-            const isSunday = start.getDay() === 0;
-            if (isSunday) {
-                sundayBonus = shiftBase * sundayPct;
-            }
-
+            const start = new Date(shift.start_time); const end = shift.end_time ? new Date(shift.end_time) : new Date(start.getTime() + 12 * 3600000); 
+            let totalHours = (end - start) / (1000 * 60 * 60); if (isNaN(totalHours) || totalHours <= 0) totalHours = 0;
+            let shiftBase = totalHours * hourlyRate; let nightBonus = 0; let sundayBonus = 0;
+            if (start.getDay() === 0) { sundayBonus = shiftBase * sundayPct; }
             let nightHours = 0;
-            for (let i = 0; i < totalHours; i++) {
-                const hourDate = new Date(start.getTime() + i * 3600000);
-                const hour = hourDate.getHours();
-                if (hour >= nightStart || hour < nightEnd) {
-                    nightHours++;
-                }
-            }
+            for (let i = 0; i < totalHours; i++) { const hour = new Date(start.getTime() + i * 3600000).getHours(); if (hour >= nightStart || hour < nightEnd) { nightHours++; } }
             nightBonus = nightHours * hourlyRate * nightPct;
-
-            const totalShiftPay = shiftBase + nightBonus + sundayBonus;
-            totalAmount += totalShiftPay;
-
-            details.push({
-                date: start.toLocaleDateString('es-CO'),
-                patient: shift.patients?.full_name || 'N/A',
-                shift_type: shift.shift_type,
-                hours: totalHours.toFixed(1),
-                base_pay: Math.round(shiftBase),
-                night_bonus: Math.round(nightBonus),
-                sunday_bonus: Math.round(sundayBonus),
-                total: Math.round(totalShiftPay)
-            });
+            const totalShiftPay = shiftBase + nightBonus + sundayBonus; totalAmount += totalShiftPay;
+            details.push({ date: start.toLocaleDateString('es-CO'), patient: shift.patients?.full_name || 'N/A', shift_type: shift.shift_type, hours: totalHours.toFixed(1), base_pay: Math.round(shiftBase), night_bonus: Math.round(nightBonus), sunday_bonus: Math.round(sundayBonus), total: Math.round(totalShiftPay) });
         });
 
         let subsidy = 0;
-        if (totalAmount < (smmlv * 2)) {
-            subsidy = parseFloat(params.subsidy_transport);
-            totalAmount += subsidy;
-        }
+        if (totalAmount < (smmlv * 2)) { subsidy = parseFloat(params.subsidy_transport); totalAmount += subsidy; }
 
-        res.json({ 
-            success: true, 
-            data: { 
-                params, 
-                shifts: details, 
-                totalAmount: Math.round(totalAmount), 
-                subsidyApplied: subsidy 
-            } 
-        });
-
+        res.json({ success: true, data: { params, shifts: details, totalAmount: Math.round(totalAmount), subsidyApplied: subsidy } });
     } catch (error) {
         console.error('Liquidation Error:', error);
         res.status(500).json({ success: false, message: error.message });
@@ -579,95 +535,44 @@ app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res
 app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
     try {
         const { patientId, month, year } = req.params;
-        const monthNum = parseInt(month);
-        const yearNum = parseInt(year);
+        const monthNum = parseInt(month); const yearNum = parseInt(year);
 
-        const { data: tariffs, error: tariffError } = await supabase
-            .from('client_tariffs')
-            .select('*')
-            .limit(1)
-            .maybeSingle();
-            
+        const { data: tariffs, error: tariffError } = await supabase.from('client_tariffs').select('*').limit(1).maybeSingle();
         if (tariffError) throw new Error('Error en BD tarifas: ' + tariffError.message);
         if (!tariffs) return res.status(400).json({ success: false, message: 'Debe configurar las tarifas de clientes primero en el sistema.' });
 
-        const { data: patientData, error: patError } = await supabase
-            .from('patients')
-            .select('full_name')
-            .eq('id', patientId)
-            .maybeSingle();
-            
+        const { data: patientData, error: patError } = await supabase.from('patients').select('full_name').eq('id', patientId).maybeSingle();
         if (patError) throw new Error('Error en BD paciente: ' + patError.message);
 
         const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`;
         const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59).toISOString();
 
-        const { data: shifts, error: shiftError } = await supabase
-            .from('shifts')
-            .select('*')
-            .eq('patient_id', patientId)
-            .eq('is_closed', true)
-            .gte('start_time', startDate)
-            .lte('start_time', endDate)
-            .order('start_time', { ascending: true });
-
+        const { data: shifts, error: shiftError } = await supabase.from('shifts').select('*').eq('patient_id', patientId).eq('is_closed', true).gte('start_time', startDate).lte('start_time', endDate).order('start_time', { ascending: true });
         if (shiftError) throw new Error('Error en BD turnos: ' + shiftError.message);
 
         const groupedByDate = {};
         if (shifts && shifts.length > 0) {
-            shifts.forEach(s => {
-                if (!s.start_time) return;
-                const dateStr = new Date(s.start_time).toISOString().split('T')[0];
-                if (!groupedByDate[dateStr]) groupedByDate[dateStr] = [];
-                groupedByDate[dateStr].push(s);
-            });
+            shifts.forEach(s => { if (!s.start_time) return; const dateStr = new Date(s.start_time).toISOString().split('T')[0]; if (!groupedByDate[dateStr]) groupedByDate[dateStr] = []; groupedByDate[dateStr].push(s); });
         }
 
-        let totalAmount = 0;
-        let invoiceDetails = [];
-
+        let totalAmount = 0; let invoiceDetails = [];
         for (const date in groupedByDate) {
-            const dayShifts = groupedByDate[date];
-            const types = dayShifts.map(s => s.shift_type);
-
-            let has24h = types.includes('24h');
-            let has12D = types.includes('12h_diurno');
-            let has12N = types.includes('12h_nocturno');
-
+            const dayShifts = groupedByDate[date]; const types = dayShifts.map(s => s.shift_type);
+            let has24h = types.includes('24h'); let has12D = types.includes('12h_diurno'); let has12N = types.includes('12h_nocturno');
             if (has24h || (has12D && has12N)) {
                 const amount = parseFloat(tariffs.t_24h) || 0;
-                invoiceDetails.push({
-                    date: date,
-                    service: 'Servicio 24 Horas',
-                    auxiliaries: 'Servicio Integral',
-                    amount: amount
-                });
+                invoiceDetails.push({ date: date, service: 'Servicio 24 Horas', auxiliaries: 'Servicio Integral', amount: amount });
                 totalAmount += amount;
             } else {
                 dayShifts.forEach(s => {
-                    let tariffKey = `t_${s.shift_type}`;
-                    let amount = parseFloat(tariffs[tariffKey]) || 0;
-                    let serviceName = `Turno ${s.shift_type.replace('_', ' ')}`;
-                    invoiceDetails.push({
-                        date: date,
-                        service: serviceName,
-                        auxiliaries: 'Servicio Integral',
-                        amount: amount
-                    });
+                    let amount = parseFloat(tariffs[`t_${s.shift_type}`]) || 0;
+                    invoiceDetails.push({ date: date, service: `Turno ${s.shift_type.replace('_', ' ')}`, auxiliaries: 'Servicio Integral', amount: amount });
                     totalAmount += amount;
                 });
             }
         }
 
-        res.json({
-            success: true,
-            data: {
-                patient: patientData || { full_name: 'Paciente' },
-                details: invoiceDetails,
-                totalAmount: totalAmount
-            }
-        });
-
+        res.json({ success: true, data: { patient: patientData || { full_name: 'Paciente' }, details: invoiceDetails, totalAmount: totalAmount } });
     } catch (error) {
         console.error('Invoice Error:', error);
         res.status(500).json({ success: false, message: error.message });
@@ -679,9 +584,7 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
 // ==========================================
 app.get('/api/scheduled-shifts', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('scheduled_shifts')
-            .select('*, patients(full_name), professionals(full_name)')
-            .order('shift_date', { ascending: true });
+        const { data, error } = await supabase.from('scheduled_shifts').select('*, patients(full_name), professionals(full_name)').order('shift_date', { ascending: true });
         if (error) throw error;
         res.json({ success: true, data: data || [] });
     } catch (error) {
@@ -691,11 +594,7 @@ app.get('/api/scheduled-shifts', async (req, res) => {
 
 app.get('/api/scheduled-shifts/professional/:profId', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('scheduled_shifts')
-            .select('*, patients(*, altitude_profiles(city_name))')
-            .eq('professional_id', req.params.profId)
-            .eq('status', 'Programado')
-            .order('shift_date', { ascending: true });
+        const { data, error } = await supabase.from('scheduled_shifts').select('*, patients(*, altitude_profiles(city_name))').eq('professional_id', req.params.profId).eq('status', 'Programado').order('shift_date', { ascending: true });
         if (error) throw error;
         res.json({ success: true, data: data || [] });
     } catch (error) {
@@ -706,13 +605,8 @@ app.get('/api/scheduled-shifts/professional/:profId', async (req, res) => {
 app.post('/api/scheduled-shifts', async (req, res) => {
     try {
         const { patientId, professionalId, shiftDate, shiftType } = req.body;
-        if (!patientId || !professionalId || !shiftDate || !shiftType) 
-            return res.status(400).json({ success: false, message: 'Datos de agenda incompletos' });
-        
-        const { error } = await supabase.from('scheduled_shifts').insert([{
-            patient_id: patientId, professional_id: professionalId, 
-            shift_date: shiftDate, shift_type: shiftType, status: 'Programado'
-        }]);
+        if (!patientId || !professionalId || !shiftDate || !shiftType) return res.status(400).json({ success: false, message: 'Datos de agenda incompletos' });
+        const { error } = await supabase.from('scheduled_shifts').insert([{ patient_id: patientId, professional_id: professionalId, shift_date: shiftDate, shift_type: shiftType, status: 'Programado' }]);
         if (error) throw error;
         res.json({ success: true, message: 'Turno programado exitosamente' });
     } catch (error) {
@@ -721,14 +615,11 @@ app.post('/api/scheduled-shifts', async (req, res) => {
 });
 
 // ==========================================
-// 10. MENSAJERÍA Y ALERTAS (NUEVO)
+// 10. MENSAJERÍA Y ALERTAS
 // ==========================================
 app.get('/api/messages', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('internal_messages')
-            .select('*, patients(full_name)')
-            .order('created_at', { ascending: true })
-            .limit(100);
+        const { data, error } = await supabase.from('internal_messages').select('*, patients(full_name)').order('created_at', { ascending: true }).limit(100);
         if (error) throw error;
         res.json({ success: true, data: data || [] });
     } catch (error) {
@@ -740,12 +631,7 @@ app.post('/api/messages', async (req, res) => {
     try {
         const { patientId, shiftId, senderId, senderName, message, isAlert } = req.body;
         if (!senderId || !message) return res.status(400).json({ success: false, message: 'Mensaje vacío o sin remitente' });
-
-        const { error } = await supabase.from('internal_messages').insert([{
-            patient_id: patientId || null, shift_id: shiftId || null,
-            sender_id: senderId, sender_name: senderName || 'Usuario',
-            message: message, is_alert: isAlert || false, is_read: false
-        }]);
+        const { error } = await supabase.from('internal_messages').insert([{ patient_id: patientId || null, shift_id: shiftId || null, sender_id: senderId, sender_name: senderName || 'Usuario', message: message, is_alert: isAlert || false, is_read: false }]);
         if (error) throw error;
         res.json({ success: true, message: 'Mensaje enviado' });
     } catch (error) {
