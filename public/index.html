@@ -1227,7 +1227,7 @@ async function generateClosurePDF() {
         if (leaveData || sig.patient_leaves_home) {
             if (finalY > 200) { doc.addPage(); finalY = 30; }
             doc.setFontSize(12); doc.setTextColor(239, 68, 68); // Rojo
-            doc.text("⚠️ AUTORIZACIÓN DE SALIDA DEL DOMICILIO (ARL)", 14, finalY);
+            doc.text("AUTORIZACION DE SALIDA DEL DOMICILIO (ARL)", 14, finalY); // Sin emoji
             doc.setFontSize(10); doc.setTextColor(0);
             finalY += 7;
             doc.text(`Transporte: ${leaveData?.transport || 'N/A'}`, 14, finalY);
