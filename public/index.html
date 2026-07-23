@@ -3,7 +3,6 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=1.0">
-<!-- ETIQUETAS PARA CONVERTIR EN APP (PWA) -->
 <meta name="theme-color" content="#22c55e">
 <link rel="manifest" href="/manifest.json">
 <link rel="apple-touch-icon" href="https://i.imgur.com/01YZxey.jpeg">
@@ -41,6 +40,7 @@ h4 { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-top: 20
 .toast { position: fixed; top: 20px; right: 20px; background: var(--card-bg); color: var(--text-main); padding: 15px 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 9999; opacity: 0; transform: translateX(100%); transition: all 0.3s ease; border-left: 4px solid var(--primary); }
 .toast.show { opacity: 1; transform: translateX(0); }
 .toast.error { border-left-color: var(--danger); }
+.toast.warning { border-left-color: var(--warning); }
 .tabs { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; overflow-x: auto; padding-bottom: 5px; }
 .tab { padding: 8px 16px; background: var(--card-bg); border-radius: 30px; cursor: pointer; font-size: 0.8rem; border: 1px solid transparent; white-space: normal; text-align: center; }
 .tab.active { background: var(--primary); color: white; border-color: var(--primary); }
@@ -151,10 +151,10 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     </div>
 </div>
 
-<!-- MODAL EDITAR -->
+<!-- MODAL EDITAR (CON CAMPO DE CONTRASEÑA) -->
 <div id="editModal" class="modal-overlay hidden">
     <div class="card" style="max-width: 500px; width: 100%;">
-        <h3 id="editModalTitle" style="text-align:center; color: var(--primary);">Editar Datos</h3>
+        <h3 id="editModalTitle" style="text-align:center; color: var(--primary); cursor:default;">Editar Datos</h3>
         <input type="hidden" id="editId">
         <input type="hidden" id="editType">
         <div class="form-group"><label>Nombre Completo</label><input type="text" id="editName"></div>
@@ -169,6 +169,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 <option value="NUTRICION">Nutrición</option><option value="TRABAJO_SOCIAL">Trabajo Social</option>
             </select>
         </div>
+        <div class="form-group hidden" id="editPassGroup"><label>Nueva Contraseña (Opcional)</label><input type="password" id="editPass" placeholder="Dejar en blanco para no cambiar"></div>
         <div class="form-group" id="editCityGroup" class="hidden"><label>Ciudad</label><select id="editCity"></select></div>
         <div class="form-group" id="editFamGroup" class="hidden"><label>Familiar</label><input type="text" id="editFam"></div>
         <div class="form-group" id="editPhoneGroup" class="hidden"><label>Celular</label><input type="tel" id="editPhone"></div>
@@ -188,7 +189,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
         </div>
         
         <div class="card">
-            <h3>📊 Estadísticas Generales</h3>
+            <h3 style="cursor:default;">📊 Estadísticas Generales</h3>
             <div class="chart-wrapper">
                 <canvas id="adminDashboardChart"></canvas>
             </div>
@@ -206,7 +207,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 
         <div id="admin_prof">
             <div class="card">
-                <h3>Nuevo Profesional</h3>
+                <h3 style="cursor:default;">Nuevo Profesional</h3>
                 <div class="grid">
                     <div class="form-group"><label>Nombre Completo *</label><input type="text" id="pName"></div>
                     <div class="form-group"><label>Cédula *</label><input type="text" id="pDoc"></div>
@@ -237,7 +238,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 
         <div id="admin_pat" class="hidden">
             <div class="card">
-                <h3>Nuevo Paciente</h3>
+                <h3 style="cursor:default;">Nuevo Paciente</h3>
                 <div class="grid">
                     <div class="form-group"><label>Nombre *</label><input type="text" id="patName"></div>
                     <div class="form-group"><label>Cédula *</label><input type="text" id="patDoc"></div>
@@ -254,21 +255,21 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 
         <div id="admin_edu" class="hidden">
             <div class="card">
-                <h3>Asignar Tema Educativo</h3>
+                <h3 style="cursor:default;">Asignar Tema Educativo</h3>
                 <div class="form-group"><label>Título del Tema *</label><input type="text" id="eduTitle" placeholder="Ej: Manejo de sonda vesical"></div>
                 <div class="form-group"><label>Descripción</label><textarea id="eduDesc" rows="2"></textarea></div>
                 <div class="form-group"><label>Responsable de dictarlo</label><select id="eduResp"><option value="">Seleccionar profesional...</option></select></div>
                 <button class="btn-primary" onclick="createEdu()"><i class="fas fa-save"></i> Guardar Tema</button>
             </div>
             <div class="card">
-                <h3>Temas Educativos Registrados</h3>
+                <h3 style="cursor:default;">Temas Educativos Registrados</h3>
                 <div id="eduList"></div>
             </div>
         </div>
 
         <div id="admin_reports" class="hidden">
             <div class="card">
-                <h3><i class="fas fa-file-medical"></i> Generar Informe Mensual Consolidado</h3>
+                <h3 style="cursor:default;"><i class="fas fa-file-medical"></i> Generar Informe Mensual Consolidado</h3>
                 <div class="form-group"><label>Paciente</label><select id="reportPatient"><option value="">Seleccionar...</option></select></div>
                 <div class="grid">
                     <div class="form-group"><label>Mes</label>
@@ -293,7 +294,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 
         <div id="admin_finance" class="hidden">
             <div class="card">
-                <h3>⚙️ Parámetros de Ley Vigentes</h3>
+                <h3 style="cursor:default;">⚙️ Parámetros de Ley Vigentes</h3>
                 <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:10px;">Configura los valores legales actuales para el cálculo de liquidaciones de empleados.</p>
                 <input type="hidden" id="finParamId">
                 <div class="grid">
@@ -309,7 +310,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             </div>
 
             <div class="card">
-                <h3>💵 Tarifario para Clientes</h3>
+                <h3 style="cursor:default;">💵 Tarifario para Clientes</h3>
                 <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:10px;">Configura cuánto se le cobra al cliente por cada tipo de turno.</p>
                 <input type="hidden" id="tariffId">
                 <div class="grid">
@@ -325,7 +326,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             </div>
 
             <div class="card">
-                <h3>🧾 Liquidación de Nómina (Auxiliares/Turneros)</h3>
+                <h3 style="cursor:default;">🧾 Liquidación de Nómina (Auxiliares/Turneros)</h3>
                 <div class="grid">
                     <div class="form-group"><label>Profesional</label><select id="liquidationProf"><option value="">Seleccionar...</option></select></div>
                     <div class="form-group"><label>Mes</label>
@@ -343,7 +344,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             </div>
 
             <div class="card">
-                <h3>🧾 Facturación a Clientes (Cuenta de Cobro)</h3>
+                <h3 style="cursor:default;">🧾 Facturación a Clientes (Cuenta de Cobro)</h3>
                 <div class="grid">
                     <div class="form-group"><label>Paciente</label><select id="invoicePatient"><option value="">Seleccionar...</option></select></div>
                     <div class="form-group"><label>Mes</label>
@@ -363,7 +364,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 
         <div id="admin_agenda" class="hidden">
             <div class="card">
-                <h3>📅 Programar Nuevo Turno</h3>
+                <h3 style="cursor:default;">📅 Programar Nuevo Turno</h3>
                 <div class="grid">
                     <div class="form-group"><label>Fecha del Turno</label><input type="date" id="schedDate"></div>
                     <div class="form-group"><label>Paciente</label><select id="schedPatient"><option value="">Seleccionar...</option></select></div>
@@ -383,14 +384,14 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 <button class="btn-primary" onclick="createScheduledShift()"><i class="fas fa-calendar-plus"></i> Asignar Turno</button>
             </div>
             <div class="card">
-                <h3>Turnos Programados</h3>
+                <h3 style="cursor:default;">Turnos Programados</h3>
                 <table id="schedTable"><thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th><th>Turno</th><th>Estado</th></tr></thead><tbody></tbody></table>
             </div>
         </div>
 
         <div id="admin_messages" class="hidden">
             <div class="card">
-                <h3>💬 Chat con el Equipo</h3>
+                <h3 style="cursor:default;">💬 Chat con el Equipo</h3>
                 <div id="adminMessageList" class="chat-container"></div>
                 <div class="form-group" style="display: flex; gap: 5px; margin-bottom: 0;">
                     <input type="text" id="adminMsgInput" placeholder="Escribe tu mensaje o respuesta..." style="flex: 1;" onkeypress="if(event.key==='Enter') sendAdminMessage()">
@@ -403,15 +404,15 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     <!-- AUXILIAR PANEL -->
     <div id="auxPanel" class="hidden">
         <div id="auxPatientSelection" class="card">
-            <h3>📅 Mis Turnos Asignados</h3>
+            <h3 style="cursor:default;">📅 Mis Turnos Asignados</h3>
             <div id="auxScheduledList"></div>
             <hr style="border-color: var(--border); margin: 20px 0;">
-            <h3>🏥 Pacientes Activos (Turno Inmediato)</h3>
+            <h3 style="cursor:default;">🏥 Pacientes Activos (Turno Inmediato)</h3>
             <div id="auxPatientList"></div>
         </div>
         <div id="auxShiftStart" class="hidden">
             <div class="card">
-                <h3>Iniciar Turno - <span id="patientNameStart" style="color: var(--primary);"></span></h3>
+                <h3 style="cursor:default;">Iniciar Turno - <span id="patientNameStart" style="color: var(--primary);"></span></h3>
                 <div class="form-group"><label>Tipo de Turno</label>
                     <select id="shiftType" onchange="toggleCustomShift()">
                         <option value="6h_diurno">☀️ 6h Diurno</option><option value="8h_diurno">☀️ 8h Diurno</option><option value="12h_diurno">☀️ 12h Diurno</option>
@@ -753,6 +754,7 @@ let lastInvoiceData = null;
 let messagePollingInterval = null;
 let auxMessagePollingInterval = null;
 let dashboardChart = null;
+let lastMessageCount = 0;
 
 // ===== UTILIDADES =====
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
@@ -794,6 +796,14 @@ function initApp() {
     const u = localStorage.getItem('vital_user'); if (!u) return; currentUser = JSON.parse(u);
     document.getElementById('loginScreen').classList.add('hidden'); document.getElementById('mainScreen').classList.remove('hidden'); document.getElementById('userInfo').classList.remove('hidden');
     document.getElementById('userName').textContent = currentUser.full_name; document.getElementById('userRoleDisplay').textContent = currentUser.specialty_name;
+    
+    // Pedir permiso para notificaciones push
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().then(permission => {
+            if (permission === 'granted') showToast('Notificaciones activadas', 'success');
+        });
+    }
+
     if (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE') {
         document.getElementById('adminPanel').classList.remove('hidden');
         loadDashboard(); loadProfs(); loadPats(); loadReportPatients(); loadEdus(); loadFinanceParams(); loadClientTariffs(); loadScheduledShifts(); loadAdminMessages();
@@ -803,6 +813,7 @@ function initApp() {
         document.getElementById('auxPanel').classList.remove('hidden'); loadAuxPatients(); loadEdus(); loadAuxScheduledShifts();
         loadAuxMessages();
         auxMessagePollingInterval = setInterval(loadAuxMessages, 3000);
+        setInterval(trySyncPendingRecords, 30000); // Intentar sincronizar offline cada 30 seg
     } else {
         document.getElementById('profPanel').classList.remove('hidden'); loadProfPatients();
     }
@@ -853,7 +864,7 @@ async function loadEdus() { try { const r = await fetch(`${API_URL}/api/educatio
 async function createEdu() { const p = { title: getVal('eduTitle'), description: getVal('eduDesc'), responsibleId: getVal('eduResp') }; if (!p.title) return showToast('El título es obligatorio', 'error'); try { const r = await fetch(`${API_URL}/api/education/topics`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); if(d.success) { document.getElementById('eduTitle').value=''; document.getElementById('eduDesc').value=''; loadEdus(); } } catch (e) {} }
 async function loadReportPatients() { try { const r = await fetch(`${API_URL}/api/reports/pending`); const d = await r.json(); const s = document.getElementById('reportPatient'); const sInv = document.getElementById('invoicePatient'); s.innerHTML = '<option value="">Seleccionar...</option>'; sInv.innerHTML = '<option value="">Seleccionar...</option>'; if (d.data) d.data.forEach(p => { s.innerHTML += `<option value="${p.id}">${p.full_name}</option>`; sInv.innerHTML += `<option value="${p.id}">${p.full_name}</option>`; }); } catch (e) {} }
 
-// ===== MODAL EDITAR =====
+// ===== MODAL EDITAR (CON CONTRASEÑA) =====
 function openEditModal(type, id, name, doc, extra1, extra2, extra3) {
     document.getElementById('editId').value = id;
     document.getElementById('editType').value = type;
@@ -861,15 +872,19 @@ function openEditModal(type, id, name, doc, extra1, extra2, extra3) {
     document.getElementById('editDoc').value = doc;
     document.getElementById('editCardGroup').classList.add('hidden');
     document.getElementById('editSpecGroup').classList.add('hidden');
+    document.getElementById('editPassGroup').classList.add('hidden');
     document.getElementById('editCityGroup').classList.add('hidden');
     document.getElementById('editFamGroup').classList.add('hidden');
     document.getElementById('editPhoneGroup').classList.add('hidden');
+    document.getElementById('editPass').value = ''; // Limpiar campo contraseña
+
     if (type === 'prof') {
         document.getElementById('editModalTitle').innerText = 'Editar Profesional';
         document.getElementById('editCardGroup').classList.remove('hidden');
         document.getElementById('editCard').value = extra1 || '';
         document.getElementById('editSpecGroup').classList.remove('hidden');
         document.getElementById('editSpec').value = extra2 || 'ADMINISTRACION';
+        document.getElementById('editPassGroup').classList.remove('hidden'); // Mostrar campo contraseña
     } else {
         document.getElementById('editModalTitle').innerText = 'Editar Paciente';
         document.getElementById('editFamGroup').classList.remove('hidden');
@@ -891,6 +906,8 @@ async function saveEdit() {
     if (type === 'prof') {
         payload.professionalCard = getVal('editCard');
         payload.specialtyName = getVal('editSpec');
+        const newPass = getVal('editPass');
+        if (newPass) payload.newPassword = newPass; // Enviar nueva contraseña si se llenó
     } else {
         payload.familyName = getVal('editFam');
         payload.contactPhone = getVal('editPhone');
@@ -1053,13 +1070,18 @@ async function loadAuxScheduledShifts() {
     try { const r = await fetch(`${API_URL}/api/scheduled-shifts/professional/${currentUser.id}`); const d = await r.json(); const c = document.getElementById('auxScheduledList'); if (!d.data || d.data.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No tienes turnos programados.</p>'; return; } c.innerHTML = d.data.map(s => `<div class="card" style="cursor:pointer; border-left: 4px solid var(--info); margin-bottom:10px;" onclick='selectPatient(${JSON.stringify(s.patients)})'><strong>${new Date(s.shift_date).toLocaleDateString('es-CO')}</strong> - ${s.patients?.full_name}<br><small>Turno: ${s.shift_type}</small></div>`).join(''); } catch (e) { console.error(e); }
 }
 
-// ===== MENSAJERÍA =====
+// ===== MENSAJERÍA Y NOTIFICACIONES PUSH =====
 function toggleAuxChat() {
     const body = document.getElementById('auxChatBody');
     const icon = document.getElementById('chatToggleIcon');
     body.classList.toggle('hidden');
     icon.classList.toggle('fa-chevron-down');
     icon.classList.toggle('fa-chevron-up');
+}
+function showNotification(title, body) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(title, { body: body, icon: 'https://i.imgur.com/01YZxey.jpeg' });
+    }
 }
 async function loadAdminMessages() {
     try {
@@ -1068,6 +1090,16 @@ async function loadAdminMessages() {
         const c = document.getElementById('adminMessageList');
         if (!c) return;
         if (!d.data || d.data.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay mensajes.</p>'; return; }
+        
+        // Notificación Push si hay mensajes nuevos
+        if (d.data.length > lastMessageCount) {
+            const newMsg = d.data[d.data.length - 1];
+            if (newMsg.sender_id !== currentUser.id) {
+                showNotification(newMsg.is_alert ? '🚨 ALERTA DE AUXILIAR' : '💬 Nuevo Mensaje', newMsg.message);
+            }
+        }
+        lastMessageCount = d.data.length;
+
         c.innerHTML = d.data.map(m => {
             const isMe = m.sender_id === currentUser.id;
             const typeClass = isMe ? 'me' : 'them';
@@ -1090,6 +1122,16 @@ async function loadAuxMessages() {
         const c = document.getElementById('auxMessageList');
         if (!c) return;
         if (!d.data || d.data.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay mensajes.</p>'; return; }
+        
+        // Notificación Push si hay mensajes nuevos
+        if (d.data.length > lastMessageCount) {
+            const newMsg = d.data[d.data.length - 1];
+            if (newMsg.sender_id !== currentUser.id) {
+                showNotification(newMsg.is_alert ? '🚨 ALERTA DE AUXILIAR' : '💬 Nuevo Mensaje', newMsg.message);
+            }
+        }
+        lastMessageCount = d.data.length;
+
         c.innerHTML = d.data.map(m => {
             const isMe = m.sender_id === currentUser.id;
             const typeClass = isMe ? (m.is_alert ? 'alert' : 'me') : 'them';
@@ -1103,6 +1145,27 @@ async function sendAuxMessage() {
     if (!msg) return;
     const payload = { patientId: selectedPatient?.id, shiftId: currentShiftId, senderId: currentUser.id, senderName: currentUser.full_name, message: msg, isAlert: false };
     try { const r = await fetch(`${API_URL}/api/messages`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }); const d = await r.json(); if (d.success) { document.getElementById('auxMsgInput').value = ''; loadAuxMessages(); } } catch (e) { showToast('Error', 'error'); }
+}
+
+// ===== MODO OFFLINE (SIN INTERNET) =====
+async function trySyncPendingRecords() {
+    let pending = JSON.parse(localStorage.getItem('pending_records') || '[]');
+    if (pending.length === 0) return;
+    
+    pending.forEach(async (item, index) => {
+        try {
+            const r = await fetch(item.url, { method: item.method, headers: {'Content-Type':'application/json'}, body: JSON.stringify(item.body) });
+            const d = await r.json();
+            if (d.success) {
+                pending.splice(index, 1);
+                localStorage.setItem('pending_records', JSON.stringify(pending));
+                showToast('Registro sincronizado con el servidor.', 'success');
+                if (selectedPatient && item.patientId === selectedPatient.id) loadDailyHistory();
+            }
+        } catch (e) {
+            // Seguimos sin internet, se seguirá intentando
+        }
+    });
 }
 
 // ===== AUXILIAR =====
@@ -1126,7 +1189,32 @@ function addMedication() { medications.push({ id: Date.now(), name: '', dose: ''
 function removeMedication(id) { medications = medications.filter(m => m.id !== id); renderMedications(); }
 function updateMedication(id, f, v) { const m = medications.find(m => m.id === id); if(m) m[f] = v; }
 function renderMedications() { const c = document.getElementById('medList'); if (medications.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay medicamentos</p>'; return; } c.innerHTML = medications.map(m => `<div class="med-item"><input type="text" placeholder="Nombre" value="${m.name}" oninput="updateMedication(${m.id}, 'name', this.value)"><input type="text" placeholder="Dosis" value="${m.dose}" oninput="updateMedication(${m.id}, 'dose', this.value)"><select onchange="updateMedication(${m.id}, 'route', this.value)"><option value="Oral" ${m.route==='Oral'?'selected':''}>Oral</option><option value="Sublingual" ${m.route==='Sublingual'?'selected':''}>Sublingual</option><option value="IV" ${m.route==='IV'?'selected':''}>IV</option><option value="IM" ${m.route==='IM'?'selected':''}>IM</option><option value="SC" ${m.route==='SC'?'selected':''}>SC</option><option value="Tópica" ${m.route==='Tópica'?'selected':''}>Tópica</option><option value="Oftálmica" ${m.route==='Oftálmica'?'selected':''}>Oftálmica</option><option value="Ótica" ${m.route==='Ótica'?'selected':''}>Ótica</option><option value="Nasal" ${m.route==='Nasal'?'selected':''}>Nasal</option><option value="Rectal" ${m.route==='Rectal'?'selected':''}>Rectal</option><option value="Vaginal" ${m.route==='Vaginal'?'selected':''}>Vaginal</option></select><input type="time" value="${m.time}" onchange="updateMedication(${m.id}, 'time', this.value)" title="Hora"><button class="btn-small btn-danger" onclick="removeMedication(${m.id})">✕</button></div>`).join(''); }
-async function saveClinicalRecord() { for (let m of medications) { if ((m.name || m.dose) && !m.time) return showToast('Medicamentos deben tener hora', 'error'); } const acts = { hygiene: { bath: getChecked('actBath') ? {done:true, time:getVal('actBathTime'), type:getVal('bathType')} : null, oral_hygiene: getChecked('actOralHygiene') ? {done:true, time:getVal('actOralTime'), type:getVal('oralType')} : null }, environment: { bed_clothes: getChecked('actBedClothes') ? {done:true, time:getVal('actBedClothesTime'), obs:getVal('actBedClothesObs')} : null, room_clean: getChecked('actRoomClean') ? {done:true, time:getVal('actRoomCleanTime'), obs:getVal('actRoomCleanObs')} : null, waste: getChecked('actWaste') ? {done:true, time:getVal('actWasteTime'), obs:getVal('actWasteObs')} : null, companion: getChecked('actCompanion') ? {done:true, time:getVal('actCompanionTime'), obs:getVal('actCompanionObs')} : null }, feeding: { meals: meals.filter(m => m.time).map(m => ({type:m.type, time:m.time, qty:m.qty, diet:m.diet})), enteral: getChecked('actEnteralFood') ? {done:true, time:getVal('actEnteralFoodTime'), formula:getVal('enteralFormula'), vol:getVal('enteralVol')} : null, parenteral: getChecked('actParenteralFood') ? {done:true, time:getVal('actParenteralFoodTime'), formula:getVal('parenteralFormula'), vol:getVal('parenteralVol')} : null, hydration: getChecked('actHydration') ? {done:true, time:getVal('actHydrationTime'), ml:getVal('hydrationMl')} : null }, clinical: { wound: getChecked('actWound') ? {done:true, time:getVal('actWoundTime'), state:getVal('woundState')} : null, oxygen: getChecked('actOxygen') ? {done:true, time:getVal('actOxygenTime'), lpm:getVal('oxygenLpm'), device:getVal('oxygenDevice')} : null }, mobility: { position: getChecked('actPosition') ? {done:true, time:getVal('actPositionTime'), type:getVal('positionType')} : null, walking: getChecked('actWalking') ? {done:true, time:getVal('actWalkingTime'), distance:getVal('walkingDistance'), help:getVal('walkingHelp')} : null }, medications: medications.filter(m => m.name && m.dose && m.time).map(m => ({name:m.name, dose:m.dose, route:m.route, time:m.time})) }; const p = { shiftId: currentShiftId, patientId: selectedPatient.id, professionalId: currentUser.id, bloodPressure: getVal('bloodPressure') || null, heartRate: parseInt(getVal('heartRate')) || null, respiratoryRate: parseInt(getVal('respiratoryRate')) || null, temperature: parseFloat(getVal('temperature')) || null, spo2: parseInt(getVal('spo2')) || null, glucose: parseInt(getVal('glucose')) || null, evaScore: parseInt(getVal('evaScore')) || 0, glasgowEyes: parseInt(getVal('glasgowEyes')) || null, glasgowVerbal: parseInt(getVal('glasgowVerbal')) || null, glasgowMotor: parseInt(getVal('glasgowMotor')) || null, bradenScore: ['bradenSensory','bradenMoisture','bradenActivity','bradenMobility','bradenNutrition','bradenFriction'].reduce((s, id) => s + (parseInt(getVal(id))||0), 0), activitiesCompleted: acts, sbarSituation: getVal('sbarSituation'), sbarBackground: getVal('sbarBackground'), sbarAssessment: getVal('sbarAssessment'), sbarRecommendation: getVal('sbarRecommendation'), notes: getVal('clinicalNotes') }; try { const r = await fetch(`${API_URL}/api/clinical-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); if (d.success) { showToast('Registro guardado'); ['bloodPressure','heartRate','respiratoryRate','temperature','spo2','glucose','clinicalNotes'].forEach(id => { const el = document.getElementById(id); if(el) { el.value=''; el.className=''; } }); document.querySelectorAll('.vital-status').forEach(el => el.classList.remove('show')); document.querySelectorAll('.sub-activity input[type="checkbox"]').forEach(cb => cb.checked = false); document.querySelectorAll('.sub-activity-fields').forEach(f => f.classList.remove('show')); medications = []; renderMedications(); meals = []; renderMeals(); loadDailyHistory(); } } catch (e) {} }
+
+async function saveClinicalRecord() { 
+    for (let m of medications) { if ((m.name || m.dose) && !m.time) return showToast('Medicamentos deben tener hora', 'error'); } 
+    const acts = { hygiene: { bath: getChecked('actBath') ? {done:true, time:getVal('actBathTime'), type:getVal('bathType')} : null, oral_hygiene: getChecked('actOralHygiene') ? {done:true, time:getVal('actOralTime'), type:getVal('oralType')} : null }, environment: { bed_clothes: getChecked('actBedClothes') ? {done:true, time:getVal('actBedClothesTime'), obs:getVal('actBedClothesObs')} : null, room_clean: getChecked('actRoomClean') ? {done:true, time:getVal('actRoomCleanTime'), obs:getVal('actRoomCleanObs')} : null, waste: getChecked('actWaste') ? {done:true, time:getVal('actWasteTime'), obs:getVal('actWasteObs')} : null, companion: getChecked('actCompanion') ? {done:true, time:getVal('actCompanionTime'), obs:getVal('actCompanionObs')} : null }, feeding: { meals: meals.filter(m => m.time).map(m => ({type:m.type, time:m.time, qty:m.qty, diet:m.diet})), enteral: getChecked('actEnteralFood') ? {done:true, time:getVal('actEnteralFoodTime'), formula:getVal('enteralFormula'), vol:getVal('enteralVol')} : null, parenteral: getChecked('actParenteralFood') ? {done:true, time:getVal('actParenteralFoodTime'), formula:getVal('parenteralFormula'), vol:getVal('parenteralVol')} : null, hydration: getChecked('actHydration') ? {done:true, time:getVal('actHydrationTime'), ml:getVal('hydrationMl')} : null }, clinical: { wound: getChecked('actWound') ? {done:true, time:getVal('actWoundTime'), state:getVal('woundState')} : null, oxygen: getChecked('actOxygen') ? {done:true, time:getVal('actOxygenTime'), lpm:getVal('oxygenLpm'), device:getVal('oxygenDevice')} : null }, mobility: { position: getChecked('actPosition') ? {done:true, time:getVal('actPositionTime'), type:getVal('positionType')} : null, walking: getChecked('actWalking') ? {done:true, time:getVal('actWalkingTime'), distance:getVal('walkingDistance'), help:getVal('walkingHelp')} : null }, medications: medications.filter(m => m.name && m.dose && m.time).map(m => ({name:m.name, dose:m.dose, route:m.route, time:m.time})) }; 
+    const p = { shiftId: currentShiftId, patientId: selectedPatient.id, professionalId: currentUser.id, bloodPressure: getVal('bloodPressure') || null, heartRate: parseInt(getVal('heartRate')) || null, respiratoryRate: parseInt(getVal('respiratoryRate')) || null, temperature: parseFloat(getVal('temperature')) || null, spo2: parseInt(getVal('spo2')) || null, glucose: parseInt(getVal('glucose')) || null, evaScore: parseInt(getVal('evaScore')) || 0, glasgowEyes: parseInt(getVal('glasgowEyes')) || null, glasgowVerbal: parseInt(getVal('glasgowVerbal')) || null, glasgowMotor: parseInt(getVal('glasgowMotor')) || null, bradenScore: ['bradenSensory','bradenMoisture','bradenActivity','bradenMobility','bradenNutrition','bradenFriction'].reduce((s, id) => s + (parseInt(getVal(id))||0), 0), activitiesCompleted: acts, sbarSituation: getVal('sbarSituation'), sbarBackground: getVal('sbarBackground'), sbarAssessment: getVal('sbarAssessment'), sbarRecommendation: getVal('sbarRecommendation'), notes: getVal('clinicalNotes') }; 
+    
+    try { 
+        const r = await fetch(`${API_URL}/api/clinical-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); 
+        const d = await r.json(); 
+        if (d.success) { 
+            showToast('Registro guardado'); 
+            ['bloodPressure','heartRate','respiratoryRate','temperature','spo2','glucose','clinicalNotes'].forEach(id => { const el = document.getElementById(id); if(el) { el.value=''; el.className=''; } }); 
+            document.querySelectorAll('.vital-status').forEach(el => el.classList.remove('show')); document.querySelectorAll('.sub-activity input[type="checkbox"]').forEach(cb => cb.checked = false); document.querySelectorAll('.sub-activity-fields').forEach(f => f.classList.remove('show')); medications = []; renderMedications(); meals = []; renderMeals(); loadDailyHistory(); 
+        } 
+    } catch (e) { 
+        // MODO OFFLINE: Si no hay internet, guardamos en el celular
+        let pending = JSON.parse(localStorage.getItem('pending_records') || '[]');
+        pending.push({ url: `${API_URL}/api/clinical-records`, method: 'POST', body: p, patientId: selectedPatient.id });
+        localStorage.setItem('pending_records', JSON.stringify(pending));
+        showToast('Sin internet. Registro guardado en el celular. Se sincronizará pronto.', 'warning');
+        // Limpiamos el formulario de todos modos
+        ['bloodPressure','heartRate','respiratoryRate','temperature','spo2','glucose','clinicalNotes'].forEach(id => { const el = document.getElementById(id); if(el) { el.value=''; el.className=''; } }); 
+        document.querySelectorAll('.vital-status').forEach(el => el.classList.remove('show')); document.querySelectorAll('.sub-activity input[type="checkbox"]').forEach(cb => cb.checked = false); document.querySelectorAll('.sub-activity-fields').forEach(f => f.classList.remove('show')); medications = []; renderMedications(); meals = []; renderMeals();
+    } 
+}
+
 async function loadDailyHistory() { try { const r = await fetch(`${API_URL}/api/patients/${selectedPatient.id}/daily-history`); const d = await r.json(); const c = document.getElementById('dailyHistory'); if (!d.data.records || d.data.records.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay registros hoy</p>'; return; } c.innerHTML = d.data.records.map(r => `<div style="background:var(--bg-dark); padding:10px; border-radius:8px; margin-bottom:10px; border-left:3px solid var(--info);"><strong>🕐 ${new Date(r.created_at).toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'})}</strong><br><small>PA: ${r.blood_pressure||'--'} | FC: ${r.heart_rate||'--'} | SpO2: ${r.spo2||'--'} | Temp: ${r.temperature||'--'}</small><br><small>EVA: ${r.eva_score||'0'} | Glasgow: ${(r.glasgow_eyes||0)+(r.glasgow_verbal||0)+(r.glasgow_motor||0)}/15 | Braden: ${r.braden_score||'N/A'}</small>${r.notes ? `<br><small>📝 ${r.notes}</small>` : ''}</div>`).join(''); } catch (e) {} }
 function previewPhoto(i) { const f = i.files[0]; if (!f) return; const r = new FileReader(); r.onload = (e) => { eduPhotoBase64 = e.target.result; const p = document.getElementById('eduPhotoPreview'); p.src = eduPhotoBase64; p.classList.remove('hidden'); }; r.readAsDataURL(f); }
 async function closeShift() { if (!getChecked('familyAcceptsResponsibility')) return showToast('Familiar debe aceptar responsabilidad', 'error'); if (!getVal('familySignName') || !getVal('familySignId') || !getVal('familyRelationship')) return showToast('Datos familiar incompletos', 'error'); let lD = null; if (getChecked('patientLeavesHome')) { if (!getChecked('leaveLiabilityAck')) return showToast('Familiar debe aceptar responsabilidad traslado', 'error'); const lS = document.getElementById('leaveSigCanvas').toDataURL(); const b = document.createElement('canvas'); b.width = lS.width; b.height = lS.height; if (lS === b.toDataURL()) return showToast('Familiar debe firmar salida ARL', 'error'); lD = { transport: getVal('leaveTransport'), time: getVal('leaveTime'), returnTime: getVal('leaveReturnTime'), liabilityAck: true, signature: lS }; } const aS = document.getElementById('auxSigCanvas').toDataURL(); const fS = document.getElementById('famSigCanvas').toDataURL(); const fE = getChecked('familyReceivedEducation'); const eT = fE ? getVal('educationTopicSelect') : null; const eP = fE ? eduPhotoBase64 : null; lastShiftData = { leaveData: lD, educationPhotoData: eP, educationTopic: eT }; const p = { shiftId: currentShiftId, patientDeliveredStatus: getVal('patientDeliveredStatus'), patientDeliveredNotes: getVal('patientDeliveredNotes'), pendingTasks: getVal('pendingTasks'), auxiliarySignature: aS, auxiliaryName: currentUser.full_name, auxiliaryIdNumber: currentUser.document_number, familySignature: fS, familyName: getVal('familySignName'), familyIdNumber: getVal('familySignId'), familyRelationship: getVal('familyRelationship'), familyPhone: getVal('familyPhone'), patientLeavesHome: getChecked('patientLeavesHome'), leaveData: lD, familyAcceptsResponsibility: true, familyReceivedEducation: fE, educationTopicGiven: eT, educationPhotoData: eP }; try { const r = await fetch(`${API_URL}/api/shifts/close`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); if (d.success) { showToast('Turno cerrado exitosamente'); lastClosedShiftId = d.data.shiftId; clearInterval(shiftTimerInterval); document.getElementById('generateClosurePDFBtn').classList.remove('hidden'); } } catch (e) {} }
