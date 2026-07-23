@@ -39,7 +39,7 @@ h4 { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-top: 20
 .tab { padding: 8px 16px; background: var(--card-bg); border-radius: 30px; cursor: pointer; font-size: 0.8rem; border: 1px solid transparent; white-space: normal; text-align: center; }
 .tab.active { background: var(--primary); color: white; border-color: var(--primary); }
 .login-container { max-width: 420px; margin: 40px auto; }
-.password-toggle { position: absolute; right: 12px; top: 38px; background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.2rem; }
+.password-toggle { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.2rem; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
 table { width: 100%; border-collapse: collapse; margin-top: 10px; background: var(--bg-dark); border-radius: 8px; overflow: hidden; }
 th, td { padding: 10px; border-bottom: 1px solid var(--border); text-align: left; font-size: 0.9rem; }
@@ -354,13 +354,9 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="accordion">
 <div class="accordion-header" onclick="toggleAccordion(this)"><span>🍽️ Alimentación</span><i class="fas fa-chevron-down"></i></div>
 <div class="accordion-content">
-<div class="sub-activity">
-<div class="sub-activity-header"><input type="checkbox" id="actOralFood" onchange="toggleSubFields('oralfood', this)"><label for="actOralFood"><strong>🥣 Alimentación Oral</strong></label><input type="time" id="actOralFoodTime" style="width:auto; margin:0;"></div>
-<div class="sub-activity-fields" id="fields-oralfood">
-<div class="form-group"><label>Cantidad</label><select id="oralFoodQty"><option value="25%">25%</option><option value="50%">50%</option><option value="75%">75%</option><option value="100%">100%</option></select></div>
-<div class="form-group"><label>Dieta</label><select id="oralFoodDiet"><option value="normal">Normal</option><option value="blanda">Blanda</option><option value="licuada">Licuada</option><option value="diabetica">Diabética</option></select></div>
-</div>
-</div>
+<div id="mealList"></div>
+<button class="btn-small btn-info" onclick="addMeal()"><i class="fas fa-plus"></i> Agregar Comida</button>
+<div style="margin-top: 15px; border-top: 1px solid var(--border); padding-top: 10px;">
 <div class="sub-activity">
 <div class="sub-activity-header"><input type="checkbox" id="actEnteralFood" onchange="toggleSubFields('enteral', this)"><label for="actEnteralFood"><strong>🥤 Alimentación Enteral (Sonda)</strong></label><input type="time" id="actEnteralFoodTime" style="width:auto; margin:0;"></div>
 <div class="sub-activity-fields" id="fields-enteral">
@@ -378,6 +374,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="sub-activity">
 <div class="sub-activity-header"><input type="checkbox" id="actHydration" onchange="toggleSubFields('hydration', this)"><label for="actHydration"><strong>💧 Hidratación</strong></label><input type="time" id="actHydrationTime" style="width:auto; margin:0;"></div>
 <div class="sub-activity-fields" id="fields-hydration"><div class="form-group"><label>mL</label><input type="number" id="hydrationMl"></div></div>
+</div>
 </div>
 </div>
 </div>
@@ -552,7 +549,7 @@ const CIUDADES_COLOMBIA = {
 };
 
 let currentUser = null, selectedPatient = null, currentShiftId = null, lastClosedShiftId = null;
-let shiftTimerInterval = null, shiftStartTime = null, medications = [], eduPhotoBase64 = null;
+let shiftTimerInterval = null, shiftStartTime = null, medications = [], meals = [], eduPhotoBase64 = null;
 
 // ===== UTILIDADES =====
 function showToast(msg, type = 'success') {
@@ -780,13 +777,15 @@ async function generateMonthlyPDF() {
         } else { doc.text("Sin registros en este período.", 14, 70); }
         let finalY = doc.lastAutoTable ? doc.lastAutoTable.finalY + 20 : 80;
         if (finalY > 240) { doc.addPage(); finalY = 30; }
+        
         doc.setDrawColor(0); doc.setLineWidth(0.5);
-        doc.rect(14, finalY, 80, 40);
-        doc.text("FIRMA PROFESIONAL VALIDADOR", 18, finalY + 6);
+        doc.line(15, finalY + 20, 85, finalY + 20);
+        doc.text("FIRMA PROFESIONAL VALIDADOR", 15, finalY + 6);
         const adminSig = document.getElementById('adminSigCanvas').toDataURL();
-        if (adminSig && adminSig !== 'data:,') { try { doc.addImage(adminSig, 'PNG', 20, finalY + 8, 50, 20); } catch(e) {} }
-        doc.text(`Nombre: ${currentUser?.full_name || '________________'}`, 18, finalY + 33);
-        doc.text(`Cargo: ${currentUser?.specialty_name || 'Admin'}`, 18, finalY + 38);
+        if (adminSig && adminSig !== 'data:,') { try { doc.addImage(adminSig, 'PNG', 20, finalY, 50, 20); } catch(e) {} }
+        doc.text(`Nombre: ${currentUser?.full_name || '________________'}`, 15, finalY + 26);
+        doc.text(`Cargo: ${currentUser?.specialty_name || 'Admin'}`, 15, finalY + 32);
+        
         doc.save(`Informe_${patient.full_name}_${month}_${year}.pdf`);
         document.getElementById('pdfStatus').innerText = '✅ PDF generado exitosamente';
         document.getElementById('pdfStatus').style.color = 'var(--primary)';
@@ -907,6 +906,33 @@ function calculateBraden() {
 // ===== AUXILIAR: ACTIVIDADES =====
 function toggleAccordion(header) { header.classList.toggle('active'); header.nextElementSibling.classList.toggle('open'); }
 function toggleSubFields(id, checkbox) { const fields = document.getElementById(`fields-${id}`); if (fields) fields.classList.toggle('show', checkbox.checked); }
+
+// Comidas
+function addMeal() { meals.push({ id: Date.now(), time: '', type: 'Desayuno', qty: '100%', diet: 'Normal' }); renderMeals(); }
+function removeMeal(id) { meals = meals.filter(m => m.id !== id); renderMeals(); }
+function updateMeal(id, field, value) { const m = meals.find(m => m.id === id); if(m) m[field] = value; }
+function renderMeals() {
+    const c = document.getElementById('mealList');
+    if (meals.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay comidas registradas</p>'; return; }
+    c.innerHTML = meals.map(m => `<div class="med-item">
+        <select onchange="updateMeal(${m.id}, 'type', this.value)">
+            <option value="Desayuno" ${m.type==='Desayuno'?'selected':''}>Desayuno</option>
+            <option value="Almuerzo" ${m.type==='Almuerzo'?'selected':''}>Almuerzo</option>
+            <option value="Cena" ${m.type==='Cena'?'selected':''}>Cena</option>
+            <option value="Onceno" ${m.type==='Onceno'?'selected':''}>Onceno</option>
+        </select>
+        <input type="time" value="${m.time}" onchange="updateMeal(${m.id}, 'time', this.value)">
+        <select onchange="updateMeal(${m.id}, 'qty', this.value)">
+            <option value="25%" ${m.qty==='25%'?'selected':''}>25%</option>
+            <option value="50%" ${m.qty==='50%'?'selected':''}>50%</option>
+            <option value="75%" ${m.qty==='75%'?'selected':''}>75%</option>
+            <option value="100%" ${m.qty==='100%'?'selected':''}>100%</option>
+        </select>
+        <button class="btn-small btn-danger" onclick="removeMeal(${m.id})">✕</button>
+    </div>`).join('');
+}
+
+// Medicamentos
 function addMedication() { medications.push({ id: Date.now(), name: '', dose: '', route: 'Oral', time: '' }); renderMedications(); }
 function removeMedication(id) { medications = medications.filter(m => m.id !== id); renderMedications(); }
 function updateMedication(id, field, value) { const m = medications.find(m => m.id === id); if(m) m[field] = value; }
@@ -929,12 +955,23 @@ function renderMedications() {
             <option value="Rectal" ${m.route==='Rectal'?'selected':''}>Rectal</option>
             <option value="Vaginal" ${m.route==='Vaginal'?'selected':''}>Vaginal</option>
         </select>
+        <input type="time" value="${m.time}" onchange="updateMedication(${m.id}, 'time', this.value)" title="Hora">
         <button class="btn-small btn-danger" onclick="removeMedication(${m.id})">✕</button>
     </div>`).join('');
+    // Ajustar grid para 5 columnas
+    const styleSheet = document.styleSheets[0];
+    styleSheet.insertRule('.med-item { grid-template-columns: 1.5fr 1fr 1fr 1fr auto; }', styleSheet.cssRules.length);
 }
 
 // ===== AUXILIAR: GUARDAR REGISTRO =====
 async function saveClinicalRecord() {
+    // Validar que los medicamentos tengan hora
+    for (let med of medications) {
+        if ((med.name || med.dose) && !med.time) {
+            return showToast('Todos los medicamentos deben tener hora registrada', 'error');
+        }
+    }
+
     const acts = {
         hygiene: {
             bath: getChecked('actBath') ? {done:true, time:getVal('actBathTime'), type:getVal('bathType')} : null,
@@ -947,7 +984,7 @@ async function saveClinicalRecord() {
             companion: getChecked('actCompanion') ? {done:true, time:getVal('actCompanionTime'), obs:getVal('actCompanionObs')} : null
         },
         feeding: {
-            oral: getChecked('actOralFood') ? {done:true, time:getVal('actOralFoodTime'), qty:getVal('oralFoodQty'), diet:getVal('oralFoodDiet')} : null,
+            meals: meals.filter(m => m.time).map(m => ({type:m.type, time:m.time, qty:m.qty, diet:m.diet})),
             enteral: getChecked('actEnteralFood') ? {done:true, time:getVal('actEnteralFoodTime'), formula:getVal('enteralFormula'), vol:getVal('enteralVol')} : null,
             parenteral: getChecked('actParenteralFood') ? {done:true, time:getVal('actParenteralFoodTime'), formula:getVal('parenteralFormula'), vol:getVal('parenteralVol')} : null,
             hydration: getChecked('actHydration') ? {done:true, time:getVal('actHydrationTime'), ml:getVal('hydrationMl')} : null
@@ -960,7 +997,7 @@ async function saveClinicalRecord() {
             position: getChecked('actPosition') ? {done:true, time:getVal('actPositionTime'), type:getVal('positionType')} : null,
             walking: getChecked('actWalking') ? {done:true, time:getVal('actWalkingTime'), distance:getVal('walkingDistance'), help:getVal('walkingHelp')} : null
         },
-        medications: medications.filter(m => m.name && m.dose).map(m => ({name:m.name, dose:m.dose, route:m.route, time:m.time}))
+        medications: medications.filter(m => m.name && m.dose && m.time).map(m => ({name:m.name, dose:m.dose, route:m.route, time:m.time}))
     };
     
     const payload = {
@@ -983,6 +1020,7 @@ async function saveClinicalRecord() {
             document.querySelectorAll('.sub-activity input[type="checkbox"]').forEach(cb => cb.checked = false);
             document.querySelectorAll('.sub-activity-fields').forEach(f => f.classList.remove('show'));
             medications = []; renderMedications();
+            meals = []; renderMeals();
             loadDailyHistory();
         } else { showToast(d.message || 'Error', 'error'); }
     } catch (e) { showToast('Error de conexión', 'error'); }
@@ -1119,7 +1157,10 @@ async function generateClosurePDF() {
                     if (acts.environment?.waste?.done) actText += `- Eliminación Residuos: ${acts.environment.waste.obs || ''} (${formatTime12h(acts.environment.waste.time)})\n`;
                     if (acts.environment?.companion?.done) actText += `- Acompañamiento: ${acts.environment.companion.obs || ''} (${formatTime12h(acts.environment.companion.time)})\n`;
                     
-                    if (acts.feeding?.oral?.done) actText += `- Alimentación Oral: ${acts.feeding.oral.qty || ''} ${acts.feeding.oral.diet || ''} (${formatTime12h(acts.feeding.oral.time)})\n`;
+                    if (acts.feeding?.meals?.length > 0) {
+                        actText += `- Comidas:\n`;
+                        acts.feeding.meals.forEach(meal => { actText += `    * ${meal.type}: ${meal.qty} ${meal.diet} (${formatTime12h(meal.time)})\n`; });
+                    }
                     if (acts.feeding?.enteral?.done) actText += `- Alim. Enteral: ${acts.feeding.enteral.formula || ''} ${acts.feeding.enteral.vol || ''}mL (${formatTime12h(acts.feeding.enteral.time)})\n`;
                     if (acts.feeding?.parenteral?.done) actText += `- Nutrición Parenteral: ${acts.feeding.parenteral.formula || ''} ${acts.feeding.parenteral.vol || ''}mL (${formatTime12h(acts.feeding.parenteral.time)})\n`;
                     if (acts.feeding?.hydration?.done) actText += `- Hidratación: ${acts.feeding.hydration.ml || ''} mL (${formatTime12h(acts.feeding.hydration.time)})\n`;
@@ -1153,7 +1194,8 @@ async function generateClosurePDF() {
             doc.text(`Hora Salida: ${formatTime12h(sig.leave_data?.time)}`, 14, finalY + 7);
             doc.text(`Hora Regreso: ${formatTime12h(sig.leave_data?.returnTime)}`, 14, finalY + 14);
             doc.setFontSize(8); doc.setTextColor(100);
-            doc.text("El familiar asume la responsabilidad total del traslado. Vital Hogar Cuidados Domiciliarios no se hace responsable de eventos fuera del domicilio.", 14, finalY + 21);
+            const warnText = doc.splitTextToSize("El familiar asume la responsabilidad total del traslado. Vital Hogar PRO no se hace responsable de eventos fuera del domicilio.", 180);
+            doc.text(warnText, 14, finalY + 21);
             finalY += 30;
         }
 
@@ -1173,19 +1215,37 @@ async function generateClosurePDF() {
 
         if (finalY > 220) { doc.addPage(); finalY = 30; }
         
-        // Firmas
-        doc.setDrawColor(0); doc.setLineWidth(0.5);
-        doc.rect(14, finalY, 80, 40);
-        doc.text("FIRMA AUXILIAR", 18, finalY + 6);
-        if (sig?.auxiliary_signature) { try { doc.addImage(sig.auxiliary_signature, 'PNG', 20, finalY + 8, 50, 20); } catch(e) {} }
-        doc.text(`Nombre: ${sig?.auxiliary_name || '________________'}`, 18, finalY + 33);
+        // Firmas Estéticas
+        doc.setDrawColor(150); doc.setLineWidth(0.3);
         
-        doc.rect(110, finalY, 80, 40);
-        doc.text("FIRMA FAMILIAR", 114, finalY + 6);
-        if (sig?.family_signature) { try { doc.addImage(sig.family_signature, 'PNG', 116, finalY + 8, 50, 20); } catch(e) {} }
-        doc.text(`Nombre: ${sig?.family_name || '________________'}`, 114, finalY + 33);
-        doc.text(`C.C.: ${sig?.family_id_number || '________'}`, 114, finalY + 38);
-        doc.text(`Parentesco: ${sig?.family_relationship || '________'}`, 114, finalY + 43);
+        // Auxiliar
+        doc.text("FIRMA AUXILIAR", 15, finalY);
+        if (sig?.auxiliary_signature) { try { doc.addImage(sig.auxiliary_signature, 'PNG', 15, finalY + 2, 60, 20); } catch(e) {} }
+        doc.line(15, finalY + 25, 90, finalY + 25);
+        doc.setFontSize(9);
+        doc.text(`Nombre: ${sig?.auxiliary_name || '________________'}`, 15, finalY + 30);
+        doc.text(`C.C.: ${sig?.auxiliary_id_number || '________'}`, 15, finalY + 35);
+        
+        // Familiar
+        doc.text("FIRMA FAMILIAR", 110, finalY);
+        if (sig?.family_signature) { try { doc.addImage(sig.family_signature, 'PNG', 110, finalY + 2, 60, 20); } catch(e) {} }
+        doc.line(110, finalY + 25, 190, finalY + 25);
+        doc.text(`Nombre: ${sig?.family_name || '________________'}`, 110, finalY + 30);
+        doc.text(`C.C.: ${sig?.family_id_number || '________'}`, 110, finalY + 35);
+        doc.text(`Parentesco: ${sig?.family_relationship || '________'}`, 110, finalY + 40);
+
+        // Tercera firma si salió del domicilio
+        if (sig?.patient_leaves_home) {
+            finalY += 50;
+            if (finalY > 220) { doc.addPage(); finalY = 30; }
+            doc.setFontSize(10); doc.setTextColor(239, 68, 68);
+            doc.text("AUTORIZACIÓN DE SALIDA DEL DOMICILIO", 15, finalY);
+            doc.setTextColor(0); doc.setFontSize(9);
+            if (sig?.family_signature) { try { doc.addImage(sig.family_signature, 'PNG', 15, finalY + 2, 60, 20); } catch(e) {} }
+            doc.line(15, finalY + 25, 90, finalY + 25);
+            doc.text(`Familiar: ${sig?.family_name || ''}`, 15, finalY + 30);
+            doc.text(`C.C.: ${sig?.family_id_number || ''}`, 15, finalY + 35);
+        }
         
         doc.save(`Resumen_${shift?.patients?.full_name || 'paciente'}.pdf`);
         showToast('PDF generado');
