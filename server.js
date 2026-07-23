@@ -576,14 +576,13 @@ app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res
     }
 });
 
-// FACTURACIÓN PARA CLIENTES (VERSIÓN BLINDADA CORREGIDA)
+// FACTURACIÓN PARA CLIENTES
 app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
     try {
         const { patientId, month, year } = req.params;
         const monthNum = parseInt(month);
         const yearNum = parseInt(year);
 
-        // 1. Obtener tarifas de forma segura
         const { data: tariffs, error: tariffError } = await supabase
             .from('client_tariffs')
             .select('*')
@@ -593,7 +592,6 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
         if (tariffError) throw new Error('Error en BD tarifas: ' + tariffError.message);
         if (!tariffs) return res.status(400).json({ success: false, message: 'Debe configurar las tarifas de clientes primero en el sistema.' });
 
-        // 2. Obtener nombre del paciente de forma segura
         const { data: patientData, error: patError } = await supabase
             .from('patients')
             .select('full_name')
@@ -602,11 +600,9 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
             
         if (patError) throw new Error('Error en BD paciente: ' + patError.message);
 
-        // 3. Fechas
         const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`;
         const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59).toISOString();
 
-        // 4. Turnos (Consulta simple para evitar error de relación en Supabase)
         const { data: shifts, error: shiftError } = await supabase
             .from('shifts')
             .select('*')
@@ -618,7 +614,6 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
 
         if (shiftError) throw new Error('Error en BD turnos: ' + shiftError.message);
 
-        // 5. Agrupar y calcular
         const groupedByDate = {};
         if (shifts && shifts.length > 0) {
             shifts.forEach(s => {
@@ -676,6 +671,52 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
 
     } catch (error) {
         console.error('Invoice Error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ==========================================
+// 9. AGENDA Y PROGRAMACIÓN DE TURNOS (NUEVO)
+// ==========================================
+app.get('/api/scheduled-shifts', async (req, res) => {
+    try {
+        const { data, error } = await supabase.from('scheduled_shifts')
+            .select('*, patients(full_name), professionals(full_name)')
+            .order('shift_date', { ascending: true });
+        if (error) throw error;
+        res.json({ success: true, data: data || [] });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.get('/api/scheduled-shifts/professional/:profId', async (req, res) => {
+    try {
+        const { data, error } = await supabase.from('scheduled_shifts')
+            .select('*, patients(*, altitude_profiles(city_name))')
+            .eq('professional_id', req.params.profId)
+            .eq('status', 'Programado')
+            .order('shift_date', { ascending: true });
+        if (error) throw error;
+        res.json({ success: true, data: data || [] });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.post('/api/scheduled-shifts', async (req, res) => {
+    try {
+        const { patientId, professionalId, shiftDate, shiftType } = req.body;
+        if (!patientId || !professionalId || !shiftDate || !shiftType) 
+            return res.status(400).json({ success: false, message: 'Datos de agenda incompletos' });
+        
+        const { error } = await supabase.from('scheduled_shifts').insert([{
+            patient_id: patientId, professional_id: professionalId, 
+            shift_date: shiftDate, shift_type: shiftType, status: 'Programado'
+        }]);
+        if (error) throw error;
+        res.json({ success: true, message: 'Turno programado exitosamente' });
+    } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
