@@ -330,6 +330,24 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 </div>
 
 <div class="accordion">
+<div class="accordion-header" onclick="toggleAccordion(this)"><span>🧹 Aseo y Entorno</span><i class="fas fa-chevron-down"></i></div>
+<div class="accordion-content">
+<div class="sub-activity">
+<div class="sub-activity-header"><input type="checkbox" id="actBedClothes"><label for="actBedClothes"><strong>🛏️ Cambio de Ropa de Cama</strong></label><input type="time" id="actBedClothesTime" style="width:auto; margin:0;"></div>
+</div>
+<div class="sub-activity">
+<div class="sub-activity-header"><input type="checkbox" id="actRoomClean"><label for="actRoomClean"><strong>🧹 Aseo y Orden del Espacio</strong></label><input type="time" id="actRoomCleanTime" style="width:auto; margin:0;"></div>
+</div>
+<div class="sub-activity">
+<div class="sub-activity-header"><input type="checkbox" id="actWaste"><label for="actWaste"><strong>🗑️ Eliminación de Residuos</strong></label><input type="time" id="actWasteTime" style="width:auto; margin:0;"></div>
+</div>
+<div class="sub-activity">
+<div class="sub-activity-header"><input type="checkbox" id="actCompanion"><label for="actCompanion"><strong>🛋️ Acompañamiento Terapéutico</strong></label><input type="time" id="actCompanionTime" style="width:auto; margin:0;"></div>
+</div>
+</div>
+</div>
+
+<div class="accordion">
 <div class="accordion-header" onclick="toggleAccordion(this)"><span>🍽️ Alimentación</span><i class="fas fa-chevron-down"></i></div>
 <div class="accordion-content">
 <div class="sub-activity">
@@ -858,6 +876,12 @@ async function saveClinicalRecord() {
             bath: getChecked('actBath') ? {done:true, time:getVal('actBathTime'), type:getVal('bathType')} : null,
             oral_hygiene: getChecked('actOralHygiene') ? {done:true, time:getVal('actOralTime'), type:getVal('oralType')} : null
         },
+        environment: {
+            bed_clothes: getChecked('actBedClothes') ? {done:true, time:getVal('actBedClothesTime')} : null,
+            room_clean: getChecked('actRoomClean') ? {done:true, time:getVal('actRoomCleanTime')} : null,
+            waste: getChecked('actWaste') ? {done:true, time:getVal('actWasteTime')} : null,
+            companion: getChecked('actCompanion') ? {done:true, time:getVal('actCompanionTime')} : null
+        },
         feeding: {
             oral: getChecked('actOralFood') ? {done:true, time:getVal('actOralFoodTime'), qty:getVal('oralFoodQty'), diet:getVal('oralFoodDiet')} : null,
             hydration: getChecked('actHydration') ? {done:true, time:getVal('actHydrationTime'), ml:getVal('hydrationMl')} : null
@@ -1017,6 +1041,10 @@ async function generateClosurePDF() {
                     let actText = `Registro (${new Date(r.created_at).toLocaleTimeString('es-CO')}):\n`;
                     if (acts.hygiene?.bath?.done) actText += `- Baño: ${acts.hygiene.bath.type || ''} (${formatTime12h(acts.hygiene.bath.time)})\n`;
                     if (acts.hygiene?.oral_hygiene?.done) actText += `- Higiene Bucal: ${acts.hygiene.oral_hygiene.type || ''} (${formatTime12h(acts.hygiene.oral_hygiene.time)})\n`;
+                    if (acts.environment?.bed_clothes?.done) actText += `- Cambio de Ropa de Cama (${formatTime12h(acts.environment.bed_clothes.time)})\n`;
+                    if (acts.environment?.room_clean?.done) actText += `- Aseo y Orden del Espacio (${formatTime12h(acts.environment.room_clean.time)})\n`;
+                    if (acts.environment?.waste?.done) actText += `- Eliminación de Residuos (${formatTime12h(acts.environment.waste.time)})\n`;
+                    if (acts.environment?.companion?.done) actText += `- Acompañamiento Terapéutico (${formatTime12h(acts.environment.companion.time)})\n`;
                     if (acts.feeding?.oral?.done) actText += `- Alimentación: ${acts.feeding.oral.qty || ''} ${acts.feeding.oral.diet || ''} (${formatTime12h(acts.feeding.oral.time)})\n`;
                     if (acts.feeding?.hydration?.done) actText += `- Hidratación: ${acts.feeding.hydration.ml || ''} mL (${formatTime12h(acts.feeding.hydration.time)})\n`;
                     if (acts.clinical?.wound?.done) actText += `- Curación: ${acts.clinical.wound.state || ''} (${formatTime12h(acts.clinical.wound.time)})\n`;
