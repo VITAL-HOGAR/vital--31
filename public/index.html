@@ -71,7 +71,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .sub-activity-header input[type="checkbox"] { width: auto; margin: 0; }
 .sub-activity-fields { display: none; margin-top: 10px; padding: 10px; background: var(--bg-dark); border-radius: 6px; }
 .sub-activity-fields.show { display: block; }
-.med-item { background: var(--bg-dark); padding: 10px; border-radius: 6px; margin-bottom: 8px; display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; align-items: center; }
+.med-item { background: var(--bg-dark); padding: 10px; border-radius: 6px; margin-bottom: 8px; display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr auto; gap: 8px; align-items: center; }
 .signature-canvas { background: white; border: 2px dashed var(--border); border-radius: 8px; width: 100%; height: 150px; cursor: crosshair; touch-action: none; }
 .mic-btn { background: var(--info); width: 40px; height: 40px; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; border: none; cursor: pointer; color: white; }
 .mic-btn.recording { background: var(--danger); animation: pulse 1.5s infinite; }
@@ -461,18 +461,28 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="form-group"><label>Medio de Transporte</label>
 <select id="leaveTransport">
 <option value="taxi">Taxi</option>
+<option value="uber">Uber</option>
+<option value="idrive">iDrive</option>
+<option value="cabify">Cabify</option>
+<option value="carro_particular">Carro Particular</option>
+<option value="moto">Moto</option>
 <option value="vehiculo_familiar">Vehículo Familiar</option>
 <option value="ambulancia">Ambulancia</option>
 <option value="bus">Bus</option>
 <option value="a_pie">A pie</option>
 </select>
 </div>
+<div class="grid">
 <div class="form-group"><label>Hora de salida</label><input type="time" id="leaveTime"></div>
 <div class="form-group"><label>Hora de regreso</label><input type="time" id="leaveReturnTime"></div>
+</div>
 <div style="margin: 10px 0; padding: 10px; background: #450a0a; border-radius: 6px; border: 1px solid var(--danger);">
 <input type="checkbox" id="leaveLiabilityAck" style="width:auto; margin-right:10px;">
 <label for="leaveLiabilityAck" style="display:inline; color: #fecaca;">El familiar asume la responsabilidad total del traslado. Vital Hogar Pro y el auxiliar NO se hacen responsables de eventos fuera del domicilio.</label>
 </div>
+<h4>✍️ Firma Autorizando Salida (ARL)</h4>
+<canvas id="leaveSigCanvas" class="signature-canvas"></canvas>
+<button class="btn-small btn-secondary" onclick="clearSig('leaveSigCanvas')">Borrar</button>
 </div>
 </div>
 
@@ -513,7 +523,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <canvas id="auxSigCanvas" class="signature-canvas"></canvas>
 <button class="btn-small btn-secondary" onclick="clearSig('auxSigCanvas')">Borrar</button>
 
-<h4>✍️ Firma Familiar</h4>
+<h4>✍️ Firma Familiar (Cierre)</h4>
 <canvas id="famSigCanvas" class="signature-canvas"></canvas>
 <button class="btn-small btn-secondary" onclick="clearSig('famSigCanvas')">Borrar</button>
 
@@ -844,7 +854,7 @@ async function startShift() {
             document.getElementById('patientNameClinical').innerText = selectedPatient.full_name;
             document.getElementById('auxShiftStart').classList.add('hidden');
             document.getElementById('auxClinicalForm').classList.remove('hidden');
-            initSigCanvas('auxSigCanvas'); initSigCanvas('famSigCanvas');
+            initSigCanvas('auxSigCanvas'); initSigCanvas('famSigCanvas'); initSigCanvas('leaveSigCanvas');
             startShiftTimer(); loadDailyHistory();
             showToast('Turno iniciado', 'success');
         } else { showToast(d.message || 'Error', 'error'); }
@@ -958,9 +968,6 @@ function renderMedications() {
         <input type="time" value="${m.time}" onchange="updateMedication(${m.id}, 'time', this.value)" title="Hora">
         <button class="btn-small btn-danger" onclick="removeMedication(${m.id})">✕</button>
     </div>`).join('');
-    // Ajustar grid para 5 columnas
-    const styleSheet = document.styleSheets[0];
-    styleSheet.insertRule('.med-item { grid-template-columns: 1.5fr 1fr 1fr 1fr auto; }', styleSheet.cssRules.length);
 }
 
 // ===== AUXILIAR: GUARDAR REGISTRO =====
@@ -1060,14 +1067,25 @@ async function closeShift() {
     if (!getChecked('familyAcceptsResponsibility')) return showToast('El familiar debe aceptar la responsabilidad', 'error');
     if (!getVal('familySignName') || !getVal('familySignId') || !getVal('familyRelationship')) return showToast('Datos del familiar incompletos', 'error');
     
-    if (getChecked('patientLeavesHome') && !getChecked('leaveLiabilityAck')) {
-        return showToast('El familiar debe aceptar la responsabilidad del traslado fuera del domicilio', 'error');
+    let leaveData = null;
+    if (getChecked('patientLeavesHome')) {
+        if (!getChecked('leaveLiabilityAck')) return showToast('El familiar debe aceptar la responsabilidad del traslado', 'error');
+        const leaveSig = document.getElementById('leaveSigCanvas').toDataURL();
+        // Validar que no esté en blanco la firma de salida
+        const blank = document.createElement('canvas'); blank.width = leaveSig.width; blank.height = leaveSig.height;
+        if (leaveSig === blank.toDataURL()) return showToast('El familiar debe firmar autorizando la salida (ARL)', 'error');
+        
+        leaveData = { 
+            transport: getVal('leaveTransport'), 
+            time: getVal('leaveTime'), 
+            returnTime: getVal('leaveReturnTime'), 
+            liabilityAck: true,
+            signature: leaveSig
+        };
     }
 
     const auxSig = document.getElementById('auxSigCanvas').toDataURL();
     const famSig = document.getElementById('famSigCanvas').toDataURL();
-    const patientLeaves = getChecked('patientLeavesHome');
-    const leaveData = patientLeaves ? { transport: getVal('leaveTransport'), time: getVal('leaveTime'), returnTime: getVal('leaveReturnTime'), liabilityAck: true } : null;
     const familyReceivedEducation = getChecked('familyReceivedEducation');
     const educationTopic = familyReceivedEducation ? getVal('educationTopicSelect') : null;
     const educationPhoto = familyReceivedEducation ? eduPhotoBase64 : null;
@@ -1077,7 +1095,7 @@ async function closeShift() {
         patientDeliveredNotes: getVal('patientDeliveredNotes'), pendingTasks: getVal('pendingTasks'),
         auxiliarySignature: auxSig, auxiliaryName: currentUser.full_name, auxiliaryIdNumber: currentUser.document_number,
         familySignature: famSig, familyName: getVal('familySignName'), familyIdNumber: getVal('familySignId'), familyRelationship: getVal('familyRelationship'), familyPhone: getVal('familyPhone'),
-        patientLeavesHome: patientLeaves, leaveData: leaveData, 
+        patientLeavesHome: getChecked('patientLeavesHome'), leaveData: leaveData, 
         familyAcceptsResponsibility: true, familyReceivedEducation: familyReceivedEducation, 
         educationTopicGiven: educationTopic, educationPhotoData: educationPhoto
     };
@@ -1183,20 +1201,33 @@ async function generateClosurePDF() {
             });
         }
 
-        // Sección de Salida del Paciente
+        // Sección de Salida del Paciente (ARL)
         const sig = signatures?.[0];
         if (sig?.patient_leaves_home) {
-            if (finalY > 220) { doc.addPage(); finalY = 30; }
-            doc.setFontSize(12); doc.setTextColor(239, 68, 68); doc.text("⚠️ SALIDA DEL PACIENTE (Autorización)", 14, finalY);
+            if (finalY > 200) { doc.addPage(); finalY = 30; }
+            doc.setFontSize(12); doc.setTextColor(239, 68, 68); // Rojo
+            doc.text("⚠️ AUTORIZACIÓN DE SALIDA DEL DOMICILIO (ARL)", 14, finalY);
             doc.setFontSize(10); doc.setTextColor(0);
             finalY += 7;
             doc.text(`Transporte: ${sig.leave_data?.transport || 'N/A'}`, 14, finalY);
             doc.text(`Hora Salida: ${formatTime12h(sig.leave_data?.time)}`, 14, finalY + 7);
             doc.text(`Hora Regreso: ${formatTime12h(sig.leave_data?.returnTime)}`, 14, finalY + 14);
-            doc.setFontSize(8); doc.setTextColor(100);
-            const warnText = doc.splitTextToSize("El familiar asume la responsabilidad total del traslado. Vital Hogar PRO no se hace responsable de eventos fuera del domicilio.", 180);
+            
+            doc.setFontSize(9); doc.setTextColor(100);
+            const warnText = doc.splitTextToSize("El familiar asume la responsabilidad total del traslado. Vital Hogar Pro y el auxiliar NO se hacen responsables de eventos fuera del domicilio.", 180);
             doc.text(warnText, 14, finalY + 21);
-            finalY += 30;
+            finalY += 21 + (warnText.length * 5) + 10; // Espacio para la firma
+
+            // Firma ARL
+            doc.setDrawColor(150); doc.setLineWidth(0.3);
+            if (sig.leave_data?.signature) {
+                try { doc.addImage(sig.leave_data.signature, 'PNG', 15, finalY, 60, 20); } catch(e) {}
+            }
+            doc.line(15, finalY + 25, 90, finalY + 25);
+            doc.setFontSize(9); doc.setTextColor(0);
+            doc.text(`Firma Familiar: ${sig?.family_name || ''}`, 15, finalY + 30);
+            doc.text(`C.C.: ${sig?.family_id_number || ''}`, 15, finalY + 35);
+            finalY += 45;
         }
 
         // Sección de Educación
@@ -1219,6 +1250,7 @@ async function generateClosurePDF() {
         doc.setDrawColor(150); doc.setLineWidth(0.3);
         
         // Auxiliar
+        doc.setFontSize(10); doc.setTextColor(0);
         doc.text("FIRMA AUXILIAR", 15, finalY);
         if (sig?.auxiliary_signature) { try { doc.addImage(sig.auxiliary_signature, 'PNG', 15, finalY + 2, 60, 20); } catch(e) {} }
         doc.line(15, finalY + 25, 90, finalY + 25);
@@ -1227,25 +1259,14 @@ async function generateClosurePDF() {
         doc.text(`C.C.: ${sig?.auxiliary_id_number || '________'}`, 15, finalY + 35);
         
         // Familiar
+        doc.setFontSize(10);
         doc.text("FIRMA FAMILIAR", 110, finalY);
         if (sig?.family_signature) { try { doc.addImage(sig.family_signature, 'PNG', 110, finalY + 2, 60, 20); } catch(e) {} }
         doc.line(110, finalY + 25, 190, finalY + 25);
+        doc.setFontSize(9);
         doc.text(`Nombre: ${sig?.family_name || '________________'}`, 110, finalY + 30);
         doc.text(`C.C.: ${sig?.family_id_number || '________'}`, 110, finalY + 35);
         doc.text(`Parentesco: ${sig?.family_relationship || '________'}`, 110, finalY + 40);
-
-        // Tercera firma si salió del domicilio
-        if (sig?.patient_leaves_home) {
-            finalY += 50;
-            if (finalY > 220) { doc.addPage(); finalY = 30; }
-            doc.setFontSize(10); doc.setTextColor(239, 68, 68);
-            doc.text("AUTORIZACIÓN DE SALIDA DEL DOMICILIO", 15, finalY);
-            doc.setTextColor(0); doc.setFontSize(9);
-            if (sig?.family_signature) { try { doc.addImage(sig.family_signature, 'PNG', 15, finalY + 2, 60, 20); } catch(e) {} }
-            doc.line(15, finalY + 25, 90, finalY + 25);
-            doc.text(`Familiar: ${sig?.family_name || ''}`, 15, finalY + 30);
-            doc.text(`C.C.: ${sig?.family_id_number || ''}`, 15, finalY + 35);
-        }
         
         doc.save(`Resumen_${shift?.patients?.full_name || 'paciente'}.pdf`);
         showToast('PDF generado');
