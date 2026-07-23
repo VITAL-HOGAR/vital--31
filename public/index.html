@@ -243,7 +243,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 
         <div id="admin_reports" class="hidden">
             <div class="card">
-                <h3><i class="fas fa-file-medical"></i> Generar Informe Mensual</h3>
+                <h3><i class="fas fa-file-medical"></i> Generar Informe Mensual Consolidado</h3>
                 <div class="form-group"><label>Paciente</label><select id="reportPatient"><option value="">Seleccionar...</option></select></div>
                 <div class="grid">
                     <div class="form-group"><label>Mes</label>
@@ -714,8 +714,82 @@ async function saveEdit() {
     } catch (e) { showToast('Error', 'error'); }
 }
 
-// ===== INFORMES PDF =====
-async function generateMonthlyPDF() { const pid = getVal('reportPatient'), m = getVal('reportMonth'), y = getVal('reportYear'); if (!pid) return showToast('Seleccione paciente', 'error'); try { const r = await fetch(`${API_URL}/api/reports/${pid}/${m}/${y}`); const res = await r.json(); if (!res.success) throw new Error(res.message); const { patient, records } = res.data; const { jsPDF } = window.jspdf; const doc = new jsPDF(); try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {} doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center"); doc.setFontSize(12); doc.text(`Informe Mensual - ${patient.full_name}`, 105, 30, null, null, "center"); doc.autoTable({ startY: 40, head: [['Fecha', 'PA', 'FC', 'SpO2']], body: records.map(r => [new Date(r.created_at).toLocaleDateString(), r.blood_pressure||'--', r.heart_rate||'--', r.spo2||'--']) }); let fY = doc.lastAutoTable.finalY + 20; doc.line(15, fY + 20, 85, fY + 20); const sig = document.getElementById('adminSigCanvas').toDataURL(); if (sig && sig !== 'data:,') { try { doc.addImage(sig, 'PNG', 20, fY, 50, 20); } catch(e) {} } doc.text(`Firma: ${currentUser.full_name}`, 15, fY + 26); doc.text(`Cargo: ${currentUser.specialty_name}`, 15, fY + 32); doc.save(`Informe_${patient.full_name}_${m}_${y}.pdf`); } catch (e) { showToast('Error: ' + e.message, 'error'); } }
+// ===== INFORMES PDF CONSOLIDADO =====
+async function generateMonthlyPDF() { 
+    const pid = getVal('reportPatient'), m = getVal('reportMonth'), y = getVal('reportYear'); 
+    if (!pid) return showToast('Seleccione paciente', 'error'); 
+    try { 
+        const r = await fetch(`${API_URL}/api/reports/${pid}/${m}/${y}`); 
+        const res = await r.json(); 
+        if (!res.success) throw new Error(res.message); 
+        const { patient, records, profRecords } = res.data; 
+        const { jsPDF } = window.jspdf; 
+        const doc = new jsPDF(); 
+        
+        try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {} 
+        doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center"); 
+        doc.setFontSize(12); doc.setTextColor(0); doc.text("Informe Clínico Mensual Consolidado", 105, 30, null, null, "center"); 
+        doc.setFontSize(10); 
+        doc.text(`Paciente: ${patient.full_name}`, 14, 45); 
+        doc.text(`Cédula: ${patient.document_number || 'N/A'}`, 14, 52); 
+        doc.text(`Período: ${m}/${y}`, 14, 59); 
+
+        let finalY = 70;
+        
+        // Sección Auxiliar
+        doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("1. Registros de Enfermería y Cuidados (Auxiliares)", 14, finalY);
+        finalY += 5;
+        if (records && records.length > 0) {
+            const tableData = records.map(r => [new Date(r.created_at).toLocaleDateString('es-CO'), r.blood_pressure || '--', r.heart_rate || '--', r.spo2 || '--', r.temperature || '--', r.notes || '']);
+            doc.autoTable({ startY: finalY, head: [['Fecha', 'PA', 'FC', 'SpO2', 'Temp', 'Notas']], body: tableData, headStyles: { fillColor: [34, 197, 94] } });
+            finalY = doc.lastAutoTable.finalY + 15;
+        } else {
+            doc.setFontSize(9); doc.setTextColor(100); doc.text("Sin registros de auxiliar en este período.", 14, finalY + 5); finalY += 15;
+        }
+
+        // Sección Profesionales
+        if (finalY > 240) { doc.addPage(); finalY = 20; }
+        doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("2. Notas de Evolución Profesionales", 14, finalY);
+        finalY += 7;
+        
+        if (profRecords && profRecords.length > 0) {
+            doc.setFontSize(9); doc.setTextColor(0);
+            profRecords.forEach(pr => {
+                if (finalY > 250) { doc.addPage(); finalY = 20; }
+                doc.setFontSize(10); doc.setTextColor(34, 197, 94);
+                doc.text(`${new Date(pr.created_at).toLocaleDateString('es-CO')} - ${pr.professionals?.full_name || ''} (${pr.professionals?.specialties?.name || ''})`, 14, finalY);
+                finalY += 6;
+                doc.setFontSize(9); doc.setTextColor(0);
+                if (pr.imc) { doc.text(`IMC: ${pr.imc}`, 14, finalY); finalY += 5; }
+                
+                const splitSub = doc.splitTextToSize(`S: ${pr.subjective || ''}`, 180);
+                doc.text(splitSub, 14, finalY); finalY += splitSub.length * 5;
+                const splitObj = doc.splitTextToSize(`O: ${pr.objective || ''}`, 180);
+                doc.text(splitObj, 14, finalY); finalY += splitObj.length * 5;
+                const splitAna = doc.splitTextToSize(`A: ${pr.analysis || ''}`, 180);
+                doc.text(splitAna, 14, finalY); finalY += splitAna.length * 5;
+                const splitPlan = doc.splitTextToSize(`P: ${pr.plan || ''}`, 180);
+                doc.text(splitPlan, 14, finalY); finalY += splitPlan.length * 5;
+                finalY += 10;
+            });
+        } else {
+            doc.setFontSize(9); doc.setTextColor(100); doc.text("Sin notas de evolución profesional en este período.", 14, finalY); finalY += 15;
+        }
+
+        // Firma
+        if (finalY > 240) { doc.addPage(); finalY = 30; } else { finalY += 10; }
+        doc.setDrawColor(0); doc.setLineWidth(0.5);
+        doc.text("FIRMA PROFESIONAL VALIDADOR", 15, finalY);
+        const adminSig = document.getElementById('adminSigCanvas').toDataURL();
+        if (adminSig && adminSig !== 'data:,') { try { doc.addImage(adminSig, 'PNG', 15, finalY + 2, 50, 20); } catch(e) {} }
+        doc.line(15, finalY + 25, 85, finalY + 25); // Línea debajo de la firma
+        doc.setFontSize(10);
+        doc.text(`Nombre: ${currentUser?.full_name || '________________'}`, 15, finalY + 31);
+        doc.text(`Cargo: ${currentUser?.specialty_name || 'Admin'}`, 15, finalY + 37);
+        
+        doc.save(`Informe_${patient.full_name}_${m}_${y}.pdf`); 
+    } catch (e) { showToast('Error: ' + e.message, 'error'); } 
+}
 
 // ===== AUXILIAR =====
 function toggleCustomShift() { document.getElementById('customShiftTimes').classList.toggle('hidden', getVal('shiftType') !== 'personalizado'); }
