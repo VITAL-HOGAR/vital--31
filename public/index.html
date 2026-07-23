@@ -272,7 +272,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
         <div id="admin_finance" class="hidden">
             <div class="card">
                 <h3>⚙️ Parámetros de Ley Vigentes</h3>
-                <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:10px;">Configura los valores legales actuales para el cálculo de liquidaciones.</p>
+                <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:10px;">Configura los valores legales actuales para el cálculo de liquidaciones de empleados.</p>
                 <input type="hidden" id="finParamId">
                 <div class="grid">
                     <div class="form-group"><label>Año Vigente</label><input type="number" id="finYear" value="2026"></div>
@@ -283,7 +283,23 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                     <div class="form-group"><label>Hora Inicio Noche (24h)</label><input type="number" id="finNightStart" value="19"></div>
                     <div class="form-group"><label>Hora Fin Noche (24h)</label><input type="number" id="finNightEnd" value="7"></div>
                 </div>
-                <button class="btn-primary" onclick="saveFinanceParams()"><i class="fas fa-save"></i> Guardar Parámetros</button>
+                <button class="btn-primary" onclick="saveFinanceParams()"><i class="fas fa-save"></i> Guardar Parámetros de Ley</button>
+            </div>
+
+            <div class="card">
+                <h3>💵 Tarifario para Clientes</h3>
+                <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:10px;">Configura cuánto se le cobra al cliente por cada tipo de turno.</p>
+                <input type="hidden" id="tariffId">
+                <div class="grid">
+                    <div class="form-group"><label>Turno 6h Diurno ($)</label><input type="number" id="t_6h_diurno"></div>
+                    <div class="form-group"><label>Turno 6h Nocturno ($)</label><input type="number" id="t_6h_nocturno"></div>
+                    <div class="form-group"><label>Turno 8h Diurno ($)</label><input type="number" id="t_8h_diurno"></div>
+                    <div class="form-group"><label>Turno 8h Nocturno ($)</label><input type="number" id="t_8h_nocturno"></div>
+                    <div class="form-group"><label>Turno 12h Diurno ($)</label><input type="number" id="t_12h_diurno"></div>
+                    <div class="form-group"><label>Turno 12h Nocturno ($)</label><input type="number" id="t_12h_nocturno"></div>
+                    <div class="form-group"><label>Turno 24h ($)</label><input type="number" id="t_24h"></div>
+                </div>
+                <button class="btn-primary" onclick="saveClientTariffs()"><i class="fas fa-save"></i> Guardar Tarifas Clientes</button>
             </div>
 
             <div class="card">
@@ -302,6 +318,24 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 </div>
                 <button class="btn-primary btn-info" onclick="calculateLiquidation()"><i class="fas fa-calculator"></i> Calcular Liquidación</button>
                 <div id="liquidationResult" class="hidden finance-result"></div>
+            </div>
+
+            <div class="card">
+                <h3>🧾 Facturación a Clientes (Cuenta de Cobro)</h3>
+                <div class="grid">
+                    <div class="form-group"><label>Paciente</label><select id="invoicePatient"><option value="">Seleccionar...</option></select></div>
+                    <div class="form-group"><label>Mes</label>
+                        <select id="invoiceMonth">
+                            <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
+                            <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
+                            <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
+                            <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Año</label><input type="number" id="invoiceYear" value="2026"></div>
+                </div>
+                <button class="btn-primary btn-info" onclick="calculateInvoice()"><i class="fas fa-calculator"></i> Generar Cuenta de Cobro</button>
+                <div id="invoiceResult" class="hidden finance-result"></div>
             </div>
         </div>
     </div>
@@ -636,6 +670,7 @@ let currentUser = null, selectedPatient = null, currentShiftId = null, lastClose
 let shiftTimerInterval = null, shiftStartTime = null, medications = [], meals = [], eduPhotoBase64 = null;
 let lastShiftData = null, profPhotoBase64 = null, lastProfRecordId = null;
 let lastLiquidationData = null; 
+let lastInvoiceData = null;
 
 // ===== UTILIDADES =====
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
@@ -679,7 +714,7 @@ function initApp() {
     document.getElementById('userName').textContent = currentUser.full_name; document.getElementById('userRoleDisplay').textContent = currentUser.specialty_name;
     if (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE') {
         document.getElementById('adminPanel').classList.remove('hidden');
-        loadDashboard(); loadProfs(); loadPats(); loadReportPatients(); loadEdus(); loadFinanceParams();
+        loadDashboard(); loadProfs(); loadPats(); loadReportPatients(); loadEdus(); loadFinanceParams(); loadClientTariffs();
         setTimeout(() => initSigCanvas('adminSigCanvas'), 100);
     } else if (currentUser.specialty_name === 'AUXILIAR_ENFERMERIA') {
         document.getElementById('auxPanel').classList.remove('hidden'); loadAuxPatients(); loadEdus();
@@ -698,7 +733,7 @@ async function loadPats() { try { const r = await fetch(`${API_URL}/api/patients
 async function createPat() { const p = { fullName: getVal('patName'), documentNumber: getVal('patDoc'), cityName: getVal('patCity'), familyName: getVal('famName'), contactPhone: getVal('famCel') }; if (!p.fullName) return showToast('Nombre obligatorio', 'error'); try { const r = await fetch(`${API_URL}/api/patients`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); if(d.success) { ['patName','patDoc','famName','famCel'].forEach(id => document.getElementById(id).value=''); loadPats(); loadDashboard(); } } catch (e) {} }
 async function loadEdus() { try { const r = await fetch(`${API_URL}/api/education/topics`); const d = await r.json(); const c = document.getElementById('eduList'); if(c) c.innerHTML = d.data.map(t => `<div class="sub-activity"><strong>${t.title}</strong><br><small>${t.description || ''}</small></div>`).join(''); const auxSelect = document.getElementById('educationTopicSelect'); if(auxSelect) { auxSelect.innerHTML = '<option value="">Seleccionar tema...</option>'; d.data.forEach(t => auxSelect.innerHTML += `<option value="${t.title}">${t.title}</option>`); } } catch (e) {} }
 async function createEdu() { const p = { title: getVal('eduTitle'), description: getVal('eduDesc'), responsibleId: getVal('eduResp') }; if (!p.title) return showToast('El título es obligatorio', 'error'); try { const r = await fetch(`${API_URL}/api/education/topics`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); if(d.success) { document.getElementById('eduTitle').value=''; document.getElementById('eduDesc').value=''; loadEdus(); } } catch (e) {} }
-async function loadReportPatients() { try { const r = await fetch(`${API_URL}/api/reports/pending`); const d = await r.json(); const s = document.getElementById('reportPatient'); s.innerHTML = '<option value="">Seleccionar...</option>'; if (d.data) d.data.forEach(p => s.innerHTML += `<option value="${p.id}">${p.full_name}</option>`); } catch (e) {} }
+async function loadReportPatients() { try { const r = await fetch(`${API_URL}/api/reports/pending`); const d = await r.json(); const s = document.getElementById('reportPatient'); const sInv = document.getElementById('invoicePatient'); s.innerHTML = '<option value="">Seleccionar...</option>'; sInv.innerHTML = '<option value="">Seleccionar...</option>'; if (d.data) d.data.forEach(p => { s.innerHTML += `<option value="${p.id}">${p.full_name}</option>`; sInv.innerHTML += `<option value="${p.id}">${p.full_name}</option>`; }); } catch (e) {} }
 
 // ===== MODAL EDITAR =====
 function openEditModal(type, id, name, doc, extra1, extra2, extra3) {
@@ -836,7 +871,7 @@ async function loadFinanceParams() {
         const d = await r.json();
         if (d.success && d.data) {
             document.getElementById('finParamId').value = d.data.id;
-            document.getElementById('finYear').value = d.data.year; // CARGA EL AÑO DESDE LA BD
+            document.getElementById('finYear').value = d.data.year;
             document.getElementById('finSmmlv').value = d.data.smmlv;
             document.getElementById('finSubsidy').value = d.data.subsidy_transport;
             document.getElementById('finNightPct').value = d.data.night_surcharge_percentage;
@@ -850,7 +885,7 @@ async function loadFinanceParams() {
 async function saveFinanceParams() {
     const id = getVal('finParamId');
     const payload = {
-        year: parseInt(getVal('finYear')) || 2026, // GUARDA EL AÑO EN LA BD
+        year: parseInt(getVal('finYear')) || 2026,
         smmlv: parseFloat(getVal('finSmmlv')) || 0,
         subsidy_transport: parseFloat(getVal('finSubsidy')) || 0,
         night_surcharge_percentage: parseFloat(getVal('finNightPct')) || 0,
@@ -865,6 +900,43 @@ async function saveFinanceParams() {
     } catch (e) { showToast('Error', 'error'); }
 }
 
+// TARIFAS CLIENTES
+async function loadClientTariffs() {
+    try {
+        const r = await fetch(`${API_URL}/api/finance/tariffs`);
+        const d = await r.json();
+        if (d.success && d.data) {
+            document.getElementById('tariffId').value = d.data.id;
+            document.getElementById('t_6h_diurno').value = d.data.t_6h_diurno;
+            document.getElementById('t_6h_nocturno').value = d.data.t_6h_nocturno;
+            document.getElementById('t_8h_diurno').value = d.data.t_8h_diurno;
+            document.getElementById('t_8h_nocturno').value = d.data.t_8h_nocturno;
+            document.getElementById('t_12h_diurno').value = d.data.t_12h_diurno;
+            document.getElementById('t_12h_nocturno').value = d.data.t_12h_nocturno;
+            document.getElementById('t_24h').value = d.data.t_24h;
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function saveClientTariffs() {
+    const id = getVal('tariffId');
+    const payload = {
+        t_6h_diurno: parseFloat(getVal('t_6h_diurno')) || 0,
+        t_6h_nocturno: parseFloat(getVal('t_6h_nocturno')) || 0,
+        t_8h_diurno: parseFloat(getVal('t_8h_diurno')) || 0,
+        t_8h_nocturno: parseFloat(getVal('t_8h_nocturno')) || 0,
+        t_12h_diurno: parseFloat(getVal('t_12h_diurno')) || 0,
+        t_12h_nocturno: parseFloat(getVal('t_12h_nocturno')) || 0,
+        t_24h: parseFloat(getVal('t_24h')) || 0
+    };
+    try {
+        const r = await fetch(`${API_URL}/api/finance/tariffs/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const d = await r.json();
+        showToast(d.message, d.success?'success':'error');
+    } catch (e) { showToast('Error', 'error'); }
+}
+
+// LIQUIDACIÓN EMPLEADOS
 async function calculateLiquidation() {
     const profId = getVal('liquidationProf');
     const month = getVal('liquidationMonth');
@@ -961,6 +1033,93 @@ function generateLiquidationPDF() {
     doc.text(`Total a Pagar: ${formatCurrency(lastLiquidationData.totalAmount)}`, 14, finalY + 10);
 
     doc.save(`Liquidacion_${profName}_${month}_${year}.pdf`);
+    showToast('PDF generado');
+}
+
+// FACTURACIÓN CLIENTES
+async function calculateInvoice() {
+    const patId = getVal('invoicePatient');
+    const month = getVal('invoiceMonth');
+    const year = getVal('invoiceYear');
+    if (!patId) return showToast('Seleccione un paciente', 'error');
+
+    try {
+        const r = await fetch(`${API_URL}/api/finance/invoice/${patId}/${month}/${year}`);
+        const d = await r.json();
+        if (d.success) {
+            lastInvoiceData = d.data;
+            renderInvoice(d.data);
+        } else {
+            showToast(d.message || 'Error', 'error');
+        }
+    } catch (e) { showToast('Error de conexión', 'error'); }
+}
+
+function renderInvoice(data) {
+    const container = document.getElementById('invoiceResult');
+    container.classList.remove('hidden');
+    
+    let detailsHtml = data.details.map(d => `
+        <tr>
+            <td>${d.date}</td>
+            <td>${d.service}</td>
+            <td>${d.auxiliaries}</td>
+            <td>${formatCurrency(d.amount)}</td>
+        </tr>
+    `).join('');
+
+    container.innerHTML = `
+        <h4 style="color: var(--primary);">Cuenta de Cobro Generada</h4>
+        <table style="margin-top: 10px;">
+            <thead>
+                <tr>
+                    <th>Fecha</th><th>Servicio</th><th>Auxiliar(es)</th><th>Valor</th>
+                </tr>
+            </thead>
+            <tbody>${detailsHtml}</tbody>
+        </table>
+        <div style="margin-top: 15px; text-align: right;">
+            <h3 style="color: var(--primary);">Total a Pagar: ${formatCurrency(data.totalAmount)}</h3>
+            <button class="btn-primary btn-warning" style="margin-top: 10px; width: auto; display: inline-block;" onclick="generateInvoicePDF()">
+                <i class="fas fa-file-pdf"></i> Descargar Cuenta de Cobro PDF
+            </button>
+        </div>
+    `;
+}
+
+function generateInvoicePDF() {
+    if (!lastInvoiceData) return showToast('Genere la cuenta de cobro primero', 'error');
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const patName = document.getElementById('invoicePatient').selectedOptions[0].text;
+    const month = document.getElementById('invoiceMonth').selectedOptions[0].text;
+    const year = document.getElementById('invoiceYear').value;
+
+    try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
+    doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
+    doc.setFontSize(12); doc.setTextColor(0); doc.text("Cuenta de Cobro", 105, 30, null, null, "center");
+    
+    doc.setFontSize(10);
+    doc.text(`Paciente: ${patName}`, 14, 45);
+    doc.text(`Período: ${month} ${year}`, 14, 52);
+
+    const tableData = lastInvoiceData.details.map(d => [
+        d.date, d.service, d.auxiliaries, formatCurrency(d.amount)
+    ]);
+
+    doc.autoTable({
+        startY: 60,
+        head: [['Fecha', 'Servicio Prestado', 'Auxiliar(es)', 'Valor']],
+        body: tableData,
+        headStyles: { fillColor: [34, 197, 94] },
+        styles: { fontSize: 8 }
+    });
+
+    let finalY = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(14); doc.setTextColor(34, 197, 94);
+    doc.text(`Total a Pagar: ${formatCurrency(lastInvoiceData.totalAmount)}`, 14, finalY);
+
+    doc.save(`Cuenta_Cobro_${patName}_${month}_${year}.pdf`);
     showToast('PDF generado');
 }
 
