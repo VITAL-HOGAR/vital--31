@@ -113,7 +113,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="form-group">
 <label>🔒 Contraseña</label>
 <input type="password" id="loginPassword" placeholder="Ingrese su contraseña" autocomplete="new-password">
-<button type="button" class="password-toggle" id="togglePassword">👁️</button>
+<button type="button" class="password-toggle" id="togglePassword" onclick="togglePass('loginPassword', this)">👁️</button>
 </div>
 <div id="loginError" style="color:var(--danger); font-size:0.85rem; margin-bottom:10px; text-align:center;"></div>
 <button class="btn-primary" id="loginBtn">Ingresar</button>
@@ -137,6 +137,32 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     </div>
 </div>
 
+<!-- MODAL EDITAR -->
+<div id="editModal" class="modal-overlay hidden">
+    <div class="card" style="max-width: 500px; width: 100%;">
+        <h3 id="editModalTitle" style="text-align:center; color: var(--primary);">Editar Datos</h3>
+        <input type="hidden" id="editId">
+        <input type="hidden" id="editType">
+        <div class="form-group"><label>Nombre Completo</label><input type="text" id="editName"></div>
+        <div class="form-group"><label>Cédula</label><input type="text" id="editDoc"></div>
+        <div class="form-group" id="editCardGroup" class="hidden"><label>Tarjeta Profesional</label><input type="text" id="editCard"></div>
+        <div class="form-group" id="editSpecGroup" class="hidden"><label>Especialidad</label>
+            <select id="editSpec">
+                <option value="ADMINISTRACION">Administración</option><option value="ENFERMERIA_JEFE">Enfermería Jefe</option>
+                <option value="AUXILIAR_ENFERMERIA">Auxiliar de Enfermería</option><option value="MEDICINA">Medicina</option>
+                <option value="FISIOTERAPIA">Fisioterapia</option><option value="FONOAUDIOLOGIA">Fonoaudiología</option>
+                <option value="TERAPIA_OCUPACIONAL">Terapia Ocupacional</option><option value="PSICOLOGIA">Psicología</option>
+                <option value="NUTRICION">Nutrición</option><option value="TRABAJO_SOCIAL">Trabajo Social</option>
+            </select>
+        </div>
+        <div class="form-group" id="editCityGroup" class="hidden"><label>Ciudad</label><select id="editCity"></select></div>
+        <div class="form-group" id="editFamGroup" class="hidden"><label>Familiar</label><input type="text" id="editFam"></div>
+        <div class="form-group" id="editPhoneGroup" class="hidden"><label>Celular</label><input type="tel" id="editPhone"></div>
+        <button class="btn-primary" onclick="saveEdit()">Guardar Cambios</button>
+        <button class="btn-primary btn-secondary" onclick="closeEditModal()" style="margin-top:5px;">Cancelar</button>
+    </div>
+</div>
+
 <!-- MAIN APP -->
 <div id="mainScreen" class="hidden">
     <!-- ADMIN PANEL -->
@@ -149,6 +175,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
         <div class="tabs" id="adminTabs">
             <div class="tab active" onclick="showAdminTab('prof', this)">👥 Profesionales</div>
             <div class="tab" onclick="showAdminTab('pat', this)">🏥 Pacientes</div>
+            <div class="tab" onclick="showAdminTab('edu', this)">🎓 Educación</div>
             <div class="tab" onclick="showAdminTab('reports', this)">📄 Informes</div>
         </div>
 
@@ -160,7 +187,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                     <div class="form-group"><label>Cédula *</label><input type="text" id="pDoc"></div>
                     <div class="form-group"><label>Tarjeta Profesional / RETHUS</label><input type="text" id="pCard"></div>
                     <div class="form-group"><label>Correo *</label><input type="email" id="pEmail" autocomplete="off"></div>
-                    <div class="form-group"><label>Contraseña *</label><input type="password" id="pPass" autocomplete="new-password"></div>
+                    <div class="form-group"><label>Contraseña *</label><input type="password" id="pPass" autocomplete="new-password"><button type="button" class="password-toggle" onclick="togglePass('pPass', this)">👁️</button></div>
                     <div class="form-group"><label>Especialidad (Ley Colombiana)</label>
                     <select id="pSpec">
                         <option value="ADMINISTRACION">Administración</option>
@@ -197,6 +224,20 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             </div>
             <div class="card">
                 <table id="patTable"><thead><tr><th>Nombre</th><th>Ciudad</th><th>Familiar</th><th>Celular</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+            </div>
+        </div>
+
+        <div id="admin_edu" class="hidden">
+            <div class="card">
+                <h3>Asignar Tema Educativo</h3>
+                <div class="form-group"><label>Título del Tema *</label><input type="text" id="eduTitle" placeholder="Ej: Manejo de sonda vesical"></div>
+                <div class="form-group"><label>Descripción</label><textarea id="eduDesc" rows="2"></textarea></div>
+                <div class="form-group"><label>Responsable de dictarlo</label><select id="eduResp"><option value="">Seleccionar profesional...</option></select></div>
+                <button class="btn-primary" onclick="createEdu()"><i class="fas fa-save"></i> Guardar Tema</button>
+            </div>
+            <div class="card">
+                <h3>Temas Educativos Registrados</h3>
+                <div id="eduList"></div>
             </div>
         </div>
 
@@ -488,8 +529,8 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 <h3>Nota de Evolución - <span id="profPatientName" style="color: var(--primary);"></span></h3>
                 <h4>Signos Vitales y Antropometría</h4>
                 <div class="grid">
-                    <div class="form-group"><label>PA (mmHg)</label><input type="text" id="profBP" placeholder="120/80"></div>
-                    <div class="form-group"><label>FC (lpm)</label><input type="number" id="profHR" placeholder="80"></div>
+                    <div class="form-group"><label>PA (mmHg)</label><input type="text" id="profBP" placeholder="120/80" oninput="checkProfVital('bp')"><div id="profBPAlert" class="vital-status"></div></div>
+                    <div class="form-group"><label>FC (lpm)</label><input type="number" id="profHR" placeholder="80" oninput="checkProfVital('hr')"><div id="profHRAlert" class="vital-status"></div></div>
                     <div class="form-group"><label>Peso (kg)</label><input type="number" step="0.1" id="profWeight" oninput="calculateIMC()" placeholder="70"></div>
                     <div class="form-group"><label>Talla (cm)</label><input type="number" step="0.1" id="profHeight" oninput="calculateIMC()" placeholder="170"></div>
                 </div>
@@ -562,6 +603,7 @@ function getVal(id) { const el = document.getElementById(id); return el ? el.val
 function getChecked(id) { const el = document.getElementById(id); return el ? el.checked : false; }
 function getRangoSpO2(c) { return CIUDADES_COLOMBIA[c] || CIUDADES_COLOMBIA['Bogotá']; }
 function formatTime12h(t) { if(!t) return 'N/A'; const [h,m] = t.split(':'); const hr = parseInt(h); return `${hr%12||12}:${m} ${hr>=12?'PM':'AM'}`; }
+function togglePass(id, btn) { const i = document.getElementById(id); i.type = i.type === 'password' ? 'text' : 'password'; btn.textContent = i.type === 'password' ? '👁️' : '🙈'; }
 
 // ===== AUTENTICACIÓN =====
 function openResetModal() { document.getElementById('resetModal').classList.remove('hidden'); }
@@ -596,23 +638,83 @@ function initApp() {
     document.getElementById('userName').textContent = currentUser.full_name; document.getElementById('userRoleDisplay').textContent = currentUser.specialty_name;
     if (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE') {
         document.getElementById('adminPanel').classList.remove('hidden');
-        loadProfs(); loadPats(); loadReportPatients();
+        loadDashboard(); loadProfs(); loadPats(); loadReportPatients(); loadEdus();
         setTimeout(() => initSigCanvas('adminSigCanvas'), 100);
     } else if (currentUser.specialty_name === 'AUXILIAR_ENFERMERIA') {
-        document.getElementById('auxPanel').classList.remove('hidden'); loadAuxPatients();
+        document.getElementById('auxPanel').classList.remove('hidden'); loadAuxPatients(); loadEdus();
     } else {
         document.getElementById('profPanel').classList.remove('hidden'); loadProfPatients();
     }
 }
 
 // ===== ADMIN =====
-function showAdminTab(tab, btn) { ['admin_prof', 'admin_pat', 'admin_reports'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById('admin_'+tab).classList.remove('hidden'); document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); if (tab === 'reports') setTimeout(() => initSigCanvas('adminSigCanvas'), 100); }
-async function loadProfs() { try { const r = await fetch(`${API_URL}/api/professionals`); const d = await r.json(); document.querySelector('#profTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.document_number}</td><td>${p.specialties?.name||'N/A'}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small ${p.is_active?'btn-danger':'btn-warning'}" onclick="toggleProf('${p.id}', ${p.is_active})">${p.is_active?'Desactivar':'Activar'}</button></td></tr>`).join(''); } catch (e) {} }
-async function createProf() { const p = { fullName: getVal('pName'), documentNumber: getVal('pDoc'), professionalCard: getVal('pCard'), email: getVal('pEmail'), password: getVal('pPass'), specialtyName: getVal('pSpec') }; if (!p.fullName || !p.email || !p.password) return showToast('Campos obligatorios', 'error'); try { const r = await fetch(`${API_URL}/api/professionals`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); if(d.success) { ['pName','pDoc','pCard','pEmail','pPass'].forEach(id => document.getElementById(id).value=''); loadProfs(); } } catch (e) {} }
-async function toggleProf(id, s) { try { await fetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: !s }) }); loadProfs(); } catch (e) {} }
-async function loadPats() { try { const r = await fetch(`${API_URL}/api/patients`); const d = await r.json(); document.querySelector('#patTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.altitude_profiles?.city_name||'N/A'}</td><td>${p.family_name||'N/A'}</td><td>${p.contact_phone||'N/A'}</td><td>${p.is_active?'✅':'❌'}</td><td>-</td></tr>`).join(''); } catch (e) {} }
-async function createPat() { const p = { fullName: getVal('patName'), documentNumber: getVal('patDoc'), cityName: getVal('patCity'), familyName: getVal('famName'), contactPhone: getVal('famCel') }; if (!p.fullName) return showToast('Nombre obligatorio', 'error'); try { const r = await fetch(`${API_URL}/api/patients`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); if(d.success) { ['patName','patDoc','famName','famCel'].forEach(id => document.getElementById(id).value=''); loadPats(); } } catch (e) {} }
+function showAdminTab(tab, btn) { ['admin_prof', 'admin_pat', 'admin_edu', 'admin_reports'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById('admin_'+tab).classList.remove('hidden'); document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); if (tab === 'reports') setTimeout(() => initSigCanvas('adminSigCanvas'), 100); }
+async function loadDashboard() { try { const r = await fetch(`${API_URL}/api/dashboard/stats`); const d = await r.json(); if (d.success) { document.getElementById('statPat').innerText = d.data.patients || 0; document.getElementById('statProf').innerText = d.data.professionals || 0; document.getElementById('statReports').innerText = d.data.pendingReports || 0; } } catch (e) {} }
+async function loadProfs() { try { const r = await fetch(`${API_URL}/api/professionals`); const d = await r.json(); document.querySelector('#profTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.document_number}</td><td>${p.specialties?.name||'N/A'}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-warning" onclick="openEditModal('prof','${p.id}','${p.full_name}','${p.document_number}','${p.professional_card||''}','${p.specialties?.name||''}')">Editar</button> <button class="btn-small ${p.is_active?'btn-danger':'btn-secondary'}" onclick="toggleProf('${p.id}', ${p.is_active})">${p.is_active?'Desactivar':'Activar'}</button></td></tr>`).join(''); const eduRespSelect = document.getElementById('eduResp'); eduRespSelect.innerHTML = '<option value="">Seleccionar profesional...</option>'; d.data.filter(p => p.is_active).forEach(p => { eduRespSelect.innerHTML += `<option value="${p.id}">${p.full_name} (${p.specialties?.name || 'N/A'})</option>`; }); } catch (e) {} }
+async function createProf() { const p = { fullName: getVal('pName'), documentNumber: getVal('pDoc'), professionalCard: getVal('pCard'), email: getVal('pEmail'), password: getVal('pPass'), specialtyName: getVal('pSpec') }; if (!p.fullName || !p.email || !p.password) return showToast('Campos obligatorios', 'error'); try { const r = await fetch(`${API_URL}/api/professionals`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); if(d.success) { ['pName','pDoc','pCard','pEmail','pPass'].forEach(id => document.getElementById(id).value=''); loadProfs(); loadDashboard(); } } catch (e) {} }
+async function toggleProf(id, s) { try { await fetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: !s }) }); loadProfs(); loadDashboard(); } catch (e) {} }
+async function loadPats() { try { const r = await fetch(`${API_URL}/api/patients`); const d = await r.json(); document.querySelector('#patTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.altitude_profiles?.city_name||'N/A'}</td><td>${p.family_name||'N/A'}</td><td>${p.contact_phone||'N/A'}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-warning" onclick="openEditModal('pat','${p.id}','${p.full_name}','${p.document_number}','${p.family_name||''}','${p.contact_phone||''}','${p.altitude_profiles?.city_name||''}')">Editar</button></td></tr>`).join(''); } catch (e) {} }
+async function createPat() { const p = { fullName: getVal('patName'), documentNumber: getVal('patDoc'), cityName: getVal('patCity'), familyName: getVal('famName'), contactPhone: getVal('famCel') }; if (!p.fullName) return showToast('Nombre obligatorio', 'error'); try { const r = await fetch(`${API_URL}/api/patients`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); if(d.success) { ['patName','patDoc','famName','famCel'].forEach(id => document.getElementById(id).value=''); loadPats(); loadDashboard(); } } catch (e) {} }
+async function loadEdus() { try { const r = await fetch(`${API_URL}/api/education/topics`); const d = await r.json(); const c = document.getElementById('eduList'); if(c) c.innerHTML = d.data.map(t => `<div class="sub-activity"><strong>${t.title}</strong><br><small>${t.description || ''}</small></div>`).join(''); const auxSelect = document.getElementById('educationTopicSelect'); if(auxSelect) { auxSelect.innerHTML = '<option value="">Seleccionar tema...</option>'; d.data.forEach(t => auxSelect.innerHTML += `<option value="${t.title}">${t.title}</option>`); } } catch (e) {} }
+async function createEdu() { const p = { title: getVal('eduTitle'), description: getVal('eduDesc'), responsibleId: getVal('eduResp') }; if (!p.title) return showToast('El título es obligatorio', 'error'); try { const r = await fetch(`${API_URL}/api/education/topics`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); if(d.success) { document.getElementById('eduTitle').value=''; document.getElementById('eduDesc').value=''; loadEdus(); } } catch (e) {} }
 async function loadReportPatients() { try { const r = await fetch(`${API_URL}/api/reports/pending`); const d = await r.json(); const s = document.getElementById('reportPatient'); s.innerHTML = '<option value="">Seleccionar...</option>'; if (d.data) d.data.forEach(p => s.innerHTML += `<option value="${p.id}">${p.full_name}</option>`); } catch (e) {} }
+
+// ===== MODAL EDITAR =====
+function openEditModal(type, id, name, doc, extra1, extra2, extra3) {
+    document.getElementById('editId').value = id;
+    document.getElementById('editType').value = type;
+    document.getElementById('editName').value = name;
+    document.getElementById('editDoc').value = doc;
+    
+    document.getElementById('editCardGroup').classList.add('hidden');
+    document.getElementById('editSpecGroup').classList.add('hidden');
+    document.getElementById('editCityGroup').classList.add('hidden');
+    document.getElementById('editFamGroup').classList.add('hidden');
+    document.getElementById('editPhoneGroup').classList.add('hidden');
+
+    if (type === 'prof') {
+        document.getElementById('editModalTitle').innerText = 'Editar Profesional';
+        document.getElementById('editCardGroup').classList.remove('hidden');
+        document.getElementById('editCard').value = extra1 || '';
+        document.getElementById('editSpecGroup').classList.remove('hidden');
+        document.getElementById('editSpec').value = extra2 || 'ADMINISTRACION';
+    } else {
+        document.getElementById('editModalTitle').innerText = 'Editar Paciente';
+        document.getElementById('editFamGroup').classList.remove('hidden');
+        document.getElementById('editFam').value = extra1 || '';
+        document.getElementById('editPhoneGroup').classList.remove('hidden');
+        document.getElementById('editPhone').value = extra2 || '';
+        document.getElementById('editCityGroup').classList.remove('hidden');
+        const editCitySelect = document.getElementById('editCity');
+        editCitySelect.innerHTML = '';
+        Object.keys(CIUDADES_COLOMBIA).forEach(c => { editCitySelect.innerHTML += `<option value="${c}" ${c===extra3?'selected':''}>${c}</option>`; });
+    }
+    document.getElementById('editModal').classList.remove('hidden');
+}
+function closeEditModal() { document.getElementById('editModal').classList.add('hidden'); }
+async function saveEdit() {
+    const id = document.getElementById('editId').value;
+    const type = document.getElementById('editType').value;
+    const payload = { fullName: getVal('editName'), documentNumber: getVal('editDoc') };
+    
+    if (type === 'prof') {
+        payload.professionalCard = getVal('editCard');
+        payload.specialtyName = getVal('editSpec');
+    } else {
+        payload.familyName = getVal('editFam');
+        payload.contactPhone = getVal('editPhone');
+        payload.cityName = getVal('editCity');
+    }
+
+    try {
+        const r = await fetch(`${API_URL}/api/${type === 'prof' ? 'professionals' : 'patients'}/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const d = await r.json();
+        showToast(d.message, d.success?'success':'error');
+        if (d.success) { closeEditModal(); if (type === 'prof') loadProfs(); else loadPats(); }
+    } catch (e) { showToast('Error', 'error'); }
+}
+
+// ===== INFORMES PDF =====
 async function generateMonthlyPDF() { const pid = getVal('reportPatient'), m = getVal('reportMonth'), y = getVal('reportYear'); if (!pid) return showToast('Seleccione paciente', 'error'); try { const r = await fetch(`${API_URL}/api/reports/${pid}/${m}/${y}`); const res = await r.json(); if (!res.success) throw new Error(res.message); const { patient, records } = res.data; const { jsPDF } = window.jspdf; const doc = new jsPDF(); try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {} doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center"); doc.setFontSize(12); doc.text(`Informe Mensual - ${patient.full_name}`, 105, 30, null, null, "center"); doc.autoTable({ startY: 40, head: [['Fecha', 'PA', 'FC', 'SpO2']], body: records.map(r => [new Date(r.created_at).toLocaleDateString(), r.blood_pressure||'--', r.heart_rate||'--', r.spo2||'--']) }); let fY = doc.lastAutoTable.finalY + 20; doc.line(15, fY + 20, 85, fY + 20); const sig = document.getElementById('adminSigCanvas').toDataURL(); if (sig && sig !== 'data:,') { try { doc.addImage(sig, 'PNG', 20, fY, 50, 20); } catch(e) {} } doc.text(`Firma: ${currentUser.full_name}`, 15, fY + 26); doc.text(`Cargo: ${currentUser.specialty_name}`, 15, fY + 32); doc.save(`Informe_${patient.full_name}_${m}_${y}.pdf`); } catch (e) { showToast('Error: ' + e.message, 'error'); } }
 
 // ===== AUXILIAR =====
@@ -645,9 +747,10 @@ async function generateClosurePDF() { if (!lastClosedShiftId) return; try { cons
 // ===== PROFESIONALES (FASE 2) =====
 async function loadProfPatients() { try { const r = await fetch(`${API_URL}/api/auxiliar/patients`); const d = await r.json(); const c = document.getElementById('profPatientList'); if (!d.data || d.data.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay pacientes activos</p>'; return; } c.innerHTML = d.data.map(p => `<div class="card" style="cursor:pointer; border-left: 4px solid var(--info);" onclick='selectProfPatient(${JSON.stringify(p)})'><strong>${p.full_name}</strong><br><small>${p.pathology_summary || 'Sin patología'}</small></div>`).join(''); } catch (e) {} }
 function selectProfPatient(p) { selectedPatient = p; document.getElementById('profPatientName').innerText = p.full_name; document.getElementById('profPatientSelection').classList.add('hidden'); document.getElementById('profClinicalForm').classList.remove('hidden'); initSigCanvas('profSigCanvas'); initSigCanvas('famProfSigCanvas'); }
+function checkProfVital(t) { const ch = { bp: () => { const m = getVal('profBP').match(/(\d+)\/(\d+)/); if(!m) return {s:'none'}; const [s,d]=[parseInt(m[1]),parseInt(m[2])]; if(s<80||s>=160||d<50||d>=100) return {s:'danger',m:'🔴 CRÍTICO'}; if(s<90||s>=140||d<60||d>=90) return {s:'warning',m:'🟡 ALERTA'}; return {s:'normal',m:'🟢 Normal'}; }, hr: () => { const v=parseInt(getVal('profHR')); if(!v) return {s:'none'}; if(v<50||v>=120) return {s:'danger',m:'🔴 CRÍTICO'}; if(v<60||v>100) return {s:'warning',m:'🟡 ALERTA'}; return {s:'normal',m:'🟢 Normal'}; } }; const r = ch[t](); const ids = {bp:'profBP',hr:'profHR'}; const aD = document.getElementById('prof' + t.toUpperCase() + 'Alert'); const inp = document.getElementById(ids[t]); if (r.s === 'none') { aD.classList.remove('show'); inp.className = ''; } else { aD.className = `vital-status show ${r.s}`; aD.innerHTML = r.m; inp.className = `vital-${r.s}`; } }
 function calculateIMC() { const w = parseFloat(getVal('profWeight')); const h = parseFloat(getVal('profHeight')) / 100; if (w > 0 && h > 0) { const i = (w / (h * h)).toFixed(1); document.getElementById('profIMC').value = i; let c = ''; if (i < 18.5) c = 'Bajo peso'; else if (i < 25) c = 'Normal'; else if (i < 30) c = 'Sobrepeso'; else c = 'Obesidad'; document.getElementById('imcResult').innerText = `Clasificación: ${c}`; } else { document.getElementById('profIMC').value = ''; document.getElementById('imcResult').innerText = ''; } }
 function previewProfPhoto(i) { const f = i.files[0]; if (!f) return; const r = new FileReader(); r.onload = (e) => { profPhotoBase64 = e.target.result; const p = document.getElementById('profPhotoPreview'); p.src = profPhotoBase64; p.classList.remove('hidden'); }; r.readAsDataURL(f); }
-async function saveProfRecord() { if (!getVal('profFamName') || !getVal('profFamId')) return showToast('Datos familiar incompletos', 'error'); const p = { patientId: selectedPatient.id, professionalId: currentUser.id, recordType: `Nota de Evolución - ${currentUser.specialty_name}`, weight: parseFloat(getVal('profWeight')) || null, height: parseFloat(getVal('profHeight')) || null, imc: parseFloat(getVal('profIMC')) || null, vitalSigns: { pa: getVal('profBP'), hr: getVal('profHR') }, subjective: getVal('profSubjective'), objective: getVal('profObjective'), analysis: getVal('profAnalysis'), plan: getVal('profPlan'), photoData: profPhotoBase64, professionalSignature: document.getElementById('profSigCanvas').toDataURL(), familySignature: document.getElementById('famProfSigCanvas').toDataURL(), familyName: getVal('profFamName'), familyId: getVal('profFamId') }; try { const r = await fetch(`${API_URL}/api/professional-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); if (d.success) { showToast('Nota de evolución guardada'); lastProfRecordId = d.data.id; document.getElementById('generateProfPDFBtn').classList.remove('hidden'); } } catch (e) {} }
+async function saveProfRecord() { if (!getVal('profFamName') || !getVal('profFamId')) return showToast('Datos familiar incompletos', 'error'); const p = { patientId: selectedPatient.id, professionalId: currentUser.id, recordType: `Nota de Evolución - ${currentUser.specialty_name}`, weight: parseFloat(getVal('profWeight')) || null, height: parseFloat(getVal('profHeight')) || null, imc: parseFloat(getVal('profIMC')) || null, vitalSigns: { pa: getVal('profBP'), hr: getVal('profHR') }, subjective: getVal('profSubjective'), objective: getVal('profObjective'), analysis: getVal('profAnalysis'), plan: getVal('profPlan'), photoData: profPhotoBase64, professionalSignature: document.getElementById('profSigCanvas').toDataURL(), familySignature: document.getElementById('famProfSigCanvas').toDataURL(), familyName: getVal('profFamName'), familyId: getVal('profFamId') }; try { const r = await fetch(`${API_URL}/api/professional-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); if (d.success) { showToast('Nota de evolución guardada'); lastProfRecordId = d.data.id; document.getElementById('generateProfPDFBtn').classList.remove('hidden'); } else { showToast(d.message || 'Error al guardar', 'error'); } } catch (e) { showToast('Error de conexión', 'error'); } }
 function generateProfPDF() { if (!lastProfRecordId) return; const { jsPDF } = window.jspdf; const doc = new jsPDF(); try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {} doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center"); doc.setFontSize(12); doc.setTextColor(0); doc.text("Informe de Evolución Profesional", 105, 30, null, null, "center"); doc.setFontSize(10); doc.text(`Paciente: ${selectedPatient.full_name}`, 14, 45); doc.text(`Cédula: ${selectedPatient.document_number || 'N/A'}`, 14, 52); doc.text(`Fecha: ${new Date().toLocaleString('es-CO')}`, 14, 59); doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Datos Clínicos", 14, 70); doc.setFontSize(10); doc.setTextColor(0); doc.text(`PA: ${getVal('profBP') || '--'} | FC: ${getVal('profHR') || '--'}`, 14, 77); doc.text(`Peso: ${getVal('profWeight') || '--'} kg | Talla: ${getVal('profHeight') || '--'} cm | IMC: ${getVal('profIMC') || '--'} (${document.getElementById('imcResult').innerText})`, 14, 84); let y = 95; doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Nota SOAP", 14, y); doc.setFontSize(10); doc.setTextColor(0); y += 7; doc.text(`S (Subjetivo): ${getVal('profSubjective') || 'N/A'}`, 14, y); y += 14; doc.text(`O (Objetivo): ${getVal('profObjective') || 'N/A'}`, 14, y); y += 14; doc.text(`A (Análisis): ${getVal('profAnalysis') || 'N/A'}`, 14, y); y += 14; doc.text(`P (Plan): ${getVal('profPlan') || 'N/A'}`, 14, y); y += 14; if (profPhotoBase64) { doc.text("Evidencia Fotográfica:", 14, y); y += 7; try { doc.addImage(profPhotoBase64, 'JPEG', 14, y, 60, 40); y += 45; } catch(e) {} } if (y > 220) { doc.addPage(); y = 30; } doc.setDrawColor(150); doc.setLineWidth(0.3); const pS = document.getElementById('profSigCanvas').toDataURL(); const fS = document.getElementById('famProfSigCanvas').toDataURL(); doc.text("FIRMA PROFESIONAL", 15, y); if (pS && pS !== 'data:,') { try { doc.addImage(pS, 'PNG', 15, y + 2, 60, 20); } catch(e) {} } doc.line(15, y + 25, 90, y + 25); doc.setFontSize(9); doc.text(`Nombre: ${currentUser.full_name}`, 15, y + 30); doc.text(`C.C.: ${currentUser.document_number}`, 15, y + 35); doc.text(`T.P./RETHUS: ${currentUser.professional_card || 'N/A'}`, 15, y + 40); doc.text(`Especialidad: ${currentUser.specialty_name}`, 15, y + 45); doc.setFontSize(10); doc.text("FIRMA FAMILIAR (TESTIGO)", 110, y); if (fS && fS !== 'data:,') { try { doc.addImage(fS, 'PNG', 110, y + 2, 60, 20); } catch(e) {} } doc.line(110, y + 25, 190, y + 25); doc.setFontSize(9); doc.text(`Nombre: ${getVal('profFamName')}`, 110, y + 30); doc.text(`C.C.: ${getVal('profFamId')}`, 110, y + 35); doc.save(`Evolucion_${selectedPatient.full_name}_${currentUser.full_name}.pdf`); showToast('PDF generado'); }
 
 // ===== FIRMAS CANVAS =====
@@ -659,7 +762,6 @@ function startDictation(id) { const b = event.target.closest('button'); if (!('w
 
 // ===== INICIALIZACIÓN =====
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('togglePassword').addEventListener('click', function() { const i = document.getElementById('loginPassword'); i.type = i.type === 'password' ? 'text' : 'password'; this.textContent = i.type === 'password' ? '👁️' : '🙈'; });
     document.getElementById('loginBtn').addEventListener('click', login);
     const p = document.getElementById('patCity'); if (p) { Object.keys(CIUDADES_COLOMBIA).forEach(c => { p.innerHTML += `<option value="${c}">${c}</option>`; }); }
     if (localStorage.getItem('vital_user')) initApp();
