@@ -576,7 +576,6 @@ app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res
     }
 });
 
-// FACTURACIÓN PARA CLIENTES
 app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
     try {
         const { patientId, month, year } = req.params;
@@ -676,7 +675,7 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
 });
 
 // ==========================================
-// 9. AGENDA Y PROGRAMACIÓN DE TURNOS (NUEVO)
+// 9. AGENDA Y PROGRAMACIÓN DE TURNOS
 // ==========================================
 app.get('/api/scheduled-shifts', async (req, res) => {
     try {
@@ -716,6 +715,39 @@ app.post('/api/scheduled-shifts', async (req, res) => {
         }]);
         if (error) throw error;
         res.json({ success: true, message: 'Turno programado exitosamente' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ==========================================
+// 10. MENSAJERÍA Y ALERTAS (NUEVO)
+// ==========================================
+app.get('/api/messages', async (req, res) => {
+    try {
+        const { data, error } = await supabase.from('internal_messages')
+            .select('*, patients(full_name)')
+            .order('created_at', { ascending: true })
+            .limit(100);
+        if (error) throw error;
+        res.json({ success: true, data: data || [] });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.post('/api/messages', async (req, res) => {
+    try {
+        const { patientId, shiftId, senderId, senderName, message, isAlert } = req.body;
+        if (!senderId || !message) return res.status(400).json({ success: false, message: 'Mensaje vacío o sin remitente' });
+
+        const { error } = await supabase.from('internal_messages').insert([{
+            patient_id: patientId || null, shift_id: shiftId || null,
+            sender_id: senderId, sender_name: senderName || 'Usuario',
+            message: message, is_alert: isAlert || false, is_read: false
+        }]);
+        if (error) throw error;
+        res.json({ success: true, message: 'Mensaje enviado' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
