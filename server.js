@@ -33,14 +33,10 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        if (!email || !password) {
-            return res.status(400).json({ success: false, message: 'Email y contraseña son requeridos' });
-        }
+        if (!email || !password) return res.status(400).json({ success: false, message: 'Email y contraseña son requeridos' });
 
         const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-        if (authError || !authData?.user) {
-            return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
-        }
+        if (authError || !authData?.user) return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
 
         const { data: profData, error: profError } = await supabase
             .from('professionals')
@@ -48,9 +44,7 @@ app.post('/api/auth/login', async (req, res) => {
             .eq('user_id', authData.user.id)
             .single();
 
-        if (profError || !profData) {
-            return res.status(404).json({ success: false, message: 'Perfil no encontrado' });
-        }
+        if (profError || !profData) return res.status(404).json({ success: false, message: 'Perfil no encontrado' });
 
         const token = jwt.sign(
             { id: profData.id, role: profData.specialty_id },
@@ -71,7 +65,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
         if (!email) return res.status(400).json({ success: false, message: 'Email requerido' });
         
         const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: 'https://vital-hogar-31.onrender.com' // Cambia esto si tienes un dominio propio
+            redirectTo: 'https://vital-hogar-31.onrender.com'
         });
 
         if (error) throw error;
@@ -145,7 +139,6 @@ app.post('/api/professionals', async (req, res) => {
     }
 });
 
-// NUEVO: EDITAR PROFESIONAL
 app.patch('/api/professionals/:id', async (req, res) => {
     try {
         const { fullName, documentNumber, professionalCard, specialtyName } = req.body;
@@ -222,7 +215,6 @@ app.post('/api/patients', async (req, res) => {
     }
 });
 
-// NUEVO: EDITAR PACIENTE
 app.patch('/api/patients/:id', async (req, res) => {
     try {
         const { fullName, documentNumber, cityName, familyName, contactPhone } = req.body;
@@ -468,7 +460,7 @@ app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
 });
 
 // ==========================================
-// 7. INFORMES
+// 7. INFORMES CONSOLIDADOS (MEJORADO)
 // ==========================================
 app.get('/api/reports/pending', async (req, res) => {
     try {
@@ -491,9 +483,7 @@ app.get('/api/reports/:patientId/:month/:year', async (req, res) => {
         const monthNum = parseInt(month);
         const yearNum = parseInt(year);
 
-        if (monthNum < 1 || monthNum > 12 || yearNum < 2000) {
-            return res.status(400).json({ success: false, message: 'Mes o año inválido' });
-        }
+        if (monthNum < 1 || monthNum > 12 || yearNum < 2000) return res.status(400).json({ success: false, message: 'Mes o año inválido' });
 
         const { data: patient, error: patientError } = await supabase
             .from('patients')
@@ -501,13 +491,12 @@ app.get('/api/reports/:patientId/:month/:year', async (req, res) => {
             .eq('id', patientId)
             .single();
 
-        if (patientError || !patient) {
-            return res.status(404).json({ success: false, message: 'Paciente no encontrado' });
-        }
+        if (patientError || !patient) return res.status(404).json({ success: false, message: 'Paciente no encontrado' });
 
         const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`;
         const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59).toISOString();
 
+        // 1. Registros del Auxiliar
         const { data: records, error: recordsError } = await supabase
             .from('clinical_records')
             .select('*, professionals(full_name)')
@@ -517,6 +506,17 @@ app.get('/api/reports/:patientId/:month/:year', async (req, res) => {
             .order('created_at', { ascending: true });
 
         if (recordsError) throw recordsError;
+
+        // 2. Registros de Profesionales (Médico, Fisio, etc.)
+        const { data: profRecords, error: profRecordsError } = await supabase
+            .from('professional_records')
+            .select('*, professionals(full_name, specialties(name))')
+            .eq('patient_id', patientId)
+            .gte('created_at', startDate)
+            .lte('created_at', endDate)
+            .order('created_at', { ascending: true });
+
+        if (profRecordsError) throw profRecordsError;
 
         let stats = { totalRecords: 0, avgSpo2: 0, avgHR: 0, avgTemp: 0, criticalAlerts: 0 };
         if (records && records.length > 0) {
@@ -540,7 +540,7 @@ app.get('/api/reports/:patientId/:month/:year', async (req, res) => {
             if (tempCount > 0) stats.avgTemp = parseFloat((tempSum / tempCount).toFixed(1));
         }
 
-        res.json({ success: true, data: { patient, records: records || [], stats } });
+        res.json({ success: true, data: { patient, records: records || [], profRecords: profRecords || [], stats } });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
@@ -553,9 +553,7 @@ app.post('/api/professional-records', async (req, res) => {
     try {
         const { patientId, professionalId, shiftId, recordType, weight, height, imc, vitalSigns, subjective, objective, analysis, plan, photoData, professionalSignature, familySignature, familyName, familyId } = req.body;
         
-        if (!patientId || !professionalId) {
-            return res.status(400).json({ success: false, message: 'Datos incompletos' });
-        }
+        if (!patientId || !professionalId) return res.status(400).json({ success: false, message: 'Datos incompletos' });
 
         const { data, error } = await supabase.from('professional_records').insert([{
             patient_id: patientId,
