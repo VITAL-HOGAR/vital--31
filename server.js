@@ -560,6 +560,45 @@ app.get('/api/reports/:patientId/:month/:year', async (req, res) => {
 });
 
 // ==========================================
+// 8. NOTAS DE EVOLUCIÓN PROFESIONALES (FASE 2)
+// ==========================================
+app.post('/api/professional-records', async (req, res) => {
+    try {
+        const { patientId, professionalId, shiftId, recordType, weight, height, imc, vitalSigns, subjective, objective, analysis, plan, photoData, professionalSignature, familySignature, familyName, familyId } = req.body;
+        
+        if (!patientId || !professionalId) {
+            return res.status(400).json({ success: false, message: 'Datos incompletos' });
+        }
+
+        const { data, error } = await supabase.from('professional_records').insert([{
+            patient_id: patientId,
+            professional_id: professionalId,
+            shift_id: shiftId || null,
+            record_type: recordType || 'Nota de Evolución',
+            weight: weight || null,
+            height: height || null,
+            imc: imc || null,
+            vital_signs: vitalSigns || {},
+            subjective: subjective || null,
+            objective: objective || null,
+            analysis: analysis || null,
+            plan: plan || null,
+            photo_data: photoData || null,
+            professional_signature: professionalSignature || null,
+            family_signature: familySignature || null,
+            family_name: familyName || null,
+            family_id: familyId || null
+        }]).select().single();
+
+        if (error) throw error;
+        res.json({ success: true, message: 'Nota de evolución guardada', data: { id: data.id } });
+    } catch (error) {
+        console.error('Error al guardar nota profesional:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ==========================================
 // SERVIDOR DE ARCHIVOS
 // ==========================================
 app.get('*', (req, res) => {
