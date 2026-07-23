@@ -455,7 +455,6 @@ app.patch('/api/finance/parameters/:id', async (req, res) => {
     }
 });
 
-// Ruta para obtener y guardar tarifas de clientes
 app.get('/api/finance/tariffs', async (req, res) => {
     try {
         const { data, error } = await supabase.from('client_tariffs').select('*').eq('is_active', true).single();
@@ -479,7 +478,6 @@ app.patch('/api/finance/tariffs/:id', async (req, res) => {
     }
 });
 
-// Liquidación de Nómina para Auxiliares
 app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res) => {
     try {
         const { professionalId, month, year } = req.params;
@@ -578,18 +576,18 @@ app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res
     }
 });
 
-// Facturación para Clientes (Cuenta de Cobro)
+// CORRECCIÓN: Facturación para Clientes buscando el paciente directamente
 app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
     try {
         const { patientId, month, year } = req.params;
         const monthNum = parseInt(month);
         const yearNum = parseInt(year);
 
-        // Obtener tarifas
         const { data: tariffs } = await supabase.from('client_tariffs').select('*').eq('is_active', true).single();
         if (!tariffs) return res.status(404).json({ success: false, message: 'Tarifas de clientes no configuradas' });
 
-        // Obtener turnos cerrados del mes para ese paciente
+        const { data: patientData } = await supabase.from('patients').select('full_name').eq('id', patientId).single();
+
         const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`;
         const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59).toISOString();
 
@@ -604,7 +602,6 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
 
         if (shiftError) throw shiftError;
 
-        // Agrupar turnos por día para detectar servicios de 24h (12h diurno + 12h nocturno)
         const groupedByDate = {};
         shifts.forEach(s => {
             const dateStr = new Date(s.start_time).toISOString().split('T')[0];
@@ -624,7 +621,6 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
             let has12N = types.includes('12h_nocturno');
 
             if (has24h || (has12D && has12N)) {
-                // Cobrar como 24h
                 const auxs = dayShifts.map(s => s.professionals?.full_name).join(' / ');
                 invoiceDetails.push({
                     date: date,
@@ -634,7 +630,6 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
                 });
                 totalAmount += parseFloat(tariffs.t_24h);
             } else {
-                // Cobrar individualmente
                 dayShifts.forEach(s => {
                     let tariffKey = `t_${s.shift_type}`;
                     let amount = parseFloat(tariffs[tariffKey] || 0);
@@ -653,7 +648,7 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
         res.json({
             success: true,
             data: {
-                patient: shifts[0]?.patients || null, // Asumiendo que el nombre del paciente viene en el shift
+                patient: patientData || { full_name: 'Paciente' },
                 details: invoiceDetails,
                 totalAmount: totalAmount
             }
