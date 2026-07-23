@@ -84,10 +84,12 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .photo-preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-top: 10px; border: 2px solid var(--info); }
 .imc-result { font-weight: bold; color: var(--primary); margin-top: 5px; font-size: 1.1rem; }
 .finance-result { background: var(--bg-dark); padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid var(--info); }
-.message-bubble { background: var(--bg-dark); padding: 10px 15px; border-radius: 12px; margin-bottom: 10px; max-width: 80%; }
-.message-bubble.alert { border-left: 4px solid var(--danger); background: #450a0a; }
-.message-bubble.normal { border-left: 4px solid var(--primary); }
-.message-bubble.admin { border-left: 4px solid var(--info); margin-left: auto; }
+.chat-container { display: flex; flex-direction: column; gap: 10px; max-height: 350px; overflow-y: auto; padding: 10px; background: var(--bg-dark); border-radius: 8px; margin-bottom: 10px; }
+.message-bubble { padding: 10px 15px; border-radius: 12px; max-width: 80%; font-size: 0.9rem; word-wrap: break-word; }
+.message-bubble.me { background: var(--primary); color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+.message-bubble.them { background: #334155; color: var(--text-main); align-self: flex-start; border-bottom-left-radius: 2px; }
+.message-bubble.alert { background: var(--danger); color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
+.message-bubble small { display: block; font-size: 0.7rem; opacity: 0.8; margin-top: 4px; text-align: right; }
 </style>
 </head>
 <body>
@@ -184,7 +186,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             <div class="tab" onclick="showAdminTab('reports', this)">📄 Informes</div>
             <div class="tab" onclick="showAdminTab('finance', this)">💰 Finanzas</div>
             <div class="tab" onclick="showAdminTab('agenda', this)">📅 Agenda</div>
-            <div class="tab" onclick="showAdminTab('messages', this)">💬 Mensajería</div>
+            <div class="tab" onclick="showAdminTab('messages', this)">💬 Chat</div>
         </div>
 
         <div id="admin_prof">
@@ -274,7 +276,6 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             </div>
         </div>
 
-        <!-- FINANCE MODULE -->
         <div id="admin_finance" class="hidden">
             <div class="card">
                 <h3>⚙️ Parámetros de Ley Vigentes</h3>
@@ -345,7 +346,6 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             </div>
         </div>
 
-        <!-- AGENDA MODULE -->
         <div id="admin_agenda" class="hidden">
             <div class="card">
                 <h3>📅 Programar Nuevo Turno</h3>
@@ -373,17 +373,13 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             </div>
         </div>
 
-        <!-- MESSAGING MODULE -->
         <div id="admin_messages" class="hidden">
             <div class="card">
-                <h3>💬 Centro de Mensajería y Alertas</h3>
-                <div id="adminMessageList" style="max-height: 400px; overflow-y: auto; margin-bottom: 15px;"></div>
-                <div class="form-group">
-                    <label>Responder / Enviar Mensaje</label>
-                    <div style="display:flex; gap:5px;">
-                        <input type="text" id="adminMsgInput" placeholder="Escribe tu mensaje...">
-                        <button class="btn-primary" style="width:auto; margin-top:0;" onclick="sendAdminMessage()"><i class="fas fa-paper-plane"></i></button>
-                    </div>
+                <h3>💬 Chat con el Equipo</h3>
+                <div id="adminMessageList" class="chat-container"></div>
+                <div class="form-group" style="display: flex; gap: 5px; margin-bottom: 0;">
+                    <input type="text" id="adminMsgInput" placeholder="Escribe tu mensaje o respuesta..." style="flex: 1;" onkeypress="if(event.key==='Enter') sendAdminMessage()">
+                    <button class="btn-primary" style="width: auto; margin-top: 0; padding: 0 20px;" onclick="sendAdminMessage()"><i class="fas fa-paper-plane"></i></button>
                 </div>
             </div>
         </div>
@@ -422,13 +418,20 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             </div>
         </div>
         <div id="auxClinicalForm" class="hidden">
+            
+            <!-- CHAT PARA AUXILIAR -->
+            <div class="card">
+                <h3>💬 Chat con Coordinación</h3>
+                <div id="auxMessageList" class="chat-container"></div>
+                <div class="form-group" style="display: flex; gap: 5px; margin-bottom: 0;">
+                    <input type="text" id="auxMsgInput" placeholder="Escribe un mensaje o alerta..." style="flex: 1;" onkeypress="if(event.key==='Enter') sendAuxMessage()">
+                    <button class="btn-primary btn-danger" style="width: auto; margin-top: 0; padding: 0 20px;" onclick="sendAuxMessage()"><i class="fas fa-paper-plane"></i></button>
+                </div>
+            </div>
+
             <div class="card">
                 <div style="text-align: center; font-size: 1.2rem; font-weight: bold; color: var(--primary); margin-bottom: 10px;">⏱️ Tiempo: <span id="timerDisplay">00:00:00</span></div>
                 <h3>Registro Clínico - <span id="patientNameClinical" style="color: var(--primary);"></span></h3>
-                
-                <!-- BOTÓN DE ALERTA RÁPIDA -->
-                <button class="btn-primary btn-danger" style="margin-bottom: 15px;" onclick="sendAuxAlert()"><i class="fas fa-bell"></i> 🚨 Alertar a Coordinación</button>
-
                 <h4>🩺 Signos Vitales</h4>
                 <div class="grid">
                     <div class="form-group"><label>PA (mmHg)</label><input type="text" id="bloodPressure" placeholder="120/80" oninput="checkVital('bp')"><div id="bpAlert" class="vital-status"></div></div>
@@ -728,6 +731,7 @@ let lastShiftData = null, profPhotoBase64 = null, lastProfRecordId = null;
 let lastLiquidationData = null; 
 let lastInvoiceData = null;
 let messagePollingInterval = null;
+let auxMessagePollingInterval = null;
 
 // ===== UTILIDADES =====
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
@@ -764,7 +768,7 @@ async function login() {
         } else { showToast(data.message || 'Credenciales inválidas', 'error'); }
     } catch (e) { showToast('Error de conexión', 'error'); } finally { document.getElementById('loginBtn').innerHTML = 'Ingresar'; }
 }
-function logout() { clearInterval(messagePollingInterval); localStorage.removeItem('vital_user'); currentUser = null; location.reload(); }
+function logout() { clearInterval(messagePollingInterval); clearInterval(auxMessagePollingInterval); localStorage.removeItem('vital_user'); currentUser = null; location.reload(); }
 function initApp() {
     const u = localStorage.getItem('vital_user'); if (!u) return; currentUser = JSON.parse(u);
     document.getElementById('loginScreen').classList.add('hidden'); document.getElementById('mainScreen').classList.remove('hidden'); document.getElementById('userInfo').classList.remove('hidden');
@@ -773,9 +777,11 @@ function initApp() {
         document.getElementById('adminPanel').classList.remove('hidden');
         loadDashboard(); loadProfs(); loadPats(); loadReportPatients(); loadEdus(); loadFinanceParams(); loadClientTariffs(); loadScheduledShifts(); loadAdminMessages();
         setTimeout(() => initSigCanvas('adminSigCanvas'), 100);
-        messagePollingInterval = setInterval(loadAdminMessages, 5000); // Refrescar mensajes cada 5 seg
+        messagePollingInterval = setInterval(loadAdminMessages, 3000); 
     } else if (currentUser.specialty_name === 'AUXILIAR_ENFERMERIA') {
         document.getElementById('auxPanel').classList.remove('hidden'); loadAuxPatients(); loadEdus(); loadAuxScheduledShifts();
+        loadAuxMessages();
+        auxMessagePollingInterval = setInterval(loadAuxMessages, 3000);
     } else {
         document.getElementById('profPanel').classList.remove('hidden'); loadProfPatients();
     }
@@ -799,13 +805,11 @@ function openEditModal(type, id, name, doc, extra1, extra2, extra3) {
     document.getElementById('editType').value = type;
     document.getElementById('editName').value = name;
     document.getElementById('editDoc').value = doc;
-    
     document.getElementById('editCardGroup').classList.add('hidden');
     document.getElementById('editSpecGroup').classList.add('hidden');
     document.getElementById('editCityGroup').classList.add('hidden');
     document.getElementById('editFamGroup').classList.add('hidden');
     document.getElementById('editPhoneGroup').classList.add('hidden');
-
     if (type === 'prof') {
         document.getElementById('editModalTitle').innerText = 'Editar Profesional';
         document.getElementById('editCardGroup').classList.remove('hidden');
@@ -830,7 +834,6 @@ async function saveEdit() {
     const id = document.getElementById('editId').value;
     const type = document.getElementById('editType').value;
     const payload = { fullName: getVal('editName'), documentNumber: getVal('editDoc') };
-    
     if (type === 'prof') {
         payload.professionalCard = getVal('editCard');
         payload.specialtyName = getVal('editSpec');
@@ -839,7 +842,6 @@ async function saveEdit() {
         payload.contactPhone = getVal('editPhone');
         payload.cityName = getVal('editCity');
     }
-
     try {
         const r = await fetch(`${API_URL}/api/${type === 'prof' ? 'professionals' : 'patients'}/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const d = await r.json();
@@ -859,7 +861,6 @@ async function generateMonthlyPDF() {
         const { patient, records, profRecords } = res.data; 
         const { jsPDF } = window.jspdf; 
         const doc = new jsPDF(); 
-        
         try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {} 
         doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center"); 
         doc.setFontSize(12); doc.setTextColor(0); doc.text("Informe Clínico Mensual Consolidado", 105, 30, null, null, "center"); 
@@ -867,9 +868,7 @@ async function generateMonthlyPDF() {
         doc.text(`Paciente: ${patient.full_name}`, 14, 45); 
         doc.text(`Cédula: ${patient.document_number || 'N/A'}`, 14, 52); 
         doc.text(`Período: ${m}/${y}`, 14, 59); 
-
         let finalY = 70;
-        
         doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("1. Registros de Enfermería y Cuidados (Auxiliares)", 14, finalY);
         finalY += 5;
         if (records && records.length > 0) {
@@ -879,11 +878,9 @@ async function generateMonthlyPDF() {
         } else {
             doc.setFontSize(9); doc.setTextColor(100); doc.text("Sin registros de auxiliar en este período.", 14, finalY + 5); finalY += 15;
         }
-
         if (finalY > 240) { doc.addPage(); finalY = 20; }
         doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("2. Notas de Evolución Profesionales", 14, finalY);
         finalY += 7;
-        
         if (profRecords && profRecords.length > 0) {
             doc.setFontSize(9); doc.setTextColor(0);
             profRecords.forEach(pr => {
@@ -893,7 +890,6 @@ async function generateMonthlyPDF() {
                 finalY += 6;
                 doc.setFontSize(9); doc.setTextColor(0);
                 if (pr.imc) { doc.text(`IMC: ${pr.imc}`, 14, finalY); finalY += 5; }
-                
                 const splitSub = doc.splitTextToSize(`S: ${pr.subjective || ''}`, 180);
                 doc.text(splitSub, 14, finalY); finalY += splitSub.length * 5;
                 const splitObj = doc.splitTextToSize(`O: ${pr.objective || ''}`, 180);
@@ -907,7 +903,6 @@ async function generateMonthlyPDF() {
         } else {
             doc.setFontSize(9); doc.setTextColor(100); doc.text("Sin notas de evolución profesional en este período.", 14, finalY); finalY += 15;
         }
-
         if (finalY > 240) { doc.addPage(); finalY = 30; } else { finalY += 10; }
         doc.setDrawColor(0); doc.setLineWidth(0.5);
         doc.text("FIRMA PROFESIONAL VALIDADOR", 15, finalY);
@@ -917,12 +912,11 @@ async function generateMonthlyPDF() {
         doc.setFontSize(10);
         doc.text(`Nombre: ${currentUser?.full_name || '________________'}`, 15, finalY + 31);
         doc.text(`Cargo: ${currentUser?.specialty_name || 'Admin'}`, 15, finalY + 37);
-        
         doc.save(`Informe_${patient.full_name}_${m}_${y}.pdf`); 
     } catch (e) { showToast('Error: ' + e.message, 'error'); } 
 }
 
-// ===== FINANZAS (FASE 3) =====
+// ===== FINANZAS =====
 async function loadFinanceParams() {
     try {
         const r = await fetch(`${API_URL}/api/finance/parameters`);
@@ -939,287 +933,93 @@ async function loadFinanceParams() {
         }
     } catch (e) { console.error(e); }
 }
-
 async function saveFinanceParams() {
     const id = getVal('finParamId');
     const payload = {
-        year: parseInt(getVal('finYear')) || 2026,
-        smmlv: parseFloat(getVal('finSmmlv')) || 0,
-        subsidy_transport: parseFloat(getVal('finSubsidy')) || 0,
-        night_surcharge_percentage: parseFloat(getVal('finNightPct')) || 0,
-        holiday_surcharge_percentage: parseFloat(getVal('finSunPct')) || 0,
-        night_start_hour: parseInt(getVal('finNightStart')) || 19,
+        year: parseInt(getVal('finYear')) || 2026, smmlv: parseFloat(getVal('finSmmlv')) || 0,
+        subsidy_transport: parseFloat(getVal('finSubsidy')) || 0, night_surcharge_percentage: parseFloat(getVal('finNightPct')) || 0,
+        holiday_surcharge_percentage: parseFloat(getVal('finSunPct')) || 0, night_start_hour: parseInt(getVal('finNightStart')) || 19,
         night_end_hour: parseInt(getVal('finNightEnd')) || 7
     };
-    try {
-        const r = await fetch(`${API_URL}/api/finance/parameters/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        const d = await r.json();
-        showToast(d.message, d.success?'success':'error');
-    } catch (e) { showToast('Error', 'error'); }
+    try { const r = await fetch(`${API_URL}/api/finance/parameters/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); } catch (e) { showToast('Error', 'error'); }
 }
-
-// TARIFAS CLIENTES
 async function loadClientTariffs() {
-    try {
-        const r = await fetch(`${API_URL}/api/finance/tariffs`);
-        const d = await r.json();
-        if (d.success && d.data) {
-            document.getElementById('tariffId').value = d.data.id;
-            document.getElementById('t_6h_diurno').value = d.data.t_6h_diurno;
-            document.getElementById('t_6h_nocturno').value = d.data.t_6h_nocturno;
-            document.getElementById('t_8h_diurno').value = d.data.t_8h_diurno;
-            document.getElementById('t_8h_nocturno').value = d.data.t_8h_nocturno;
-            document.getElementById('t_12h_diurno').value = d.data.t_12h_diurno;
-            document.getElementById('t_12h_nocturno').value = d.data.t_12h_nocturno;
-            document.getElementById('t_24h').value = d.data.t_24h;
-        }
-    } catch (e) { console.error(e); }
+    try { const r = await fetch(`${API_URL}/api/finance/tariffs`); const d = await r.json(); if (d.success && d.data) { document.getElementById('tariffId').value = d.data.id; document.getElementById('t_6h_diurno').value = d.data.t_6h_diurno; document.getElementById('t_6h_nocturno').value = d.data.t_6h_nocturno; document.getElementById('t_8h_diurno').value = d.data.t_8h_diurno; document.getElementById('t_8h_nocturno').value = d.data.t_8h_nocturno; document.getElementById('t_12h_diurno').value = d.data.t_12h_diurno; document.getElementById('t_12h_nocturno').value = d.data.t_12h_nocturno; document.getElementById('t_24h').value = d.data.t_24h; } } catch (e) { console.error(e); }
 }
-
 async function saveClientTariffs() {
     const id = getVal('tariffId');
-    const payload = {
-        t_6h_diurno: parseFloat(getVal('t_6h_diurno')) || 0,
-        t_6h_nocturno: parseFloat(getVal('t_6h_nocturno')) || 0,
-        t_8h_diurno: parseFloat(getVal('t_8h_diurno')) || 0,
-        t_8h_nocturno: parseFloat(getVal('t_8h_nocturno')) || 0,
-        t_12h_diurno: parseFloat(getVal('t_12h_diurno')) || 0,
-        t_12h_nocturno: parseFloat(getVal('t_12h_nocturno')) || 0,
-        t_24h: parseFloat(getVal('t_24h')) || 0
-    };
-    try {
-        const r = await fetch(`${API_URL}/api/finance/tariffs/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        const d = await r.json();
-        showToast(d.message, d.success?'success':'error');
-    } catch (e) { showToast('Error', 'error'); }
+    const payload = { t_6h_diurno: parseFloat(getVal('t_6h_diurno')) || 0, t_6h_nocturno: parseFloat(getVal('t_6h_nocturno')) || 0, t_8h_diurno: parseFloat(getVal('t_8h_diurno')) || 0, t_8h_nocturno: parseFloat(getVal('t_8h_nocturno')) || 0, t_12h_diurno: parseFloat(getVal('t_12h_diurno')) || 0, t_12h_nocturno: parseFloat(getVal('t_12h_nocturno')) || 0, t_24h: parseFloat(getVal('t_24h')) || 0 };
+    try { const r = await fetch(`${API_URL}/api/finance/tariffs/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); } catch (e) { showToast('Error', 'error'); }
 }
-
-// LIQUIDACIÓN EMPLEADOS
 async function calculateLiquidation() {
-    const profId = getVal('liquidationProf');
-    const month = getVal('liquidationMonth');
-    const year = getVal('liquidationYear');
+    const profId = getVal('liquidationProf'); const month = getVal('liquidationMonth'); const year = getVal('liquidationYear');
     if (!profId) return showToast('Seleccione un profesional', 'error');
-
-    try {
-        const r = await fetch(`${API_URL}/api/finance/liquidation/${profId}/${month}/${year}`);
-        const d = await r.json();
-        if (d.success) {
-            lastLiquidationData = d.data;
-            renderLiquidation(d.data);
-        } else {
-            showToast(d.message || 'Error', 'error');
-        }
-    } catch (e) { showToast('Error de conexión', 'error'); }
+    try { const r = await fetch(`${API_URL}/api/finance/liquidation/${profId}/${month}/${year}`); const d = await r.json(); if (d.success) { lastLiquidationData = d.data; renderLiquidation(d.data); } else { showToast(d.message || 'Error', 'error'); } } catch (e) { showToast('Error de conexión', 'error'); }
 }
-
 function renderLiquidation(data) {
-    const container = document.getElementById('liquidationResult');
-    container.classList.remove('hidden');
-    
-    let shiftsHtml = data.shifts.map(s => `
-        <tr>
-            <td>${s.date}</td>
-            <td>${s.patient}</td>
-            <td>${s.shift_type}</td>
-            <td>${s.hours}</td>
-            <td>${formatCurrency(s.base_pay)}</td>
-            <td>${formatCurrency(s.night_bonus)}</td>
-            <td>${formatCurrency(s.sunday_bonus)}</td>
-            <td>${formatCurrency(s.total)}</td>
-        </tr>
-    `).join('');
-
-    container.innerHTML = `
-        <h4 style="color: var(--primary);">Resultado de Liquidación</h4>
-        <table style="margin-top: 10px;">
-            <thead>
-                <tr>
-                    <th>Fecha</th><th>Paciente</th><th>Turno</th><th>Horas</th>
-                    <th>Base</th><th>Recargo Noct.</th><th>Recargo Dom.</th><th>Total Turno</th>
-                </tr>
-            </thead>
-            <tbody>${shiftsHtml}</tbody>
-        </table>
-        <div style="margin-top: 15px; text-align: right;">
-            <p>Subsidio de Transporte: <strong>${formatCurrency(data.subsidyApplied)}</strong></p>
-            <h3 style="color: var(--primary);">Total a Pagar: ${formatCurrency(data.totalAmount)}</h3>
-            <button class="btn-primary btn-warning" style="margin-top: 10px; width: auto; display: inline-block;" onclick="generateLiquidationPDF()">
-                <i class="fas fa-file-pdf"></i> Descargar Desprendible de Pago
-            </button>
-        </div>
-    `;
+    const container = document.getElementById('liquidationResult'); container.classList.remove('hidden');
+    let shiftsHtml = data.shifts.map(s => `<tr><td>${s.date}</td><td>${s.patient}</td><td>${s.shift_type}</td><td>${s.hours}</td><td>${formatCurrency(s.base_pay)}</td><td>${formatCurrency(s.night_bonus)}</td><td>${formatCurrency(s.sunday_bonus)}</td><td>${formatCurrency(s.total)}</td></tr>`).join('');
+    container.innerHTML = `<h4 style="color: var(--primary);">Resultado de Liquidación</h4><table style="margin-top: 10px;"><thead><tr><th>Fecha</th><th>Paciente</th><th>Turno</th><th>Horas</th><th>Base</th><th>Recargo Noct.</th><th>Recargo Dom.</th><th>Total Turno</th></tr></thead><tbody>${shiftsHtml}</tbody></table><div style="margin-top: 15px; text-align: right;"><p>Subsidio de Transporte: <strong>${formatCurrency(data.subsidyApplied)}</strong></p><h3 style="color: var(--primary);">Total a Pagar: ${formatCurrency(data.totalAmount)}</h3><button class="btn-primary btn-warning" style="margin-top: 10px; width: auto; display: inline-block;" onclick="generateLiquidationPDF()"><i class="fas fa-file-pdf"></i> Descargar Desprendible de Pago</button></div>`;
 }
-
 function generateLiquidationPDF() {
     if (!lastLiquidationData) return showToast('Calcule la liquidación primero', 'error');
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    const { jsPDF } = window.jspdf; const doc = new jsPDF();
     const profName = document.getElementById('liquidationProf').selectedOptions[0].text.split(' (')[0];
     const month = document.getElementById('liquidationMonth').selectedOptions[0].text;
     const year = document.getElementById('liquidationYear').value;
-
     try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
     doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
     doc.setFontSize(12); doc.setTextColor(0); doc.text("Desprendible de Pago / Liquidación", 105, 30, null, null, "center");
-    
     doc.setFontSize(10);
-    doc.text(`Profesional: ${profName}`, 14, 45);
-    doc.text(`Período: ${month} ${year}`, 14, 52);
-    doc.text(`SMMLV Vigente: ${formatCurrency(lastLiquidationData.params.smmlv)}`, 14, 59);
-
-    const tableData = lastLiquidationData.shifts.map(s => [
-        s.date, s.shift_type, s.hours, 
-        formatCurrency(s.base_pay), 
-        formatCurrency(s.night_bonus), 
-        formatCurrency(s.sunday_bonus), 
-        formatCurrency(s.total)
-    ]);
-
-    doc.autoTable({
-        startY: 65,
-        head: [['Fecha', 'Turno', 'Horas', 'Base', 'Rec. Noct.', 'Rec. Dom.', 'Total']],
-        body: tableData,
-        headStyles: { fillColor: [34, 197, 94] },
-        styles: { fontSize: 8 }
-    });
-
+    doc.text(`Profesional: ${profName}`, 14, 45); doc.text(`Período: ${month} ${year}`, 14, 52); doc.text(`SMMLV Vigente: ${formatCurrency(lastLiquidationData.params.smmlv)}`, 14, 59);
+    const tableData = lastLiquidationData.shifts.map(s => [s.date, s.shift_type, s.hours, formatCurrency(s.base_pay), formatCurrency(s.night_bonus), formatCurrency(s.sunday_bonus), formatCurrency(s.total)]);
+    doc.autoTable({ startY: 65, head: [['Fecha', 'Turno', 'Horas', 'Base', 'Rec. Noct.', 'Rec. Dom.', 'Total']], body: tableData, headStyles: { fillColor: [34, 197, 94] }, styles: { fontSize: 8 } });
     let finalY = doc.lastAutoTable.finalY + 10;
-    doc.setFontSize(10);
-    doc.text(`Subsidio de Transporte: ${formatCurrency(lastLiquidationData.subsidyApplied)}`, 14, finalY);
-    doc.setFontSize(14); doc.setTextColor(34, 197, 94);
-    doc.text(`Total a Pagar: ${formatCurrency(lastLiquidationData.totalAmount)}`, 14, finalY + 10);
-
-    doc.save(`Liquidacion_${profName}_${month}_${year}.pdf`);
-    showToast('PDF generado');
+    doc.setFontSize(10); doc.text(`Subsidio de Transporte: ${formatCurrency(lastLiquidationData.subsidyApplied)}`, 14, finalY);
+    doc.setFontSize(14); doc.setTextColor(34, 197, 94); doc.text(`Total a Pagar: ${formatCurrency(lastLiquidationData.totalAmount)}`, 14, finalY + 10);
+    doc.save(`Liquidacion_${profName}_${month}_${year}.pdf`); showToast('PDF generado');
 }
-
-// FACTURACIÓN CLIENTES
 async function calculateInvoice() {
-    const patId = getVal('invoicePatient');
-    const month = getVal('invoiceMonth');
-    const year = getVal('invoiceYear');
+    const patId = getVal('invoicePatient'); const month = getVal('invoiceMonth'); const year = getVal('invoiceYear');
     if (!patId) return showToast('Seleccione un paciente', 'error');
-
-    try {
-        const r = await fetch(`${API_URL}/api/finance/invoice/${patId}/${month}/${year}`);
-        const d = await r.json();
-        if (d.success) {
-            lastInvoiceData = d.data;
-            renderInvoice(d.data);
-        } else {
-            showToast(d.message || 'Error', 'error');
-        }
-    } catch (e) { showToast('Error de conexión', 'error'); }
+    try { const r = await fetch(`${API_URL}/api/finance/invoice/${patId}/${month}/${year}`); const d = await r.json(); if (d.success) { lastInvoiceData = d.data; renderInvoice(d.data); } else { showToast(d.message || 'Error', 'error'); } } catch (e) { showToast('Error de conexión', 'error'); }
 }
-
 function renderInvoice(data) {
-    const container = document.getElementById('invoiceResult');
-    container.classList.remove('hidden');
-    
-    let detailsHtml = data.details.map(d => `
-        <tr>
-            <td>${d.date}</td>
-            <td>${d.service}</td>
-            <td>${d.auxiliaries}</td>
-            <td>${formatCurrency(d.amount)}</td>
-        </tr>
-    `).join('');
-
-    container.innerHTML = `
-        <h4 style="color: var(--primary);">Cuenta de Cobro Generada</h4>
-        <table style="margin-top: 10px;">
-            <thead>
-                <tr>
-                    <th>Fecha</th><th>Servicio</th><th>Auxiliar(es)</th><th>Valor</th>
-                </tr>
-            </thead>
-            <tbody>${detailsHtml}</tbody>
-        </table>
-        <div style="margin-top: 15px; text-align: right;">
-            <h3 style="color: var(--primary);">Total a Pagar: ${formatCurrency(data.totalAmount)}</h3>
-            <button class="btn-primary btn-warning" style="margin-top: 10px; width: auto; display: inline-block;" onclick="generateInvoicePDF()">
-                <i class="fas fa-file-pdf"></i> Descargar Cuenta de Cobro PDF
-            </button>
-        </div>
-    `;
+    const container = document.getElementById('invoiceResult'); container.classList.remove('hidden');
+    let detailsHtml = data.details.map(d => `<tr><td>${d.date}</td><td>${d.service}</td><td>${d.auxiliaries}</td><td>${formatCurrency(d.amount)}</td></tr>`).join('');
+    container.innerHTML = `<h4 style="color: var(--primary);">Cuenta de Cobro Generada</h4><table style="margin-top: 10px;"><thead><tr><th>Fecha</th><th>Servicio</th><th>Auxiliar(es)</th><th>Valor</th></tr></thead><tbody>${detailsHtml}</tbody></table><div style="margin-top: 15px; text-align: right;"><h3 style="color: var(--primary);">Total a Pagar: ${formatCurrency(data.totalAmount)}</h3><button class="btn-primary btn-warning" style="margin-top: 10px; width: auto; display: inline-block;" onclick="generateInvoicePDF()"><i class="fas fa-file-pdf"></i> Descargar Cuenta de Cobro PDF</button></div>`;
 }
-
 function generateInvoicePDF() {
     if (!lastInvoiceData) return showToast('Genere la cuenta de cobro primero', 'error');
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+    const { jsPDF } = window.jspdf; const doc = new jsPDF();
     const patName = document.getElementById('invoicePatient').selectedOptions[0].text;
     const month = document.getElementById('invoiceMonth').selectedOptions[0].text;
     const year = document.getElementById('invoiceYear').value;
-
     try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
     doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
     doc.setFontSize(12); doc.setTextColor(0); doc.text("Cuenta de Cobro", 105, 30, null, null, "center");
-    
-    doc.setFontSize(10);
-    doc.text(`Paciente: ${patName}`, 14, 45);
-    doc.text(`Período: ${month} ${year}`, 14, 52);
-
-    const tableData = lastInvoiceData.details.map(d => [
-        d.date, d.service, d.auxiliaries, formatCurrency(d.amount)
-    ]);
-
-    doc.autoTable({
-        startY: 60,
-        head: [['Fecha', 'Servicio Prestado', 'Auxiliar(es)', 'Valor']],
-        body: tableData,
-        headStyles: { fillColor: [34, 197, 94] },
-        styles: { fontSize: 8 }
-    });
-
+    doc.setFontSize(10); doc.text(`Paciente: ${patName}`, 14, 45); doc.text(`Período: ${month} ${year}`, 14, 52);
+    const tableData = lastInvoiceData.details.map(d => [d.date, d.service, d.auxiliaries, formatCurrency(d.amount)]);
+    doc.autoTable({ startY: 60, head: [['Fecha', 'Servicio Prestado', 'Auxiliar(es)', 'Valor']], body: tableData, headStyles: { fillColor: [34, 197, 94] }, styles: { fontSize: 8 } });
     let finalY = doc.lastAutoTable.finalY + 10;
-    doc.setFontSize(14); doc.setTextColor(34, 197, 94);
-    doc.text(`Total to Pay: ${formatCurrency(lastInvoiceData.totalAmount)}`, 14, finalY);
-
-    doc.save(`Cuenta_Cobro_${patName}_${month}_${year}.pdf`);
-    showToast('PDF generado');
+    doc.setFontSize(14); doc.setTextColor(34, 197, 94); doc.text(`Total a Pagar: ${formatCurrency(lastInvoiceData.totalAmount)}`, 14, finalY);
+    doc.save(`Cuenta_Cobro_${patName}_${month}_${year}.pdf`); showToast('PDF generado');
 }
 
 // ===== AGENDA =====
 async function loadScheduledShifts() {
-    try {
-        const r = await fetch(`${API_URL}/api/scheduled-shifts`);
-        const d = await r.json();
-        document.querySelector('#schedTable tbody').innerHTML = d.data.map(s => `<tr><td>${new Date(s.shift_date).toLocaleDateString('es-CO')}</td><td>${s.patients?.full_name || 'N/A'}</td><td>${s.professionals?.full_name || 'N/A'}</td><td>${s.shift_type}</td><td>${s.status}</td></tr>`).join('');
-    } catch (e) { console.error(e); }
+    try { const r = await fetch(`${API_URL}/api/scheduled-shifts`); const d = await r.json(); document.querySelector('#schedTable tbody').innerHTML = d.data.map(s => `<tr><td>${new Date(s.shift_date).toLocaleDateString('es-CO')}</td><td>${s.patients?.full_name || 'N/A'}</td><td>${s.professionals?.full_name || 'N/A'}</td><td>${s.shift_type}</td><td>${s.status}</td></tr>`).join(''); } catch (e) { console.error(e); }
 }
-
 async function createScheduledShift() {
-    const payload = {
-        patientId: getVal('schedPatient'),
-        professionalId: getVal('schedProf'),
-        shiftDate: getVal('schedDate'),
-        shiftType: getVal('schedType')
-    };
+    const payload = { patientId: getVal('schedPatient'), professionalId: getVal('schedProf'), shiftDate: getVal('schedDate'), shiftType: getVal('schedType') };
     if (!payload.patientId || !payload.professionalId || !payload.shiftDate) return showToast('Complete los datos de la agenda', 'error');
-    try {
-        const r = await fetch(`${API_URL}/api/scheduled-shifts`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        const d = await r.json();
-        showToast(d.message, d.success?'success':'error');
-        if (d.success) { loadScheduledShifts(); }
-    } catch (e) { showToast('Error', 'error'); }
+    try { const r = await fetch(`${API_URL}/api/scheduled-shifts`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); if (d.success) { loadScheduledShifts(); } } catch (e) { showToast('Error', 'error'); }
 }
-
 async function loadAuxScheduledShifts() {
-    try {
-        const r = await fetch(`${API_URL}/api/scheduled-shifts/professional/${currentUser.id}`);
-        const d = await r.json();
-        const c = document.getElementById('auxScheduledList');
-        if (!d.data || d.data.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No tienes turnos programados.</p>'; return; }
-        c.innerHTML = d.data.map(s => `<div class="card" style="cursor:pointer; border-left: 4px solid var(--info); margin-bottom:10px;" onclick='selectPatient(${JSON.stringify(s.patients)})'>
-            <strong>${new Date(s.shift_date).toLocaleDateString('es-CO')}</strong> - ${s.patients?.full_name}<br>
-            <small>Turno: ${s.shift_type}</small>
-        </div>`).join('');
-    } catch (e) { console.error(e); }
+    try { const r = await fetch(`${API_URL}/api/scheduled-shifts/professional/${currentUser.id}`); const d = await r.json(); const c = document.getElementById('auxScheduledList'); if (!d.data || d.data.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No tienes turnos programados.</p>'; return; } c.innerHTML = d.data.map(s => `<div class="card" style="cursor:pointer; border-left: 4px solid var(--info); margin-bottom:10px;" onclick='selectPatient(${JSON.stringify(s.patients)})'><strong>${new Date(s.shift_date).toLocaleDateString('es-CO')}</strong> - ${s.patients?.full_name}<br><small>Turno: ${s.shift_type}</small></div>`).join(''); } catch (e) { console.error(e); }
 }
 
-// ===== MENSAJERÍA (NUEVO) =====
+// ===== MENSAJERÍA =====
 async function loadAdminMessages() {
     try {
         const r = await fetch(`${API_URL}/api/messages`);
@@ -1227,37 +1027,41 @@ async function loadAdminMessages() {
         const c = document.getElementById('adminMessageList');
         if (!c) return;
         if (!d.data || d.data.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay mensajes.</p>'; return; }
-        c.innerHTML = d.data.map(m => `
-            <div class="message-bubble ${m.is_alert ? 'alert' : 'normal'}">
-                <strong>${m.sender_name}</strong> <small style="float:right;">${new Date(m.created_at).toLocaleString('es-CO')}</small><br>
-                ${m.message}<br>
-                ${m.patients?.full_name ? `<small style="color:#94a3b8;">Paciente: ${m.patients.full_name}</small>` : ''}
-            </div>
-        `).join('');
+        c.innerHTML = d.data.map(m => {
+            const isMe = m.sender_id === currentUser.id;
+            const typeClass = isMe ? 'me' : 'them';
+            return `<div class="message-bubble ${typeClass}"><strong>${isMe ? 'Yo' : m.sender_name}</strong><br>${m.message}<small>${new Date(m.created_at).toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'})}</small></div>`;
+        }).join('');
         c.scrollTop = c.scrollHeight;
     } catch (e) { console.error(e); }
 }
-
 async function sendAdminMessage() {
     const msg = getVal('adminMsgInput');
     if (!msg) return;
     const payload = { senderId: currentUser.id, senderName: currentUser.full_name, message: msg, isAlert: false };
-    try {
-        const r = await fetch(`${API_URL}/api/messages`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        const d = await r.json();
-        if (d.success) { document.getElementById('adminMsgInput').value = ''; loadAdminMessages(); }
-    } catch (e) { showToast('Error', 'error'); }
+    try { const r = await fetch(`${API_URL}/api/messages`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }); const d = await r.json(); if (d.success) { document.getElementById('adminMsgInput').value = ''; loadAdminMessages(); } } catch (e) { showToast('Error', 'error'); }
 }
 
-async function sendAuxAlert() {
-    const msg = prompt("Describe la alerta o novedad para coordinación:");
-    if (!msg) return;
-    const payload = { patientId: selectedPatient?.id, shiftId: currentShiftId, senderId: currentUser.id, senderName: currentUser.full_name, message: msg, isAlert: true };
+async function loadAuxMessages() {
     try {
-        const r = await fetch(`${API_URL}/api/messages`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const r = await fetch(`${API_URL}/api/messages`);
         const d = await r.json();
-        showToast(d.message, d.success?'success':'error');
-    } catch (e) { showToast('Error', 'error'); }
+        const c = document.getElementById('auxMessageList');
+        if (!c) return;
+        if (!d.data || d.data.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay mensajes.</p>'; return; }
+        c.innerHTML = d.data.map(m => {
+            const isMe = m.sender_id === currentUser.id;
+            const typeClass = isMe ? (m.is_alert ? 'alert' : 'me') : 'them';
+            return `<div class="message-bubble ${typeClass}"><strong>${isMe ? 'Yo' : m.sender_name}</strong><br>${m.message}<small>${new Date(m.created_at).toLocaleTimeString('es-CO', {hour: '2-digit', minute:'2-digit'})}</small></div>`;
+        }).join('');
+        c.scrollTop = c.scrollHeight;
+    } catch (e) { console.error(e); }
+}
+async function sendAuxMessage() {
+    const msg = getVal('auxMsgInput');
+    if (!msg) return;
+    const payload = { patientId: selectedPatient?.id, shiftId: currentShiftId, senderId: currentUser.id, senderName: currentUser.full_name, message: msg, isAlert: false };
+    try { const r = await fetch(`${API_URL}/api/messages`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }); const d = await r.json(); if (d.success) { document.getElementById('auxMsgInput').value = ''; loadAuxMessages(); } } catch (e) { showToast('Error', 'error'); }
 }
 
 // ===== AUXILIAR =====
