@@ -333,16 +333,20 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="accordion-header" onclick="toggleAccordion(this)"><span>🧹 Aseo y Entorno</span><i class="fas fa-chevron-down"></i></div>
 <div class="accordion-content">
 <div class="sub-activity">
-<div class="sub-activity-header"><input type="checkbox" id="actBedClothes"><label for="actBedClothes"><strong>🛏️ Cambio de Ropa de Cama</strong></label><input type="time" id="actBedClothesTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-header"><input type="checkbox" id="actBedClothes" onchange="toggleSubFields('bed', this)"><label for="actBedClothes"><strong>🛏️ Cambio de Ropa de Cama</strong></label><input type="time" id="actBedClothesTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-fields" id="fields-bed"><div class="form-group"><label>Detalle</label><input type="text" id="actBedClothesObs" placeholder="Ej: Sábanas y fundas"></div></div>
 </div>
 <div class="sub-activity">
-<div class="sub-activity-header"><input type="checkbox" id="actRoomClean"><label for="actRoomClean"><strong>🧹 Aseo y Orden del Espacio</strong></label><input type="time" id="actRoomCleanTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-header"><input type="checkbox" id="actRoomClean" onchange="toggleSubFields('room', this)"><label for="actRoomClean"><strong>🧹 Aseo y Orden del Espacio</strong></label><input type="time" id="actRoomCleanTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-fields" id="fields-room"><div class="form-group"><label>Detalle</label><input type="text" id="actRoomCleanObs" placeholder="Ej: Limpieza de área y baño"></div></div>
 </div>
 <div class="sub-activity">
-<div class="sub-activity-header"><input type="checkbox" id="actWaste"><label for="actWaste"><strong>🗑️ Eliminación de Residuos</strong></label><input type="time" id="actWasteTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-header"><input type="checkbox" id="actWaste" onchange="toggleSubFields('waste', this)"><label for="actWaste"><strong>🗑️ Eliminación de Residuos</strong></label><input type="time" id="actWasteTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-fields" id="fields-waste"><div class="form-group"><label>Detalle</label><input type="text" id="actWasteObs" placeholder="Ej: Patogénicos y comunes"></div></div>
 </div>
 <div class="sub-activity">
-<div class="sub-activity-header"><input type="checkbox" id="actCompanion"><label for="actCompanion"><strong>🛋️ Acompañamiento Terapéutico</strong></label><input type="time" id="actCompanionTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-header"><input type="checkbox" id="actCompanion" onchange="toggleSubFields('comp', this)"><label for="actCompanion"><strong>🛋️ Acompañamiento Terapéutico</strong></label><input type="time" id="actCompanionTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-fields" id="fields-comp"><div class="form-group"><label>Detalle</label><input type="text" id="actCompanionObs" placeholder="Ej: Diálogo y apoyo emocional"></div></div>
 </div>
 </div>
 </div>
@@ -355,6 +359,20 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="sub-activity-fields" id="fields-oralfood">
 <div class="form-group"><label>Cantidad</label><select id="oralFoodQty"><option value="25%">25%</option><option value="50%">50%</option><option value="75%">75%</option><option value="100%">100%</option></select></div>
 <div class="form-group"><label>Dieta</label><select id="oralFoodDiet"><option value="normal">Normal</option><option value="blanda">Blanda</option><option value="licuada">Licuada</option><option value="diabetica">Diabética</option></select></div>
+</div>
+</div>
+<div class="sub-activity">
+<div class="sub-activity-header"><input type="checkbox" id="actEnteralFood" onchange="toggleSubFields('enteral', this)"><label for="actEnteralFood"><strong>🥤 Alimentación Enteral (Sonda)</strong></label><input type="time" id="actEnteralFoodTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-fields" id="fields-enteral">
+<div class="form-group"><label>Fórmula</label><input type="text" id="enteralFormula" placeholder="Ej: Nutricomp"></div>
+<div class="form-group"><label>Volumen (mL)</label><input type="number" id="enteralVol"></div>
+</div>
+</div>
+<div class="sub-activity">
+<div class="sub-activity-header"><input type="checkbox" id="actParenteralFood" onchange="toggleSubFields('parenteral', this)"><label for="actParenteralFood"><strong>💉 Nutrición Parenteral</strong></label><input type="time" id="actParenteralFoodTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-fields" id="fields-parenteral">
+<div class="form-group"><label>Fórmula</label><input type="text" id="parenteralFormula" placeholder="Ej: NPT"></div>
+<div class="form-group"><label>Volumen (mL)</label><input type="number" id="parenteralVol"></div>
 </div>
 </div>
 <div class="sub-activity">
@@ -394,7 +412,14 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="accordion-content">
 <div class="sub-activity">
 <div class="sub-activity-header"><input type="checkbox" id="actPosition" onchange="toggleSubFields('position', this)"><label for="actPosition"><strong>🔄 Cambio Postural</strong></label><input type="time" id="actPositionTime" style="width:auto; margin:0;"></div>
-<div class="sub-activity-fields" id="fields-position"><div class="form-group"><label>Posición</label><select id="positionType"><option value="supino">Supino</option><option value="lateral">Lateral</option><option value="fowler">Semi-Fowler</option></select></div></div>
+<div class="sub-activity-fields" id="fields-position"><div class="form-group"><label>Posición</label><select id="positionType">
+<option value="supino">Supino</option>
+<option value="prono">Prono</option>
+<option value="lateral_derecho">Lateral Derecho</option>
+<option value="lateral_izquierdo">Lateral Izquierdo</option>
+<option value="fowler">Fowler</option>
+<option value="semi_fowler">Semi-Fowler</option>
+</select></div></div>
 </div>
 <div class="sub-activity">
 <div class="sub-activity-header"><input type="checkbox" id="actWalking" onchange="toggleSubFields('walking', this)"><label for="actWalking"><strong>🚶 Deambulación</strong></label><input type="time" id="actWalkingTime" style="width:auto; margin:0;"></div>
@@ -433,18 +458,30 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="form-group"><label>Pendientes</label><input type="text" id="pendingTasks" placeholder="Tareas pendientes"></div>
 
 <div class="legal-warning">
-<h4>🚨 SALIDA DEL PACIENTE</h4>
+<h4>🚨 SALIDA DEL PACIENTE (RESPONSABILIDAD ARL)</h4>
 <div style="margin: 10px 0;"><input type="checkbox" id="patientLeavesHome" style="width:auto; margin-right:10px;" onchange="document.getElementById('leaveDetails').classList.toggle('hidden', !this.checked)"><label for="patientLeavesHome" style="display:inline;">El paciente saldrá del domicilio</label></div>
 <div id="leaveDetails" class="hidden">
-<div class="form-group"><label>Destino</label><input type="text" id="leaveDestination" placeholder="Cita médica, etc."></div>
+<div class="form-group"><label>Medio de Transporte</label>
+<select id="leaveTransport">
+<option value="taxi">Taxi</option>
+<option value="vehiculo_familiar">Vehículo Familiar</option>
+<option value="ambulancia">Ambulancia</option>
+<option value="bus">Bus</option>
+<option value="a_pie">A pie</option>
+</select>
+</div>
 <div class="form-group"><label>Hora de salida</label><input type="time" id="leaveTime"></div>
 <div class="form-group"><label>Hora de regreso</label><input type="time" id="leaveReturnTime"></div>
+<div style="margin: 10px 0; padding: 10px; background: #450a0a; border-radius: 6px; border: 1px solid var(--danger);">
+<input type="checkbox" id="leaveLiabilityAck" style="width:auto; margin-right:10px;">
+<label for="leaveLiabilityAck" style="display:inline; color: #fecaca;">El familiar asume la responsabilidad total del traslado. Vital Hogar Pro y el auxiliar NO se hacen responsables de eventos fuera del domicilio.</label>
+</div>
 </div>
 </div>
 
 <div class="legal-warning" style="border-color: var(--info);">
 <h4>🤝 RESPONSABILIDAD Y EDUCACIÓN</h4>
-<div style="margin: 10px 0;"><input type="checkbox" id="familyAcceptsResponsibility" style="width:auto; margin-right:10px;"><label for="familyAcceptsResponsibility" style="display:inline;">El familiar acepta la responsabilidad</label></div>
+<div style="margin: 10px 0;"><input type="checkbox" id="familyAcceptsResponsibility" style="width:auto; margin-right:10px;"><label for="familyAcceptsResponsibility" style="display:inline;">El familiar acepta la responsabilidad del paciente</label></div>
 <div style="margin: 10px 0;"><input type="checkbox" id="familyReceivedEducation" style="width:auto; margin-right:10px;" onchange="document.getElementById('educationDetails').classList.toggle('hidden', !this.checked)"><label for="familyReceivedEducation" style="display:inline;">Se brindó educación al familiar</label></div>
 <div id="educationDetails" class="hidden">
     <div class="form-group"><label>Tema Educativo Impartido</label><select id="educationTopicSelect"></select></div>
@@ -457,8 +494,23 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 </div>
 </div>
 
+<div class="grid">
 <div class="form-group"><label>Nombre Familiar *</label><input type="text" id="familySignName"></div>
 <div class="form-group"><label>Cédula Familiar *</label><input type="text" id="familySignId"></div>
+<div class="form-group"><label>Parentesco *</label>
+<select id="familyRelationship">
+<option value="">Seleccionar...</option>
+<option value="Hijo/a">Hijo/a</option>
+<option value="Esposo/a">Esposo/a</option>
+<option value="Padre/Madre">Padre/Madre</option>
+<option value="Hermano/a">Hermano/a</option>
+<option value="Sobrino/a">Sobrino/a</option>
+<option value="Nieto/a">Nieto/a</option>
+<option value="Otro">Otro</option>
+</select>
+</div>
+<div class="form-group"><label>Celular Familiar</label><input type="tel" id="familyPhone"></div>
+</div>
 
 <h4>✍️ Firma Auxiliar</h4>
 <canvas id="auxSigCanvas" class="signature-canvas"></canvas>
@@ -855,7 +907,7 @@ function calculateBraden() {
 // ===== AUXILIAR: ACTIVIDADES =====
 function toggleAccordion(header) { header.classList.toggle('active'); header.nextElementSibling.classList.toggle('open'); }
 function toggleSubFields(id, checkbox) { const fields = document.getElementById(`fields-${id}`); if (fields) fields.classList.toggle('show', checkbox.checked); }
-function addMedication() { medications.push({ id: Date.now(), name: '', dose: '', route: 'oral', time: '' }); renderMedications(); }
+function addMedication() { medications.push({ id: Date.now(), name: '', dose: '', route: 'Oral', time: '' }); renderMedications(); }
 function removeMedication(id) { medications = medications.filter(m => m.id !== id); renderMedications(); }
 function updateMedication(id, field, value) { const m = medications.find(m => m.id === id); if(m) m[field] = value; }
 function renderMedications() {
@@ -864,7 +916,19 @@ function renderMedications() {
     c.innerHTML = medications.map(m => `<div class="med-item">
         <input type="text" placeholder="Nombre" value="${m.name}" oninput="updateMedication(${m.id}, 'name', this.value)">
         <input type="text" placeholder="Dosis" value="${m.dose}" oninput="updateMedication(${m.id}, 'dose', this.value)">
-        <select onchange="updateMedication(${m.id}, 'route', this.value)"><option value="oral" ${m.route==='oral'?'selected':''}>Oral</option><option value="IV" ${m.route==='IV'?'selected':''}>IV</option><option value="SC" ${m.route==='SC'?'selected':''}>SC</option></select>
+        <select onchange="updateMedication(${m.id}, 'route', this.value)">
+            <option value="Oral" ${m.route==='Oral'?'selected':''}>Oral</option>
+            <option value="Sublingual" ${m.route==='Sublingual'?'selected':''}>Sublingual</option>
+            <option value="IV" ${m.route==='IV'?'selected':''}>Intravenosa (IV)</option>
+            <option value="IM" ${m.route==='IM'?'selected':''}>Intramuscular (IM)</option>
+            <option value="SC" ${m.route==='SC'?'selected':''}>Subcutánea (SC)</option>
+            <option value="Tópica" ${m.route==='Tópica'?'selected':''}>Tópica</option>
+            <option value="Oftálmica" ${m.route==='Oftálmica'?'selected':''}>Oftálmica</option>
+            <option value="Ótica" ${m.route==='Ótica'?'selected':''}>Ótica</option>
+            <option value="Nasal" ${m.route==='Nasal'?'selected':''}>Nasal</option>
+            <option value="Rectal" ${m.route==='Rectal'?'selected':''}>Rectal</option>
+            <option value="Vaginal" ${m.route==='Vaginal'?'selected':''}>Vaginal</option>
+        </select>
         <button class="btn-small btn-danger" onclick="removeMedication(${m.id})">✕</button>
     </div>`).join('');
 }
@@ -877,13 +941,15 @@ async function saveClinicalRecord() {
             oral_hygiene: getChecked('actOralHygiene') ? {done:true, time:getVal('actOralTime'), type:getVal('oralType')} : null
         },
         environment: {
-            bed_clothes: getChecked('actBedClothes') ? {done:true, time:getVal('actBedClothesTime')} : null,
-            room_clean: getChecked('actRoomClean') ? {done:true, time:getVal('actRoomCleanTime')} : null,
-            waste: getChecked('actWaste') ? {done:true, time:getVal('actWasteTime')} : null,
-            companion: getChecked('actCompanion') ? {done:true, time:getVal('actCompanionTime')} : null
+            bed_clothes: getChecked('actBedClothes') ? {done:true, time:getVal('actBedClothesTime'), obs:getVal('actBedClothesObs')} : null,
+            room_clean: getChecked('actRoomClean') ? {done:true, time:getVal('actRoomCleanTime'), obs:getVal('actRoomCleanObs')} : null,
+            waste: getChecked('actWaste') ? {done:true, time:getVal('actWasteTime'), obs:getVal('actWasteObs')} : null,
+            companion: getChecked('actCompanion') ? {done:true, time:getVal('actCompanionTime'), obs:getVal('actCompanionObs')} : null
         },
         feeding: {
             oral: getChecked('actOralFood') ? {done:true, time:getVal('actOralFoodTime'), qty:getVal('oralFoodQty'), diet:getVal('oralFoodDiet')} : null,
+            enteral: getChecked('actEnteralFood') ? {done:true, time:getVal('actEnteralFoodTime'), formula:getVal('enteralFormula'), vol:getVal('enteralVol')} : null,
+            parenteral: getChecked('actParenteralFood') ? {done:true, time:getVal('actParenteralFoodTime'), formula:getVal('parenteralFormula'), vol:getVal('parenteralVol')} : null,
             hydration: getChecked('actHydration') ? {done:true, time:getVal('actHydrationTime'), ml:getVal('hydrationMl')} : null
         },
         clinical: {
@@ -954,11 +1020,16 @@ function previewPhoto(input) {
 // ===== AUXILIAR: CIERRE DE TURNO =====
 async function closeShift() {
     if (!getChecked('familyAcceptsResponsibility')) return showToast('El familiar debe aceptar la responsabilidad', 'error');
-    if (!getVal('familySignName') || !getVal('familySignId')) return showToast('Nombre y cédula del familiar son obligatorios', 'error');
+    if (!getVal('familySignName') || !getVal('familySignId') || !getVal('familyRelationship')) return showToast('Datos del familiar incompletos', 'error');
+    
+    if (getChecked('patientLeavesHome') && !getChecked('leaveLiabilityAck')) {
+        return showToast('El familiar debe aceptar la responsabilidad del traslado fuera del domicilio', 'error');
+    }
+
     const auxSig = document.getElementById('auxSigCanvas').toDataURL();
     const famSig = document.getElementById('famSigCanvas').toDataURL();
     const patientLeaves = getChecked('patientLeavesHome');
-    const leaveData = patientLeaves ? { destination: getVal('leaveDestination'), time: getVal('leaveTime'), returnTime: getVal('leaveReturnTime') } : null;
+    const leaveData = patientLeaves ? { transport: getVal('leaveTransport'), time: getVal('leaveTime'), returnTime: getVal('leaveReturnTime'), liabilityAck: true } : null;
     const familyReceivedEducation = getChecked('familyReceivedEducation');
     const educationTopic = familyReceivedEducation ? getVal('educationTopicSelect') : null;
     const educationPhoto = familyReceivedEducation ? eduPhotoBase64 : null;
@@ -967,7 +1038,7 @@ async function closeShift() {
         shiftId: currentShiftId, patientDeliveredStatus: getVal('patientDeliveredStatus'),
         patientDeliveredNotes: getVal('patientDeliveredNotes'), pendingTasks: getVal('pendingTasks'),
         auxiliarySignature: auxSig, auxiliaryName: currentUser.full_name, auxiliaryIdNumber: currentUser.document_number,
-        familySignature: famSig, familyName: getVal('familySignName'), familyIdNumber: getVal('familySignId'),
+        familySignature: famSig, familyName: getVal('familySignName'), familyIdNumber: getVal('familySignId'), familyRelationship: getVal('familyRelationship'), familyPhone: getVal('familyPhone'),
         patientLeavesHome: patientLeaves, leaveData: leaveData, 
         familyAcceptsResponsibility: true, familyReceivedEducation: familyReceivedEducation, 
         educationTopicGiven: educationTopic, educationPhotoData: educationPhoto
@@ -1031,6 +1102,7 @@ async function generateClosurePDF() {
 
         // Sección de Actividades Realizadas en el turno
         if (records && records.length > 0) {
+            if (finalY > 230) { doc.addPage(); finalY = 30; }
             doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Actividades Realizadas en el Turno", 14, finalY);
             doc.setFontSize(9); doc.setTextColor(0);
             finalY += 7;
@@ -1041,17 +1113,27 @@ async function generateClosurePDF() {
                     let actText = `Registro (${new Date(r.created_at).toLocaleTimeString('es-CO')}):\n`;
                     if (acts.hygiene?.bath?.done) actText += `- Baño: ${acts.hygiene.bath.type || ''} (${formatTime12h(acts.hygiene.bath.time)})\n`;
                     if (acts.hygiene?.oral_hygiene?.done) actText += `- Higiene Bucal: ${acts.hygiene.oral_hygiene.type || ''} (${formatTime12h(acts.hygiene.oral_hygiene.time)})\n`;
-                    if (acts.environment?.bed_clothes?.done) actText += `- Cambio de Ropa de Cama (${formatTime12h(acts.environment.bed_clothes.time)})\n`;
-                    if (acts.environment?.room_clean?.done) actText += `- Aseo y Orden del Espacio (${formatTime12h(acts.environment.room_clean.time)})\n`;
-                    if (acts.environment?.waste?.done) actText += `- Eliminación de Residuos (${formatTime12h(acts.environment.waste.time)})\n`;
-                    if (acts.environment?.companion?.done) actText += `- Acompañamiento Terapéutico (${formatTime12h(acts.environment.companion.time)})\n`;
-                    if (acts.feeding?.oral?.done) actText += `- Alimentación: ${acts.feeding.oral.qty || ''} ${acts.feeding.oral.diet || ''} (${formatTime12h(acts.feeding.oral.time)})\n`;
+                    
+                    if (acts.environment?.bed_clothes?.done) actText += `- Cambio Ropa de Cama: ${acts.environment.bed_clothes.obs || ''} (${formatTime12h(acts.environment.bed_clothes.time)})\n`;
+                    if (acts.environment?.room_clean?.done) actText += `- Aseo Espacio: ${acts.environment.room_clean.obs || ''} (${formatTime12h(acts.environment.room_clean.time)})\n`;
+                    if (acts.environment?.waste?.done) actText += `- Eliminación Residuos: ${acts.environment.waste.obs || ''} (${formatTime12h(acts.environment.waste.time)})\n`;
+                    if (acts.environment?.companion?.done) actText += `- Acompañamiento: ${acts.environment.companion.obs || ''} (${formatTime12h(acts.environment.companion.time)})\n`;
+                    
+                    if (acts.feeding?.oral?.done) actText += `- Alimentación Oral: ${acts.feeding.oral.qty || ''} ${acts.feeding.oral.diet || ''} (${formatTime12h(acts.feeding.oral.time)})\n`;
+                    if (acts.feeding?.enteral?.done) actText += `- Alim. Enteral: ${acts.feeding.enteral.formula || ''} ${acts.feeding.enteral.vol || ''}mL (${formatTime12h(acts.feeding.enteral.time)})\n`;
+                    if (acts.feeding?.parenteral?.done) actText += `- Nutrición Parenteral: ${acts.feeding.parenteral.formula || ''} ${acts.feeding.parenteral.vol || ''}mL (${formatTime12h(acts.feeding.parenteral.time)})\n`;
                     if (acts.feeding?.hydration?.done) actText += `- Hidratación: ${acts.feeding.hydration.ml || ''} mL (${formatTime12h(acts.feeding.hydration.time)})\n`;
+                    
                     if (acts.clinical?.wound?.done) actText += `- Curación: ${acts.clinical.wound.state || ''} (${formatTime12h(acts.clinical.wound.time)})\n`;
                     if (acts.clinical?.oxygen?.done) actText += `- Oxígeno: ${acts.clinical.oxygen.lpm || ''} L/min (${formatTime12h(acts.clinical.oxygen.time)})\n`;
+                    
                     if (acts.mobility?.position?.done) actText += `- Cambio Postural: ${acts.mobility.position.type || ''} (${formatTime12h(acts.mobility.position.time)})\n`;
                     if (acts.mobility?.walking?.done) actText += `- Deambulación: ${acts.mobility.walking.distance || ''}m (${formatTime12h(acts.mobility.walking.time)})\n`;
-                    if (acts.medications?.length > 0) actText += `- Medicamentos administrados: ${acts.medications.length}\n`;
+                    
+                    if (acts.medications?.length > 0) {
+                        actText += `- Medicamentos Administrados:\n`;
+                        acts.medications.forEach(med => { actText += `    * ${med.name} ${med.dose} (Vía: ${med.route}) - ${formatTime12h(med.time)}\n`; });
+                    }
                     
                     const splitText = doc.splitTextToSize(actText, 180);
                     doc.text(splitText, 14, finalY);
@@ -1060,8 +1142,22 @@ async function generateClosurePDF() {
             });
         }
 
-        // Sección de Educación
+        // Sección de Salida del Paciente
         const sig = signatures?.[0];
+        if (sig?.patient_leaves_home) {
+            if (finalY > 220) { doc.addPage(); finalY = 30; }
+            doc.setFontSize(12); doc.setTextColor(239, 68, 68); doc.text("⚠️ SALIDA DEL PACIENTE (Autorización)", 14, finalY);
+            doc.setFontSize(10); doc.setTextColor(0);
+            finalY += 7;
+            doc.text(`Transporte: ${sig.leave_data?.transport || 'N/A'}`, 14, finalY);
+            doc.text(`Hora Salida: ${formatTime12h(sig.leave_data?.time)}`, 14, finalY + 7);
+            doc.text(`Hora Regreso: ${formatTime12h(sig.leave_data?.returnTime)}`, 14, finalY + 14);
+            doc.setFontSize(8); doc.setTextColor(100);
+            doc.text("El familiar asume la responsabilidad total del traslado. Vital Hogar Cuidados Domiciliarios no se hace responsable de eventos fuera del domicilio.", 14, finalY + 21);
+            finalY += 30;
+        }
+
+        // Sección de Educación
         const currentEduPhoto = eduPhotoBase64 || sig?.education_photo_data; // Prioriza la foto actual en memoria
         
         if (sig?.family_received_education || currentEduPhoto) {
@@ -1089,6 +1185,7 @@ async function generateClosurePDF() {
         if (sig?.family_signature) { try { doc.addImage(sig.family_signature, 'PNG', 116, finalY + 8, 50, 20); } catch(e) {} }
         doc.text(`Nombre: ${sig?.family_name || '________________'}`, 114, finalY + 33);
         doc.text(`C.C.: ${sig?.family_id_number || '________'}`, 114, finalY + 38);
+        doc.text(`Parentesco: ${sig?.family_relationship || '________'}`, 114, finalY + 43);
         
         doc.save(`Resumen_${shift?.patients?.full_name || 'paciente'}.pdf`);
         showToast('PDF generado');
