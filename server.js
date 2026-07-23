@@ -63,11 +63,7 @@ app.post('/api/auth/reset-password', async (req, res) => {
     try {
         const { email } = req.body;
         if (!email) return res.status(400).json({ success: false, message: 'Email requerido' });
-        
-        const { error } = await supabase.auth.resetPasswordForEmail(email, {
-            redirectTo: 'https://vital-hogar-31.onrender.com'
-        });
-
+        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: 'https://vital-hogar-31.onrender.com' });
         if (error) throw error;
         res.json({ success: true, message: 'Se ha enviado un enlace de recuperación a tu correo.' });
     } catch (error) {
@@ -94,10 +90,7 @@ app.get('/api/dashboard/stats', async (req, res) => {
 // ==========================================
 app.get('/api/professionals', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('professionals')
-            .select('*, specialties(name)')
-            .order('created_at', { ascending: false });
+        const { data, error } = await supabase.from('professionals').select('*, specialties(name)').order('created_at', { ascending: false });
         if (error) throw error;
         res.json({ success: true, data: data || [] });
     } catch (error) {
@@ -107,10 +100,8 @@ app.get('/api/professionals', async (req, res) => {
 
 app.post('/api/professionals', async (req, res) => {
     try {
-        const { email, password, fullName, documentNumber, specialtyName, signature, professionalCard } = req.body;
-        if (!email || !password || !fullName || !documentNumber || !specialtyName) {
-            return res.status(400).json({ success: false, message: 'Todos los campos son requeridos' });
-        }
+        const { email, password, fullName, documentNumber, specialtyName, professionalCard } = req.body;
+        if (!email || !password || !fullName || !documentNumber || !specialtyName) return res.status(400).json({ success: false, message: 'Todos los campos son requeridos' });
 
         const { data: specData } = await supabase.from('specialties').select('id').eq('name', specialtyName).single();
         if (!specData) return res.status(400).json({ success: false, message: 'Especialidad no válida' });
@@ -119,20 +110,14 @@ app.post('/api/professionals', async (req, res) => {
         if (authError) return res.status(400).json({ success: false, message: authError.message });
 
         const { error: insertError } = await supabase.from('professionals').insert([{
-            user_id: authUser.user.id,
-            full_name: fullName,
-            document_number: documentNumber,
-            specialty_id: specData.id,
-            signature_data: signature || null,
-            professional_card: professionalCard || null,
-            is_active: true
+            user_id: authUser.user.id, full_name: fullName, document_number: documentNumber,
+            specialty_id: specData.id, professional_card: professionalCard || null, is_active: true
         }]);
 
         if (insertError) {
             await supabase.auth.admin.deleteUser(authUser.user.id);
             return res.status(500).json({ success: false, message: insertError.message });
         }
-
         res.json({ success: true, message: 'Profesional registrado exitosamente' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -173,15 +158,10 @@ app.patch('/api/professionals/:id/deactivate', async (req, res) => {
 // ==========================================
 app.get('/api/patients', async (req, res) => {
     try {
-        let { data, error } = await supabase
-            .from('patients')
-            .select('*, altitude_profiles(city_name)')
-            .order('created_at', { ascending: false });
-            
+        let { data, error } = await supabase.from('patients').select('*, altitude_profiles(city_name)').order('created_at', { ascending: false });
         if (error) {
             const fallback = await supabase.from('patients').select('*').order('created_at', { ascending: false });
-            data = fallback.data;
-            error = fallback.error;
+            data = fallback.data; error = fallback.error;
         }
         if (error) throw error;
         res.json({ success: true, data: data || [] });
@@ -238,10 +218,7 @@ app.patch('/api/patients/:id', async (req, res) => {
 app.patch('/api/patients/:id/discharge', async (req, res) => {
     try {
         const { reason, notes } = req.body;
-        await supabase.from('patients').update({
-            is_active: false, discharge_date: new Date().toISOString(),
-            discharge_reason: reason, discharge_notes: notes || null
-        }).eq('id', req.params.id);
+        await supabase.from('patients').update({ is_active: false, discharge_date: new Date().toISOString(), discharge_reason: reason, discharge_notes: notes || null }).eq('id', req.params.id);
         res.json({ success: true, message: 'Paciente dado de baja' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -250,9 +227,7 @@ app.patch('/api/patients/:id/discharge', async (req, res) => {
 
 app.patch('/api/patients/:id/reactivate', async (req, res) => {
     try {
-        await supabase.from('patients').update({
-            is_active: true, discharge_date: null, discharge_reason: null, discharge_notes: null
-        }).eq('id', req.params.id);
+        await supabase.from('patients').update({ is_active: true, discharge_date: null, discharge_reason: null, discharge_notes: null }).eq('id', req.params.id);
         res.json({ success: true, message: 'Paciente reactivado' });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -264,10 +239,7 @@ app.patch('/api/patients/:id/reactivate', async (req, res) => {
 // ==========================================
 app.get('/api/education/topics', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('education_topics')
-            .select(`*, professionals!education_topics_created_by_fkey(full_name, document_number, professional_card)`)
-            .order('created_at', { ascending: false });
+        const { data, error } = await supabase.from('education_topics').select(`*, professionals!education_topics_created_by_fkey(full_name, document_number, professional_card)`).order('created_at', { ascending: false });
         if (error) throw error;
         res.json({ success: true, data: data || [] });
     } catch (error) {
@@ -279,10 +251,7 @@ app.post('/api/education/topics', async (req, res) => {
     try {
         const { title, description, responsibleId } = req.body;
         if (!title) return res.status(400).json({ success: false, message: 'El título es requerido' });
-
-        const { error } = await supabase.from('education_topics').insert([{
-            title, description: description || 'Sin descripción', created_by: responsibleId || null
-        }]);
+        const { error } = await supabase.from('education_topics').insert([{ title, description: description || 'Sin descripción', created_by: responsibleId || null }]);
         if (error) throw error;
         res.json({ success: true, message: 'Tema educativo creado' });
     } catch (error) {
@@ -295,25 +264,13 @@ app.post('/api/education/topics', async (req, res) => {
 // ==========================================
 app.get('/api/auxiliar/patients', async (req, res) => {
     try {
-        let { data, error } = await supabase
-            .from('patients')
-            .select(`*, altitude_profiles(city_name, spo2_min_normal), clinical_records(created_at, spo2, glucose, eva_score, glasgow_eyes, glasgow_verbal, glasgow_motor)`)
-            .eq('is_active', true)
-            .order('created_at', { ascending: false });
-
+        let { data, error } = await supabase.from('patients').select(`*, altitude_profiles(city_name, spo2_min_normal), clinical_records(created_at, spo2, glucose, eva_score, glasgow_eyes, glasgow_verbal, glasgow_motor)`).eq('is_active', true).order('created_at', { ascending: false });
         if (error) {
             const fallback = await supabase.from('patients').select('*').eq('is_active', true).order('created_at', { ascending: false });
             data = fallback.data; error = fallback.error;
         }
         if (error) throw error;
-
-        if (data) {
-            data.forEach(patient => {
-                if (patient.clinical_records) {
-                    patient.clinical_records.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                }
-            });
-        }
+        if (data) data.forEach(p => { if (p.clinical_records) p.clinical_records.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); });
         res.json({ success: true, data: data || [] });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -341,17 +298,15 @@ app.post('/api/shifts/start', async (req, res) => {
 
 app.post('/api/clinical-records', async (req, res) => {
     try {
-        const { shiftId, patientId, professionalId, bloodPressure, heartRate, respiratoryRate, temperature, spo2, glucose, evaScore, consciousnessLevel, glasgowEyes, glasgowVerbal, glasgowMotor, bradenScore, bristolType, ppeUsed, wasteManagement, externalAccompaniment, activitiesCompleted, sbarSituation, sbarBackground, sbarAssessment, sbarRecommendation, notes } = req.body;
-
+        const { shiftId, patientId, professionalId, bloodPressure, heartRate, respiratoryRate, temperature, spo2, glucose, evaScore, glasgowEyes, glasgowVerbal, glasgowMotor, bradenScore, activitiesCompleted, sbarSituation, sbarBackground, sbarAssessment, sbarRecommendation, notes } = req.body;
         if (!shiftId || !patientId || !professionalId) return res.status(400).json({ success: false, message: 'Datos incompletos' });
 
         const { data, error } = await supabase.from('clinical_records').insert([{
             shift_id: shiftId, patient_id: patientId, professional_id: professionalId,
             blood_pressure: bloodPressure || null, heart_rate: heartRate || null, respiratory_rate: respiratoryRate || null,
             temperature: temperature || null, spo2: spo2 || null, glucose: glucose || null, eva_score: evaScore || 0,
-            consciousness_level: consciousnessLevel || null, glasgow_eyes: glasgowEyes || null, glasgow_verbal: glasgowVerbal || null, glasgow_motor: glasgowMotor || null,
-            braden_score: bradenScore || null, bristol_type: bristolType || null, ppe_used: ppeUsed || {}, waste_management: wasteManagement || {},
-            external_accompaniment: externalAccompaniment || null, activities_completed: activitiesCompleted || {},
+            glasgow_eyes: glasgowEyes || null, glasgow_verbal: glasgowVerbal || null, glasgow_motor: glasgowMotor || null,
+            braden_score: bradenScore || null, activities_completed: activitiesCompleted || {},
             sbar_situation: sbarSituation || null, sbar_background: sbarBackground || null, sbar_assessment: sbarAssessment || null, sbar_recommendation: sbarRecommendation || null,
             notes: notes || null
         }]).select().single();
@@ -367,20 +322,9 @@ app.post('/api/clinical-records', async (req, res) => {
 app.get('/api/patients/:id/daily-history', async (req, res) => {
     try {
         const today = new Date(); today.setHours(0, 0, 0, 0);
-        const { data: records, error: err1 } = await supabase
-            .from('clinical_records')
-            .select('*, professionals(full_name)')
-            .eq('patient_id', req.params.id)
-            .gte('created_at', today.toISOString())
-            .order('created_at', { ascending: true });
-
+        const { data: records, error: err1 } = await supabase.from('clinical_records').select('*, professionals(full_name)').eq('patient_id', req.params.id).gte('created_at', today.toISOString()).order('created_at', { ascending: true });
         if (err1) throw err1;
-
-        const { data: signatures, error: err2 } = await supabase
-            .from('shift_signatures')
-            .select('*')
-            .gte('created_at', today.toISOString());
-
+        const { data: signatures, error: err2 } = await supabase.from('shift_signatures').select('*').gte('created_at', today.toISOString());
         if (err2) throw err2;
         res.json({ success: true, data: { records: records || [], signatures: signatures || [] } });
     } catch (error) {
@@ -390,34 +334,20 @@ app.get('/api/patients/:id/daily-history', async (req, res) => {
 
 app.post('/api/shifts/close', async (req, res) => {
     try {
-        const { shiftId, patientDeliveredStatus, patientDeliveredNotes, pendingTasks, pendingJustification, auxiliarySignature, auxiliaryName, auxiliaryIdNumber, auxiliaryProfessionalCard, familySignature, familyName, familyIdNumber, familyRelationship, familyPhone, patientLeavesHome, leaveData, familyReceivedEducation, educationTopicGiven, educationPhotoData } = req.body;
-
-        if (!shiftId || !auxiliarySignature || !auxiliaryName || !auxiliaryIdNumber) {
-            return res.status(400).json({ success: false, message: 'Datos de cierre incompletos' });
-        }
+        const { shiftId, patientDeliveredStatus, patientDeliveredNotes, pendingTasks, auxiliarySignature, auxiliaryName, auxiliaryIdNumber, familySignature, familyName, familyIdNumber, familyRelationship, familyPhone, patientLeavesHome, leaveData, familyReceivedEducation, educationTopicGiven, educationPhotoData } = req.body;
+        if (!shiftId || !auxiliarySignature || !auxiliaryName || !auxiliaryIdNumber) return res.status(400).json({ success: false, message: 'Datos de cierre incompletos' });
 
         await supabase.from('shifts').update({
-            end_time: new Date().toISOString(),
-            patient_delivered_status: patientDeliveredStatus || null,
-            patient_delivered_notes: patientDeliveredNotes || null,
-            pending_tasks: pendingTasks || null,
-            pending_justification: pendingJustification || null,
-            is_closed: true
+            end_time: new Date().toISOString(), patient_delivered_status: patientDeliveredStatus || null,
+            patient_delivered_notes: patientDeliveredNotes || null, pending_tasks: pendingTasks || null, is_closed: true
         }).eq('id', shiftId);
 
         await supabase.from('shift_signatures').insert([{
-            clinical_record_id: null,
-            auxiliary_signature: auxiliarySignature, auxiliary_name: auxiliaryName,
-            auxiliary_id_number: auxiliaryIdNumber, auxiliary_professional_card: auxiliaryProfessionalCard || null,
-            auxiliary_signed_at: new Date().toISOString(),
-            family_signature: familySignature || null, family_name: familyName || null,
-            family_id_number: familyIdNumber || null, family_relationship: familyRelationship || null,
-            family_phone: familyPhone || null, family_signed_at: familySignature ? new Date().toISOString() : null,
-            patient_leaves_home: patientLeavesHome || false,
-            leave_data: leaveData || null,
-            family_received_education: familyReceivedEducation || false,
-            education_topic_given: educationTopicGiven || null,
-            education_photo_data: educationPhotoData || null
+            auxiliary_signature: auxiliarySignature, auxiliary_name: auxiliaryName, auxiliary_id_number: auxiliaryIdNumber,
+            family_signature: familySignature || null, family_name: familyName || null, family_id_number: familyIdNumber || null,
+            family_relationship: familyRelationship || null, family_phone: familyPhone || null,
+            patient_leaves_home: patientLeavesHome || false, leave_data: leaveData || null,
+            family_received_education: familyReceivedEducation || false, education_topic_given: educationTopicGiven || null, education_photo_data: educationPhotoData || null
         }]);
 
         res.json({ success: true, message: 'Turno cerrado exitosamente', data: { shiftId } });
@@ -429,30 +359,12 @@ app.post('/api/shifts/close', async (req, res) => {
 
 app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
     try {
-        const { data: shift, error: shiftError } = await supabase
-            .from('shifts')
-            .select('*, patients(*, altitude_profiles(city_name))')
-            .eq('id', req.params.shiftId)
-            .single();
-
+        const { data: shift, error: shiftError } = await supabase.from('shifts').select('*, patients(*, altitude_profiles(city_name))').eq('id', req.params.shiftId).single();
         if (shiftError) throw shiftError;
-
-        const { data: records, error: recordsError } = await supabase
-            .from('clinical_records')
-            .select('*')
-            .eq('shift_id', req.params.shiftId)
-            .order('created_at', { ascending: true });
-
+        const { data: records, error: recordsError } = await supabase.from('clinical_records').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: true });
         if (recordsError) throw recordsError;
-
-        const { data: signatures, error: sigError } = await supabase
-            .from('shift_signatures')
-            .select('*')
-            .order('created_at', { ascending: false })
-            .limit(1);
-
+        const { data: signatures, error: sigError } = await supabase.from('shift_signatures').select('*').order('created_at', { ascending: false }).limit(1);
         if (sigError) throw sigError;
-
         res.json({ success: true, data: { shift, records: records || [], signatures: signatures || [] } });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
@@ -460,16 +372,11 @@ app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
 });
 
 // ==========================================
-// 7. INFORMES CONSOLIDADOS (MEJORADO)
+// 7. INFORMES CONSOLIDADOS
 // ==========================================
 app.get('/api/reports/pending', async (req, res) => {
     try {
-        const { data, error } = await supabase
-            .from('patients')
-            .select('id, full_name, family_name')
-            .eq('is_active', true)
-            .order('full_name');
-
+        const { data, error } = await supabase.from('patients').select('id, full_name, family_name').eq('is_active', true).order('full_name');
         if (error) throw error;
         res.json({ success: true, data: data || [] });
     } catch (error) {
@@ -480,105 +387,174 @@ app.get('/api/reports/pending', async (req, res) => {
 app.get('/api/reports/:patientId/:month/:year', async (req, res) => {
     try {
         const { patientId, month, year } = req.params;
-        const monthNum = parseInt(month);
-        const yearNum = parseInt(year);
-
+        const monthNum = parseInt(month); const yearNum = parseInt(year);
         if (monthNum < 1 || monthNum > 12 || yearNum < 2000) return res.status(400).json({ success: false, message: 'Mes o año inválido' });
 
-        const { data: patient, error: patientError } = await supabase
-            .from('patients')
-            .select('*, altitude_profiles(city_name)')
-            .eq('id', patientId)
-            .single();
-
+        const { data: patient, error: patientError } = await supabase.from('patients').select('*, altitude_profiles(city_name)').eq('id', patientId).single();
         if (patientError || !patient) return res.status(404).json({ success: false, message: 'Paciente no encontrado' });
 
         const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`;
         const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59).toISOString();
 
-        // 1. Registros del Auxiliar
-        const { data: records, error: recordsError } = await supabase
-            .from('clinical_records')
-            .select('*, professionals(full_name)')
-            .eq('patient_id', patientId)
-            .gte('created_at', startDate)
-            .lte('created_at', endDate)
-            .order('created_at', { ascending: true });
-
+        const { data: records, error: recordsError } = await supabase.from('clinical_records').select('*, professionals(full_name)').eq('patient_id', patientId).gte('created_at', startDate).lte('created_at', endDate).order('created_at', { ascending: true });
         if (recordsError) throw recordsError;
 
-        // 2. Registros de Profesionales (Médico, Fisio, etc.)
-        const { data: profRecords, error: profRecordsError } = await supabase
-            .from('professional_records')
-            .select('*, professionals(full_name, specialties(name))')
-            .eq('patient_id', patientId)
-            .gte('created_at', startDate)
-            .lte('created_at', endDate)
-            .order('created_at', { ascending: true });
-
+        const { data: profRecords, error: profRecordsError } = await supabase.from('professional_records').select('*, professionals(full_name, specialties(name))').eq('patient_id', patientId).gte('created_at', startDate).lte('created_at', endDate).order('created_at', { ascending: true });
         if (profRecordsError) throw profRecordsError;
 
-        let stats = { totalRecords: 0, avgSpo2: 0, avgHR: 0, avgTemp: 0, criticalAlerts: 0 };
-        if (records && records.length > 0) {
-            stats.totalRecords = records.length;
-            let spo2Sum = 0, hrSum = 0, tempSum = 0;
-            let spo2Count = 0, hrCount = 0, tempCount = 0;
-
-            records.forEach(record => {
-                if (record.spo2 !== null && record.spo2 !== undefined) { spo2Sum += record.spo2; spo2Count++; }
-                if (record.heart_rate !== null && record.heart_rate !== undefined) { hrSum += record.heart_rate; hrCount++; }
-                if (record.temperature !== null && record.temperature !== undefined) { tempSum += record.temperature; tempCount++; }
-
-                const spo2Min = patient?.altitude_profiles?.spo2_min_normal || 95;
-                if (record.spo2 < (spo2Min - 3) || record.glucose > 200 || (record.glucose < 60 && record.glucose > 0)) {
-                    stats.criticalAlerts++;
-                }
-            });
-
-            if (spo2Count > 0) stats.avgSpo2 = Math.round(spo2Sum / spo2Count);
-            if (hrCount > 0) stats.avgHR = Math.round(hrSum / hrCount);
-            if (tempCount > 0) stats.avgTemp = parseFloat((tempSum / tempCount).toFixed(1));
-        }
-
-        res.json({ success: true, data: { patient, records: records || [], profRecords: profRecords || [], stats } });
+        res.json({ success: true, data: { patient, records: records || [], profRecords: profRecords || [], stats: { totalRecords: records?.length || 0 } } });
     } catch (error) {
         res.status(500).json({ success: false, message: error.message });
     }
 });
 
-// ==========================================
-// 8. NOTAS DE EVOLUCIÓN PROFESIONALES (FASE 2)
-// ==========================================
 app.post('/api/professional-records', async (req, res) => {
     try {
-        const { patientId, professionalId, shiftId, recordType, weight, height, imc, vitalSigns, subjective, objective, analysis, plan, photoData, professionalSignature, familySignature, familyName, familyId } = req.body;
-        
+        const { patientId, professionalId, recordType, weight, height, imc, vitalSigns, subjective, objective, analysis, plan, photoData, professionalSignature, familySignature, familyName, familyId } = req.body;
         if (!patientId || !professionalId) return res.status(400).json({ success: false, message: 'Datos incompletos' });
 
         const { data, error } = await supabase.from('professional_records').insert([{
-            patient_id: patientId,
-            professional_id: professionalId,
-            shift_id: shiftId || null,
-            record_type: recordType || 'Nota de Evolución',
-            weight: weight || null,
-            height: height || null,
-            imc: imc || null,
-            vital_signs: vitalSigns || {},
-            subjective: subjective || null,
-            objective: objective || null,
-            analysis: analysis || null,
-            plan: plan || null,
-            photo_data: photoData || null,
-            professional_signature: professionalSignature || null,
-            family_signature: familySignature || null,
-            family_name: familyName || null,
-            family_id: familyId || null
+            patient_id: patientId, professional_id: professionalId, record_type: recordType || 'Nota de Evolución',
+            weight: weight || null, height: height || null, imc: imc || null, vital_signs: vitalSigns || {},
+            subjective: subjective || null, objective: objective || null, analysis: analysis || null, plan: plan || null,
+            photo_data: photoData || null, professional_signature: professionalSignature || null,
+            family_signature: familySignature || null, family_name: familyName || null, family_id: familyId || null
         }]).select().single();
 
         if (error) throw error;
         res.json({ success: true, message: 'Nota de evolución guardada', data: { id: data.id } });
     } catch (error) {
         console.error('Error al guardar nota profesional:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// ==========================================
+// 8. MÓDULO FINANCIERO (FASE 3 - LEY 2026)
+// ==========================================
+app.get('/api/finance/parameters', async (req, res) => {
+    try {
+        const { data, error } = await supabase.from('financial_parameters').select('*').eq('is_active', true).single();
+        if (error) throw error;
+        res.json({ success: true, data: data || {} });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.patch('/api/finance/parameters/:id', async (req, res) => {
+    try {
+        const { smmlv, subsidy_transport, night_surcharge_percentage, holiday_surcharge_percentage, night_start_hour, night_end_hour, year } = req.body;
+        const { error } = await supabase.from('financial_parameters').update({
+            smmlv, subsidy_transport, night_surcharge_percentage, holiday_surcharge_percentage, night_start_hour, night_end_hour, year
+        }).eq('id', req.params.id);
+        if (error) throw error;
+        res.json({ success: true, message: 'Parámetros de ley actualizados' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res) => {
+    try {
+        const { professionalId, month, year } = req.params;
+        const monthNum = parseInt(month);
+        const yearNum = parseInt(year);
+
+        // 1. Obtener parámetros de ley
+        const { data: params } = await supabase.from('financial_parameters').select('*').eq('is_active', true).single();
+        if (!params) return res.status(404).json({ success: false, message: 'Parámetros financieros no configurados' });
+
+        // 2. Obtener turnos cerrados del mes
+        const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`;
+        const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59).toISOString();
+
+        const { data: shifts, error: shiftError } = await supabase
+            .from('shifts')
+            .select('*, patients(full_name)')
+            .eq('professional_id', professionalId)
+            .eq('is_closed', true)
+            .gte('start_time', startDate)
+            .lte('start_time', endDate)
+            .order('start_time', { ascending: true });
+
+        if (shiftError) throw shiftError;
+
+        // 3. Calcular matemática legal
+        const smmlv = parseFloat(params.smmlv);
+        const dailyRate = smmlv / 30;
+        const hourlyRate = dailyRate / 8; // 8 horas = 1 día legal
+        
+        const nightStart = params.night_start_hour; // 19 (7 PM)
+        const nightEnd = params.night_end_hour;     // 7 (7 AM)
+        const nightPct = parseFloat(params.night_surcharge_percentage) / 100;
+        const sundayPct = parseFloat(params.holiday_surcharge_percentage) / 100;
+
+        let totalAmount = 0;
+        let details = [];
+
+        shifts.forEach(shift => {
+            const start = new Date(shift.start_time);
+            const end = shift.end_time ? new Date(shift.end_time) : new Date(start.getTime() + 12 * 3600000); // Asumir 12h si no hay end_time
+            
+            let totalHours = (end - start) / (1000 * 60 * 60);
+            if (isNaN(totalHours) || totalHours <= 0) totalHours = 0;
+            
+            let shiftBase = totalHours * hourlyRate;
+            let nightBonus = 0;
+            let sundayBonus = 0;
+
+            // ¿Es Domingo? (0 es domingo en JS)
+            const isSunday = start.getDay() === 0;
+            if (isSunday) {
+                sundayBonus = shiftBase * sundayPct;
+            }
+
+            // Calcular horas nocturnas (7 PM a 7 AM)
+            let nightHours = 0;
+            for (let i = 0; i < totalHours; i++) {
+                const hourDate = new Date(start.getTime() + i * 3600000);
+                const hour = hourDate.getHours();
+                if (hour >= nightStart || hour < nightEnd) {
+                    nightHours++;
+                }
+            }
+            nightBonus = nightHours * hourlyRate * nightPct;
+
+            const totalShiftPay = shiftBase + nightBonus + sundayBonus;
+            totalAmount += totalShiftPay;
+
+            details.push({
+                date: start.toLocaleDateString('es-CO'),
+                patient: shift.patients?.full_name || 'N/A',
+                shift_type: shift.shift_type,
+                hours: totalHours.toFixed(1),
+                base_pay: Math.round(shiftBase),
+                night_bonus: Math.round(nightBonus),
+                sunday_bonus: Math.round(sundayBonus),
+                total: Math.round(totalShiftPay)
+            });
+        });
+
+        // Subsidio de transporte si gana menos de 2 SMMLV
+        let subsidy = 0;
+        if (totalAmount < (smmlv * 2)) {
+            subsidy = parseFloat(params.subsidy_transport);
+            totalAmount += subsidy;
+        }
+
+        res.json({ 
+            success: true, 
+            data: { 
+                params, 
+                shifts: details, 
+                totalAmount: Math.round(totalAmount), 
+                subsidyApplied: subsidy 
+            } 
+        });
+
+    } catch (error) {
+        console.error('Liquidation Error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });
