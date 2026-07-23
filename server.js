@@ -576,21 +576,37 @@ app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res
     }
 });
 
-// CORRECCIÓN: Facturación para Clientes buscando el paciente directamente
+// FACTURACIÓN PARA CLIENTES (VERSIÓN BLINDADA)
 app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
     try {
         const { patientId, month, year } = req.params;
         const monthNum = parseInt(month);
         const yearNum = parseInt(year);
 
-        const { data: tariffs } = await supabase.from('client_tariffs').select('*').eq('is_active', true).single();
-        if (!tariffs) return res.status(404).json({ success: false, message: 'Tarifas de clientes no configuradas' });
+        // 1. Obtener tarifas de forma segura
+        const { data: tariffs, error: tariffError } = await supabase
+            .from('client_tariffs')
+            .select('*')
+            .limit(1)
+            .maybeSingle();
+            
+        if (tariffError) throw new Error('Error en BD tarifas: ' + tariffError.message);
+        if (!tariffs) return res.status(400).json({ success: false, message: 'Debe configurar las tarifas de clientes primero en el sistema.' });
 
-        const { data: patientData } = await supabase.from('patients').select('full_name').eq('id', patientId).single();
+        // 2. Obtener nombre del paciente de forma segura
+        const { data: patientData, error: patError } = await supabase
+            .from('patients')
+            .select('full_name')
+            .eq('id', patientId)
+            .maybeSingle();
+            
+        if (patError) throw new Error('Error en BD paciente: ' + patError.message);
 
+        // 3. Fechas
         const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`;
         const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59).toISOString();
 
+        // 4. Turnos
         const { data: shifts, error: shiftError } = await supabase
             .from('shifts')
             .select('*, professionals(full_name)')
@@ -600,14 +616,18 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
             .lte('start_time', endDate)
             .order('start_time', { ascending: true });
 
-        if (shiftError) throw shiftError;
+        if (shiftError) throw new Error('Error en BD turnos: ' + shiftError.message);
 
+        // 5. Agrupar y calcular
         const groupedByDate = {};
-        shifts.forEach(s => {
-            const dateStr = new Date(s.start_time).toISOString().split('T')[0];
-            if (!groupedByDate[dateStr]) groupedByDate[dateStr] = [];
-            groupedByDate[dateStr].push(s);
-        });
+        if (shifts && shifts.length > 0) {
+            shifts.forEach(s => {
+                if (!s.start_time) return;
+                const dateStr = new Date(s.start_time).toISOString().split('T')[0];
+                if (!groupedByDate[dateStr]) groupedByDate[dateStr] = [];
+                groupedByDate[dateStr].push(s);
+            });
+        }
 
         let totalAmount = 0;
         let invoiceDetails = [];
@@ -621,18 +641,19 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
             let has12N = types.includes('12h_nocturno');
 
             if (has24h || (has12D && has12N)) {
-                const auxs = dayShifts.map(s => s.professionals?.full_name).join(' / ');
+                const auxs = dayShifts.map(s => s.professionals?.full_name || 'N/A').join(' / ');
+                const amount = parseFloat(tariffs.t_24h) || 0;
                 invoiceDetails.push({
                     date: date,
                     service: 'Servicio 24 Horas',
                     auxiliaries: auxs,
-                    amount: parseFloat(tariffs.t_24h)
+                    amount: amount
                 });
-                totalAmount += parseFloat(tariffs.t_24h);
+                totalAmount += amount;
             } else {
                 dayShifts.forEach(s => {
                     let tariffKey = `t_${s.shift_type}`;
-                    let amount = parseFloat(tariffs[tariffKey] || 0);
+                    let amount = parseFloat(tariffs[tariffKey]) || 0;
                     let serviceName = `Turno ${s.shift_type.replace('_', ' ')}`;
                     invoiceDetails.push({
                         date: date,
