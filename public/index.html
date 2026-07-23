@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=1.0">
-<title>Vital Hogar Pro </title>
+<title>Vital Hogar Pro</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -90,7 +90,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="logo-area">
 <img src="https://i.imgur.com/01YZxey.jpeg" alt="Vital Hogar" onerror="this.style.display='none'">
 <div>
-<h1>VITAL HOGAR PRO </h1>
+<h1>VITAL HOGAR PRO</h1>
 <div class="subtitle">Cuidados Domiciliarios</div>
 </div>
 </div>
@@ -560,6 +560,7 @@ const CIUDADES_COLOMBIA = {
 
 let currentUser = null, selectedPatient = null, currentShiftId = null, lastClosedShiftId = null;
 let shiftTimerInterval = null, shiftStartTime = null, medications = [], meals = [], eduPhotoBase64 = null;
+let lastShiftData = null; // Memoria temporal para guardar datos que el backend aún no soporta
 
 // ===== UTILIDADES =====
 function showToast(msg, type = 'success') {
@@ -637,7 +638,7 @@ function initApp() {
     } else {
         document.getElementById('auxPanel').classList.remove('hidden');
         loadAuxPatients();
-        loadEdus(); // Cargar temas educativos para el auxiliar también
+        loadEdus(); 
     }
 }
 
@@ -820,7 +821,7 @@ function toggleLeaveDetails(cb) {
     const details = document.getElementById('leaveDetails');
     details.classList.toggle('hidden', !cb.checked);
     if (cb.checked) {
-        setTimeout(() => initSigCanvas('leaveSigCanvas'), 100); // Inicializa el canvas al mostrarlo
+        setTimeout(() => initSigCanvas('leaveSigCanvas'), 100); 
     }
 }
 
@@ -1101,6 +1102,13 @@ async function closeShift() {
     const educationTopic = familyReceivedEducation ? getVal('educationTopicSelect') : null;
     const educationPhoto = familyReceivedEducation ? eduPhotoBase64 : null;
 
+    // Guardamos en memoria para usar en el PDF porque el backend aún no soporta estos campos
+    lastShiftData = {
+        leaveData: leaveData,
+        educationPhotoData: educationPhoto,
+        educationTopic: educationTopic
+    };
+
     const payload = {
         shiftId: currentShiftId, patientDeliveredStatus: getVal('patientDeliveredStatus'),
         patientDeliveredNotes: getVal('patientDeliveredNotes'), pendingTasks: getVal('pendingTasks'),
@@ -1213,26 +1221,28 @@ async function generateClosurePDF() {
         }
 
         // Sección de Salida del Paciente (ARL)
-        const sig = signatures?.[0];
-        if (sig?.patient_leaves_home) {
+        const sig = signatures?.[0] || {};
+        const leaveData = sig.leave_data || lastShiftData?.leaveData; // Usamos memoria si el backend no lo trajo
+        
+        if (leaveData || sig.patient_leaves_home) {
             if (finalY > 200) { doc.addPage(); finalY = 30; }
             doc.setFontSize(12); doc.setTextColor(239, 68, 68); // Rojo
             doc.text("⚠️ AUTORIZACIÓN DE SALIDA DEL DOMICILIO (ARL)", 14, finalY);
             doc.setFontSize(10); doc.setTextColor(0);
             finalY += 7;
-            doc.text(`Transporte: ${sig.leave_data?.transport || 'N/A'}`, 14, finalY);
-            doc.text(`Hora Salida: ${formatTime12h(sig.leave_data?.time)}`, 14, finalY + 7);
-            doc.text(`Hora Regreso: ${formatTime12h(sig.leave_data?.returnTime)}`, 14, finalY + 14);
+            doc.text(`Transporte: ${leaveData?.transport || 'N/A'}`, 14, finalY);
+            doc.text(`Hora Salida: ${formatTime12h(leaveData?.time)}`, 14, finalY + 7);
+            doc.text(`Hora Regreso: ${formatTime12h(leaveData?.returnTime)}`, 14, finalY + 14);
             
             doc.setFontSize(9); doc.setTextColor(100);
             const warnText = doc.splitTextToSize("El familiar asume la responsabilidad total del traslado. Vital Hogar Pro y el auxiliar NO se hacen responsables de eventos fuera del domicilio.", 180);
             doc.text(warnText, 14, finalY + 21);
-            finalY += 21 + (warnText.length * 5) + 10; // Espacio para la firma
+            finalY += 21 + (warnText.length * 5) + 10;
 
             // Firma ARL
             doc.setDrawColor(150); doc.setLineWidth(0.3);
-            if (sig.leave_data?.signature) {
-                try { doc.addImage(sig.leave_data.signature, 'PNG', 15, finalY, 60, 20); } catch(e) {}
+            if (leaveData?.signature) {
+                try { doc.addImage(leaveData.signature, 'PNG', 15, finalY, 60, 20); } catch(e) {}
             }
             doc.line(15, finalY + 25, 90, finalY + 25);
             doc.setFontSize(9); doc.setTextColor(0);
@@ -1242,13 +1252,14 @@ async function generateClosurePDF() {
         }
 
         // Sección de Educación
-        const currentEduPhoto = eduPhotoBase64 || sig?.education_photo_data; // Prioriza la foto actual en memoria
+        const currentEduPhoto = eduPhotoBase64 || sig.education_photo_data || lastShiftData?.educationPhotoData; // Memoria
+        const eduTopic = sig.education_topic_given || lastShiftData?.educationTopic;
         
-        if (sig?.family_received_education || currentEduPhoto) {
+        if (sig.family_received_education || currentEduPhoto) {
             if (finalY > 220) { doc.addPage(); finalY = 30; }
             doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Educación Impartida", 14, finalY);
             doc.setFontSize(10); doc.setTextColor(0);
-            doc.text(`Tema: ${sig?.education_topic_given || 'N/A'}`, 14, finalY + 7);
+            doc.text(`Tema: ${eduTopic || 'N/A'}`, 14, finalY + 7);
             if (currentEduPhoto) {
                 try { doc.addImage(currentEduPhoto, 'JPEG', 14, finalY + 12, 60, 40); } catch(e) {}
             }
