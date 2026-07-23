@@ -576,7 +576,7 @@ app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res
     }
 });
 
-// FACTURACIÓN PARA CLIENTES (VERSIÓN BLINDADA)
+// FACTURACIÓN PARA CLIENTES (VERSIÓN BLINDADA CORREGIDA)
 app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
     try {
         const { patientId, month, year } = req.params;
@@ -606,10 +606,10 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
         const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`;
         const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59).toISOString();
 
-        // 4. Turnos
+        // 4. Turnos (Consulta simple para evitar error de relación en Supabase)
         const { data: shifts, error: shiftError } = await supabase
             .from('shifts')
-            .select('*, professionals(full_name)')
+            .select('*')
             .eq('patient_id', patientId)
             .eq('is_closed', true)
             .gte('start_time', startDate)
@@ -641,12 +641,11 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
             let has12N = types.includes('12h_nocturno');
 
             if (has24h || (has12D && has12N)) {
-                const auxs = dayShifts.map(s => s.professionals?.full_name || 'N/A').join(' / ');
                 const amount = parseFloat(tariffs.t_24h) || 0;
                 invoiceDetails.push({
                     date: date,
                     service: 'Servicio 24 Horas',
-                    auxiliaries: auxs,
+                    auxiliaries: 'Servicio Integral',
                     amount: amount
                 });
                 totalAmount += amount;
@@ -658,7 +657,7 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
                     invoiceDetails.push({
                         date: date,
                         service: serviceName,
-                        auxiliaries: s.professionals?.full_name || 'N/A',
+                        auxiliaries: 'Servicio Integral',
                         amount: amount
                     });
                     totalAmount += amount;
