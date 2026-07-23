@@ -83,6 +83,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
 .photo-preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-top: 10px; border: 2px solid var(--info); }
 .imc-result { font-weight: bold; color: var(--primary); margin-top: 5px; font-size: 1.1rem; }
+.finance-result { background: var(--bg-dark); padding: 15px; border-radius: 8px; margin-top: 15px; border: 1px solid var(--info); }
 </style>
 </head>
 <body>
@@ -177,6 +178,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             <div class="tab" onclick="showAdminTab('pat', this)">🏥 Pacientes</div>
             <div class="tab" onclick="showAdminTab('edu', this)">🎓 Educación</div>
             <div class="tab" onclick="showAdminTab('reports', this)">📄 Informes</div>
+            <div class="tab" onclick="showAdminTab('finance', this)">💰 Finanzas</div>
         </div>
 
         <div id="admin_prof">
@@ -263,6 +265,42 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 </div>
                 <button class="btn-primary btn-info" onclick="generateMonthlyPDF()"><i class="fas fa-file-pdf"></i> Generar y Firmar PDF</button>
                 <p id="pdfStatus" style="margin-top: 10px; color: var(--primary); text-align:center;"></p>
+            </div>
+        </div>
+
+        <!-- NEW: FINANCE MODULE -->
+        <div id="admin_finance" class="hidden">
+            <div class="card">
+                <h3>⚙️ Parámetros de Ley Vigentes (2026)</h3>
+                <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:10px;">Configura los valores legales actuales para el cálculo de liquidaciones.</p>
+                <input type="hidden" id="finParamId">
+                <div class="grid">
+                    <div class="form-group"><label>Salario Mínimo (SMMLV)</label><input type="number" id="finSmmlv"></div>
+                    <div class="form-group"><label>Subsidio de Transporte</label><input type="number" id="finSubsidy"></div>
+                    <div class="form-group"><label>Recargo Nocturno (%)</label><input type="number" id="finNightPct" value="35"></div>
+                    <div class="form-group"><label>Recargo Dominical/Festivo (%)</label><input type="number" id="finSunPct" value="75"></div>
+                    <div class="form-group"><label>Hora Inicio Noche (24h)</label><input type="number" id="finNightStart" value="19"></div>
+                    <div class="form-group"><label>Hora Fin Noche (24h)</label><input type="number" id="finNightEnd" value="7"></div>
+                </div>
+                <button class="btn-primary" onclick="saveFinanceParams()"><i class="fas fa-save"></i> Guardar Parámetros</button>
+            </div>
+
+            <div class="card">
+                <h3>🧾 Liquidación de Nómina (Auxiliares/Turneros)</h3>
+                <div class="grid">
+                    <div class="form-group"><label>Profesional</label><select id="liquidationProf"><option value="">Seleccionar...</option></select></div>
+                    <div class="form-group"><label>Mes</label>
+                        <select id="liquidationMonth">
+                            <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
+                            <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
+                            <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
+                            <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Año</label><input type="number" id="liquidationYear" value="2026"></div>
+                </div>
+                <button class="btn-primary btn-info" onclick="calculateLiquidation()"><i class="fas fa-calculator"></i> Calcular Liquidación</button>
+                <div id="liquidationResult" class="hidden finance-result"></div>
             </div>
         </div>
     </div>
@@ -596,6 +634,7 @@ const CIUDADES_COLOMBIA = {
 let currentUser = null, selectedPatient = null, currentShiftId = null, lastClosedShiftId = null;
 let shiftTimerInterval = null, shiftStartTime = null, medications = [], meals = [], eduPhotoBase64 = null;
 let lastShiftData = null, profPhotoBase64 = null, lastProfRecordId = null;
+let lastLiquidationData = null; // Para guardar el PDF de liquidación
 
 // ===== UTILIDADES =====
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
@@ -603,6 +642,7 @@ function getVal(id) { const el = document.getElementById(id); return el ? el.val
 function getChecked(id) { const el = document.getElementById(id); return el ? el.checked : false; }
 function getRangoSpO2(c) { return CIUDADES_COLOMBIA[c] || CIUDADES_COLOMBIA['Bogotá']; }
 function formatTime12h(t) { if(!t) return 'N/A'; const [h,m] = t.split(':'); const hr = parseInt(h); return `${hr%12||12}:${m} ${hr>=12?'PM':'AM'}`; }
+function formatCurrency(v) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v); }
 function togglePass(id, btn) { const i = document.getElementById(id); i.type = i.type === 'password' ? 'text' : 'password'; btn.textContent = i.type === 'password' ? '👁️' : '🙈'; }
 
 // ===== AUTENTICACIÓN =====
@@ -638,7 +678,7 @@ function initApp() {
     document.getElementById('userName').textContent = currentUser.full_name; document.getElementById('userRoleDisplay').textContent = currentUser.specialty_name;
     if (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE') {
         document.getElementById('adminPanel').classList.remove('hidden');
-        loadDashboard(); loadProfs(); loadPats(); loadReportPatients(); loadEdus();
+        loadDashboard(); loadProfs(); loadPats(); loadReportPatients(); loadEdus(); loadFinanceParams();
         setTimeout(() => initSigCanvas('adminSigCanvas'), 100);
     } else if (currentUser.specialty_name === 'AUXILIAR_ENFERMERIA') {
         document.getElementById('auxPanel').classList.remove('hidden'); loadAuxPatients(); loadEdus();
@@ -648,9 +688,9 @@ function initApp() {
 }
 
 // ===== ADMIN =====
-function showAdminTab(tab, btn) { ['admin_prof', 'admin_pat', 'admin_edu', 'admin_reports'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById('admin_'+tab).classList.remove('hidden'); document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); if (tab === 'reports') setTimeout(() => initSigCanvas('adminSigCanvas'), 100); }
+function showAdminTab(tab, btn) { ['admin_prof', 'admin_pat', 'admin_edu', 'admin_reports', 'admin_finance'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById('admin_'+tab).classList.remove('hidden'); document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); if (tab === 'reports') setTimeout(() => initSigCanvas('adminSigCanvas'), 100); }
 async function loadDashboard() { try { const r = await fetch(`${API_URL}/api/dashboard/stats`); const d = await r.json(); if (d.success) { document.getElementById('statPat').innerText = d.data.patients || 0; document.getElementById('statProf').innerText = d.data.professionals || 0; document.getElementById('statReports').innerText = d.data.pendingReports || 0; } } catch (e) {} }
-async function loadProfs() { try { const r = await fetch(`${API_URL}/api/professionals`); const d = await r.json(); document.querySelector('#profTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.document_number}</td><td>${p.specialties?.name||'N/A'}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-warning" onclick="openEditModal('prof','${p.id}','${p.full_name}','${p.document_number}','${p.professional_card||''}','${p.specialties?.name||''}')">Editar</button> <button class="btn-small ${p.is_active?'btn-danger':'btn-secondary'}" onclick="toggleProf('${p.id}', ${p.is_active})">${p.is_active?'Desactivar':'Activar'}</button></td></tr>`).join(''); const eduRespSelect = document.getElementById('eduResp'); eduRespSelect.innerHTML = '<option value="">Seleccionar profesional...</option>'; d.data.filter(p => p.is_active).forEach(p => { eduRespSelect.innerHTML += `<option value="${p.id}">${p.full_name} (${p.specialties?.name || 'N/A'})</option>`; }); } catch (e) {} }
+async function loadProfs() { try { const r = await fetch(`${API_URL}/api/professionals`); const d = await r.json(); document.querySelector('#profTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.document_number}</td><td>${p.specialties?.name||'N/A'}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-warning" onclick="openEditModal('prof','${p.id}','${p.full_name}','${p.document_number}','${p.professional_card||''}','${p.specialties?.name||''}')">Editar</button> <button class="btn-small ${p.is_active?'btn-danger':'btn-secondary'}" onclick="toggleProf('${p.id}', ${p.is_active})">${p.is_active?'Desactivar':'Activar'}</button></td></tr>`).join(''); const eduRespSelect = document.getElementById('eduResp'); eduRespSelect.innerHTML = '<option value="">Seleccionar profesional...</option>'; const liqProfSelect = document.getElementById('liquidationProf'); liqProfSelect.innerHTML = '<option value="">Seleccionar...</option>'; d.data.filter(p => p.is_active).forEach(p => { eduRespSelect.innerHTML += `<option value="${p.id}">${p.full_name} (${p.specialties?.name || 'N/A'})</option>`; liqProfSelect.innerHTML += `<option value="${p.id}">${p.full_name} (${p.specialties?.name || 'N/A'})</option>`; }); } catch (e) {} }
 async function createProf() { const p = { fullName: getVal('pName'), documentNumber: getVal('pDoc'), professionalCard: getVal('pCard'), email: getVal('pEmail'), password: getVal('pPass'), specialtyName: getVal('pSpec') }; if (!p.fullName || !p.email || !p.password) return showToast('Campos obligatorios', 'error'); try { const r = await fetch(`${API_URL}/api/professionals`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); if(d.success) { ['pName','pDoc','pCard','pEmail','pPass'].forEach(id => document.getElementById(id).value=''); loadProfs(); loadDashboard(); } } catch (e) {} }
 async function toggleProf(id, s) { try { await fetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: !s }) }); loadProfs(); loadDashboard(); } catch (e) {} }
 async function loadPats() { try { const r = await fetch(`${API_URL}/api/patients`); const d = await r.json(); document.querySelector('#patTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.altitude_profiles?.city_name||'N/A'}</td><td>${p.family_name||'N/A'}</td><td>${p.contact_phone||'N/A'}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-warning" onclick="openEditModal('pat','${p.id}','${p.full_name}','${p.document_number}','${p.family_name||''}','${p.contact_phone||''}','${p.altitude_profiles?.city_name||''}')">Editar</button></td></tr>`).join(''); } catch (e) {} }
@@ -782,13 +822,147 @@ async function generateMonthlyPDF() {
         doc.text("FIRMA PROFESIONAL VALIDADOR", 15, finalY);
         const adminSig = document.getElementById('adminSigCanvas').toDataURL();
         if (adminSig && adminSig !== 'data:,') { try { doc.addImage(adminSig, 'PNG', 15, finalY + 2, 50, 20); } catch(e) {} }
-        doc.line(15, finalY + 25, 85, finalY + 25); // Línea debajo de la firma
+        doc.line(15, finalY + 25, 85, finalY + 25);
         doc.setFontSize(10);
         doc.text(`Nombre: ${currentUser?.full_name || '________________'}`, 15, finalY + 31);
         doc.text(`Cargo: ${currentUser?.specialty_name || 'Admin'}`, 15, finalY + 37);
         
         doc.save(`Informe_${patient.full_name}_${m}_${y}.pdf`); 
     } catch (e) { showToast('Error: ' + e.message, 'error'); } 
+}
+
+// ===== FINANZAS (FASE 3) =====
+async function loadFinanceParams() {
+    try {
+        const r = await fetch(`${API_URL}/api/finance/parameters`);
+        const d = await r.json();
+        if (d.success && d.data) {
+            document.getElementById('finParamId').value = d.data.id;
+            document.getElementById('finSmmlv').value = d.data.smmlv;
+            document.getElementById('finSubsidy').value = d.data.subsidy_transport;
+            document.getElementById('finNightPct').value = d.data.night_surcharge_percentage;
+            document.getElementById('finSunPct').value = d.data.holiday_surcharge_percentage;
+            document.getElementById('finNightStart').value = d.data.night_start_hour;
+            document.getElementById('finNightEnd').value = d.data.night_end_hour;
+        }
+    } catch (e) { console.error(e); }
+}
+
+async function saveFinanceParams() {
+    const id = getVal('finParamId');
+    const payload = {
+        smmlv: parseFloat(getVal('finSmmlv')) || 0,
+        subsidy_transport: parseFloat(getVal('finSubsidy')) || 0,
+        night_surcharge_percentage: parseFloat(getVal('finNightPct')) || 0,
+        holiday_surcharge_percentage: parseFloat(getVal('finSunPct')) || 0,
+        night_start_hour: parseInt(getVal('finNightStart')) || 19,
+        night_end_hour: parseInt(getVal('finNightEnd')) || 7,
+        year: 2026
+    };
+    try {
+        const r = await fetch(`${API_URL}/api/finance/parameters/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const d = await r.json();
+        showToast(d.message, d.success?'success':'error');
+    } catch (e) { showToast('Error', 'error'); }
+}
+
+async function calculateLiquidation() {
+    const profId = getVal('liquidationProf');
+    const month = getVal('liquidationMonth');
+    const year = getVal('liquidationYear');
+    if (!profId) return showToast('Seleccione un profesional', 'error');
+
+    try {
+        const r = await fetch(`${API_URL}/api/finance/liquidation/${profId}/${month}/${year}`);
+        const d = await r.json();
+        if (d.success) {
+            lastLiquidationData = d.data;
+            renderLiquidation(d.data);
+        } else {
+            showToast(d.message || 'Error', 'error');
+        }
+    } catch (e) { showToast('Error de conexión', 'error'); }
+}
+
+function renderLiquidation(data) {
+    const container = document.getElementById('liquidationResult');
+    container.classList.remove('hidden');
+    
+    let shiftsHtml = data.shifts.map(s => `
+        <tr>
+            <td>${s.date}</td>
+            <td>${s.patient}</td>
+            <td>${s.shift_type}</td>
+            <td>${s.hours}</td>
+            <td>${formatCurrency(s.base_pay)}</td>
+            <td>${formatCurrency(s.night_bonus)}</td>
+            <td>${formatCurrency(s.sunday_bonus)}</td>
+            <td>${formatCurrency(s.total)}</td>
+        </tr>
+    `).join('');
+
+    container.innerHTML = `
+        <h4 style="color: var(--primary);">Resultado de Liquidación</h4>
+        <table style="margin-top: 10px;">
+            <thead>
+                <tr>
+                    <th>Fecha</th><th>Paciente</th><th>Turno</th><th>Horas</th>
+                    <th>Base</th><th>Recargo Noct.</th><th>Recargo Dom.</th><th>Total Turno</th>
+                </tr>
+            </thead>
+            <tbody>${shiftsHtml}</tbody>
+        </table>
+        <div style="margin-top: 15px; text-align: right;">
+            <p>Subsidio de Transporte: <strong>${formatCurrency(data.subsidyApplied)}</strong></p>
+            <h3 style="color: var(--primary);">Total a Pagar: ${formatCurrency(data.totalAmount)}</h3>
+            <button class="btn-primary btn-warning" style="margin-top: 10px; width: auto; display: inline-block;" onclick="generateLiquidationPDF()">
+                <i class="fas fa-file-pdf"></i> Descargar Desprendible de Pago
+            </button>
+        </div>
+    `;
+}
+
+function generateLiquidationPDF() {
+    if (!lastLiquidationData) return showToast('Calcule la liquidación primero', 'error');
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    const profName = document.getElementById('liquidationProf').selectedOptions[0].text.split(' (')[0];
+    const month = document.getElementById('liquidationMonth').selectedOptions[0].text;
+    const year = document.getElementById('liquidationYear').value;
+
+    try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
+    doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
+    doc.setFontSize(12); doc.setTextColor(0); doc.text("Desprendible de Pago / Liquidación", 105, 30, null, null, "center");
+    
+    doc.setFontSize(10);
+    doc.text(`Profesional: ${profName}`, 14, 45);
+    doc.text(`Período: ${month} ${year}`, 14, 52);
+    doc.text(`SMMLV Vigente: ${formatCurrency(lastLiquidationData.params.smmlv)}`, 14, 59);
+
+    const tableData = lastLiquidationData.shifts.map(s => [
+        s.date, s.shift_type, s.hours, 
+        formatCurrency(s.base_pay), 
+        formatCurrency(s.night_bonus), 
+        formatCurrency(s.sunday_bonus), 
+        formatCurrency(s.total)
+    ]);
+
+    doc.autoTable({
+        startY: 65,
+        head: [['Fecha', 'Turno', 'Horas', 'Base', 'Rec. Noct.', 'Rec. Dom.', 'Total']],
+        body: tableData,
+        headStyles: { fillColor: [34, 197, 94] },
+        styles: { fontSize: 8 }
+    });
+
+    let finalY = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(10);
+    doc.text(`Subsidio de Transporte: ${formatCurrency(lastLiquidationData.subsidyApplied)}`, 14, finalY);
+    doc.setFontSize(14); doc.setTextColor(34, 197, 94);
+    doc.text(`Total a Pagar: ${formatCurrency(lastLiquidationData.totalAmount)}`, 14, finalY + 10);
+
+    doc.save(`Liquidacion_${profName}_${month}_${year}.pdf`);
+    showToast('PDF generado');
 }
 
 // ===== AUXILIAR =====
