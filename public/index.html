@@ -268,13 +268,14 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             </div>
         </div>
 
-        <!-- NEW: FINANCE MODULE -->
+        <!-- FINANCE MODULE -->
         <div id="admin_finance" class="hidden">
             <div class="card">
-                <h3>⚙️ Parámetros de Ley Vigentes (2026)</h3>
+                <h3>⚙️ Parámetros de Ley Vigentes</h3>
                 <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:10px;">Configura los valores legales actuales para el cálculo de liquidaciones.</p>
                 <input type="hidden" id="finParamId">
                 <div class="grid">
+                    <div class="form-group"><label>Año Vigente</label><input type="number" id="finYear" value="2026"></div>
                     <div class="form-group"><label>Salario Mínimo (SMMLV)</label><input type="number" id="finSmmlv"></div>
                     <div class="form-group"><label>Subsidio de Transporte</label><input type="number" id="finSubsidy"></div>
                     <div class="form-group"><label>Recargo Nocturno (%)</label><input type="number" id="finNightPct" value="35"></div>
@@ -634,7 +635,7 @@ const CIUDADES_COLOMBIA = {
 let currentUser = null, selectedPatient = null, currentShiftId = null, lastClosedShiftId = null;
 let shiftTimerInterval = null, shiftStartTime = null, medications = [], meals = [], eduPhotoBase64 = null;
 let lastShiftData = null, profPhotoBase64 = null, lastProfRecordId = null;
-let lastLiquidationData = null; // Para guardar el PDF de liquidación
+let lastLiquidationData = null; 
 
 // ===== UTILIDADES =====
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
@@ -776,7 +777,6 @@ async function generateMonthlyPDF() {
 
         let finalY = 70;
         
-        // Sección Auxiliar
         doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("1. Registros de Enfermería y Cuidados (Auxiliares)", 14, finalY);
         finalY += 5;
         if (records && records.length > 0) {
@@ -787,7 +787,6 @@ async function generateMonthlyPDF() {
             doc.setFontSize(9); doc.setTextColor(100); doc.text("Sin registros de auxiliar en este período.", 14, finalY + 5); finalY += 15;
         }
 
-        // Sección Profesionales
         if (finalY > 240) { doc.addPage(); finalY = 20; }
         doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("2. Notas de Evolución Profesionales", 14, finalY);
         finalY += 7;
@@ -816,7 +815,6 @@ async function generateMonthlyPDF() {
             doc.setFontSize(9); doc.setTextColor(100); doc.text("Sin notas de evolución profesional en este período.", 14, finalY); finalY += 15;
         }
 
-        // Firma
         if (finalY > 240) { doc.addPage(); finalY = 30; } else { finalY += 10; }
         doc.setDrawColor(0); doc.setLineWidth(0.5);
         doc.text("FIRMA PROFESIONAL VALIDADOR", 15, finalY);
@@ -838,6 +836,7 @@ async function loadFinanceParams() {
         const d = await r.json();
         if (d.success && d.data) {
             document.getElementById('finParamId').value = d.data.id;
+            document.getElementById('finYear').value = d.data.year; // CARGA EL AÑO DESDE LA BD
             document.getElementById('finSmmlv').value = d.data.smmlv;
             document.getElementById('finSubsidy').value = d.data.subsidy_transport;
             document.getElementById('finNightPct').value = d.data.night_surcharge_percentage;
@@ -851,13 +850,13 @@ async function loadFinanceParams() {
 async function saveFinanceParams() {
     const id = getVal('finParamId');
     const payload = {
+        year: parseInt(getVal('finYear')) || 2026, // GUARDA EL AÑO EN LA BD
         smmlv: parseFloat(getVal('finSmmlv')) || 0,
         subsidy_transport: parseFloat(getVal('finSubsidy')) || 0,
         night_surcharge_percentage: parseFloat(getVal('finNightPct')) || 0,
         holiday_surcharge_percentage: parseFloat(getVal('finSunPct')) || 0,
         night_start_hour: parseInt(getVal('finNightStart')) || 19,
-        night_end_hour: parseInt(getVal('finNightEnd')) || 7,
-        year: 2026
+        night_end_hour: parseInt(getVal('finNightEnd')) || 7
     };
     try {
         const r = await fetch(`${API_URL}/api/finance/parameters/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
