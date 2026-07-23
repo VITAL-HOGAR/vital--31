@@ -455,17 +455,40 @@ app.patch('/api/finance/parameters/:id', async (req, res) => {
     }
 });
 
+// Ruta para obtener y guardar tarifas de clientes
+app.get('/api/finance/tariffs', async (req, res) => {
+    try {
+        const { data, error } = await supabase.from('client_tariffs').select('*').eq('is_active', true).single();
+        if (error) throw error;
+        res.json({ success: true, data: data || {} });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+app.patch('/api/finance/tariffs/:id', async (req, res) => {
+    try {
+        const { t_6h_diurno, t_6h_nocturno, t_8h_diurno, t_8h_nocturno, t_12h_diurno, t_12h_nocturno, t_24h } = req.body;
+        const { error } = await supabase.from('client_tariffs').update({
+            t_6h_diurno, t_6h_nocturno, t_8h_diurno, t_8h_nocturno, t_12h_diurno, t_12h_nocturno, t_24h
+        }).eq('id', req.params.id);
+        if (error) throw error;
+        res.json({ success: true, message: 'Tarifas de clientes actualizadas' });
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Liquidación de Nómina para Auxiliares
 app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res) => {
     try {
         const { professionalId, month, year } = req.params;
         const monthNum = parseInt(month);
         const yearNum = parseInt(year);
 
-        // 1. Obtener parámetros de ley
         const { data: params } = await supabase.from('financial_parameters').select('*').eq('is_active', true).single();
         if (!params) return res.status(404).json({ success: false, message: 'Parámetros financieros no configurados' });
 
-        // 2. Obtener turnos cerrados del mes
         const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`;
         const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59).toISOString();
 
@@ -480,13 +503,12 @@ app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res
 
         if (shiftError) throw shiftError;
 
-        // 3. Calcular matemática legal
         const smmlv = parseFloat(params.smmlv);
         const dailyRate = smmlv / 30;
-        const hourlyRate = dailyRate / 8; // 8 horas = 1 día legal
+        const hourlyRate = dailyRate / 8; 
         
-        const nightStart = params.night_start_hour; // 19 (7 PM)
-        const nightEnd = params.night_end_hour;     // 7 (7 AM)
+        const nightStart = params.night_start_hour; 
+        const nightEnd = params.night_end_hour;     
         const nightPct = parseFloat(params.night_surcharge_percentage) / 100;
         const sundayPct = parseFloat(params.holiday_surcharge_percentage) / 100;
 
@@ -495,7 +517,7 @@ app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res
 
         shifts.forEach(shift => {
             const start = new Date(shift.start_time);
-            const end = shift.end_time ? new Date(shift.end_time) : new Date(start.getTime() + 12 * 3600000); // Asumir 12h si no hay end_time
+            const end = shift.end_time ? new Date(shift.end_time) : new Date(start.getTime() + 12 * 3600000); 
             
             let totalHours = (end - start) / (1000 * 60 * 60);
             if (isNaN(totalHours) || totalHours <= 0) totalHours = 0;
@@ -504,13 +526,11 @@ app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res
             let nightBonus = 0;
             let sundayBonus = 0;
 
-            // ¿Es Domingo? (0 es domingo en JS)
             const isSunday = start.getDay() === 0;
             if (isSunday) {
                 sundayBonus = shiftBase * sundayPct;
             }
 
-            // Calcular horas nocturnas (7 PM a 7 AM)
             let nightHours = 0;
             for (let i = 0; i < totalHours; i++) {
                 const hourDate = new Date(start.getTime() + i * 3600000);
@@ -536,7 +556,6 @@ app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res
             });
         });
 
-        // Subsidio de transporte si gana menos de 2 SMMLV
         let subsidy = 0;
         if (totalAmount < (smmlv * 2)) {
             subsidy = parseFloat(params.subsidy_transport);
@@ -555,6 +574,93 @@ app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res
 
     } catch (error) {
         console.error('Liquidation Error:', error);
+        res.status(500).json({ success: false, message: error.message });
+    }
+});
+
+// Facturación para Clientes (Cuenta de Cobro)
+app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
+    try {
+        const { patientId, month, year } = req.params;
+        const monthNum = parseInt(month);
+        const yearNum = parseInt(year);
+
+        // Obtener tarifas
+        const { data: tariffs } = await supabase.from('client_tariffs').select('*').eq('is_active', true).single();
+        if (!tariffs) return res.status(404).json({ success: false, message: 'Tarifas de clientes no configuradas' });
+
+        // Obtener turnos cerrados del mes para ese paciente
+        const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`;
+        const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59).toISOString();
+
+        const { data: shifts, error: shiftError } = await supabase
+            .from('shifts')
+            .select('*, professionals(full_name)')
+            .eq('patient_id', patientId)
+            .eq('is_closed', true)
+            .gte('start_time', startDate)
+            .lte('start_time', endDate)
+            .order('start_time', { ascending: true });
+
+        if (shiftError) throw shiftError;
+
+        // Agrupar turnos por día para detectar servicios de 24h (12h diurno + 12h nocturno)
+        const groupedByDate = {};
+        shifts.forEach(s => {
+            const dateStr = new Date(s.start_time).toISOString().split('T')[0];
+            if (!groupedByDate[dateStr]) groupedByDate[dateStr] = [];
+            groupedByDate[dateStr].push(s);
+        });
+
+        let totalAmount = 0;
+        let invoiceDetails = [];
+
+        for (const date in groupedByDate) {
+            const dayShifts = groupedByDate[date];
+            const types = dayShifts.map(s => s.shift_type);
+
+            let has24h = types.includes('24h');
+            let has12D = types.includes('12h_diurno');
+            let has12N = types.includes('12h_nocturno');
+
+            if (has24h || (has12D && has12N)) {
+                // Cobrar como 24h
+                const auxs = dayShifts.map(s => s.professionals?.full_name).join(' / ');
+                invoiceDetails.push({
+                    date: date,
+                    service: 'Servicio 24 Horas',
+                    auxiliaries: auxs,
+                    amount: parseFloat(tariffs.t_24h)
+                });
+                totalAmount += parseFloat(tariffs.t_24h);
+            } else {
+                // Cobrar individualmente
+                dayShifts.forEach(s => {
+                    let tariffKey = `t_${s.shift_type}`;
+                    let amount = parseFloat(tariffs[tariffKey] || 0);
+                    let serviceName = `Turno ${s.shift_type.replace('_', ' ')}`;
+                    invoiceDetails.push({
+                        date: date,
+                        service: serviceName,
+                        auxiliaries: s.professionals?.full_name || 'N/A',
+                        amount: amount
+                    });
+                    totalAmount += amount;
+                });
+            }
+        }
+
+        res.json({
+            success: true,
+            data: {
+                patient: shifts[0]?.patients || null, // Asumiendo que el nombre del paciente viene en el shift
+                details: invoiceDetails,
+                totalAmount: totalAmount
+            }
+        });
+
+    } catch (error) {
+        console.error('Invoice Error:', error);
         res.status(500).json({ success: false, message: error.message });
     }
 });
