@@ -48,12 +48,38 @@ th { background: var(--card-bg); color: #94a3b8; }
 .stat-card { text-align: center; border-left: 5px solid var(--primary); }
 .stat-card h3 { color: #94a3b8; font-size: 0.9rem; margin-bottom: 10px; text-transform: uppercase; }
 .stat-card h2 { font-size: 2.5rem; margin: 0; color: var(--primary); }
+.vital-status { padding: 8px; border-radius: 6px; margin-top: 5px; font-size: 0.85rem; font-weight: bold; display: none; }
+.vital-status.show { display: block; }
+.vital-status.normal { background: var(--primary); color: white; }
+.vital-status.warning { background: var(--warning); color: black; }
+.vital-status.danger { background: var(--danger); color: white; }
+input.vital-normal { border-color: var(--primary) !important; }
+input.vital-warning { border-color: var(--warning) !important; background: #422006 !important; }
+input.vital-danger { border-color: var(--danger) !important; background: #450a0a !important; }
+.glasgow-total, .braden-total { background: var(--bg-dark); padding: 15px; border-radius: 8px; margin-top: 15px; text-align: center; border: 2px solid var(--border); }
+.glasgow-total h3, .braden-total h3 { margin: 0; font-size: 2rem; }
+.glasgow-total.normal, .braden-total.risk-none { border-color: var(--primary); color: var(--primary); }
+.glasgow-total.mild, .braden-total.risk-mild { border-color: var(--warning); color: var(--warning); }
+.glasgow-total.moderate, .braden-total.risk-moderate { border-color: #f97316; color: #f97316; }
+.glasgow-total.severe, .braden-total.risk-high { border-color: var(--danger); color: var(--danger); }
+.accordion { background: var(--bg-dark); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
+.accordion-header { background: var(--border); padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
+.accordion-content { padding: 0; max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease; }
+.accordion-content.open { padding: 15px; max-height: 5000px; }
+.sub-activity { background: var(--card-bg); padding: 12px; border-radius: 6px; margin-bottom: 10px; border-left: 3px solid var(--info); }
+.sub-activity-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
+.sub-activity-header input[type="checkbox"] { width: auto; margin: 0; }
+.sub-activity-fields { display: none; margin-top: 10px; padding: 10px; background: var(--bg-dark); border-radius: 6px; }
+.sub-activity-fields.show { display: block; }
+.med-item { background: var(--bg-dark); padding: 10px; border-radius: 6px; margin-bottom: 8px; display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr auto; gap: 8px; align-items: center; }
 .signature-canvas { background: white; border: 2px dashed var(--border); border-radius: 8px; width: 100%; height: 150px; cursor: crosshair; touch-action: none; }
 .mic-btn { background: var(--info); width: 40px; height: 40px; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; border: none; cursor: pointer; color: white; }
 .mic-btn.recording { background: var(--danger); animation: pulse 1.5s infinite; }
 @keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 .legal-warning { background: var(--bg-dark); border: 2px solid var(--warning); padding: 15px; border-radius: 8px; margin: 15px 0; }
 .legal-warning h4 { color: var(--warning); margin: 0 0 10px 0; border: none; }
+.eva-slider { width: 100%; margin: 10px 0; }
+.eva-faces { display: flex; justify-content: space-between; font-size: 1.5rem; margin-top: 5px; }
 .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 20px; }
 .photo-preview { width: 100%; max-height: 200px; object-fit: cover; border-radius: 8px; margin-top: 10px; border: 2px solid var(--info); }
 .imc-result { font-weight: bold; color: var(--primary); margin-top: 5px; font-size: 1.1rem; }
@@ -202,21 +228,264 @@ th { background: var(--card-bg); color: #94a3b8; }
 
     <!-- AUXILIAR PANEL -->
     <div id="auxPanel" class="hidden">
-        <!-- (El contenido del panel del auxiliar se mantiene igual en el código real, se omite aquí por brevedad pero DEBE ESTAR COMPLETO en tu archivo) -->
-        <div class="card"><h3>Módulo Auxiliar Activo</h3><p>Selecciona un paciente para iniciar turno.</p></div>
+        <div id="auxPatientSelection" class="card">
+            <h3>Selecciona un Paciente</h3>
+            <div id="auxPatientList"></div>
+        </div>
+        <div id="auxShiftStart" class="hidden">
+            <div class="card">
+                <h3>Iniciar Turno - <span id="patientNameStart" style="color: var(--primary);"></span></h3>
+                <div class="form-group"><label>Tipo de Turno</label>
+                    <select id="shiftType" onchange="toggleCustomShift()">
+                        <option value="6h_diurno">☀️ 6h Diurno</option><option value="8h_diurno">☀️ 8h Diurno</option><option value="12h_diurno">☀️ 12h Diurno</option>
+                        <option value="6h_nocturno">🌙 6h Nocturno</option><option value="8h_nocturno">🌙 8h Nocturno</option><option value="12h_nocturno">🌙 12h Nocturno</option>
+                        <option value="24h">🔄 24h</option><option value="personalizado">⚙️ Personalizado</option>
+                    </select>
+                </div>
+                <div id="customShiftTimes" class="hidden grid">
+                    <div class="form-group"><label>Hora Inicio</label><input type="time" id="customStartTime"></div>
+                    <div class="form-group"><label>Hora Fin</label><input type="time" id="customEndTime"></div>
+                </div>
+                <div class="form-group"><label>Estado de recepción</label>
+                    <select id="patientReceivedStatus"><option value="estable">🟢 Estable</option><option value="con_novedades">🟡 Con Novedades</option><option value="critico">🔴 Crítico</option></select>
+                </div>
+                <div class="form-group"><label>Observaciones de Recepción</label>
+                    <div style="display:flex; gap:5px;"><textarea id="patientReceivedNotes" rows="2"></textarea><button class="mic-btn" onclick="startDictation('patientReceivedNotes')"><i class="fas fa-microphone"></i></button></div>
+                </div>
+                <button class="btn-primary btn-info" onclick="startShift()"><i class="fas fa-play"></i> Iniciar Turno</button>
+            </div>
+        </div>
+        <div id="auxClinicalForm" class="hidden">
+            <div class="card">
+                <div style="text-align: center; font-size: 1.2rem; font-weight: bold; color: var(--primary); margin-bottom: 10px;">⏱️ Tiempo: <span id="timerDisplay">00:00:00</span></div>
+                <h3>Registro Clínico - <span id="patientNameClinical" style="color: var(--primary);"></span></h3>
+                <h4>🩺 Signos Vitales</h4>
+                <div class="grid">
+                    <div class="form-group"><label>PA (mmHg)</label><input type="text" id="bloodPressure" placeholder="120/80" oninput="checkVital('bp')"><div id="bpAlert" class="vital-status"></div></div>
+                    <div class="form-group"><label>FC (lpm)</label><input type="number" id="heartRate" placeholder="80" oninput="checkVital('hr')"><div id="hrAlert" class="vital-status"></div></div>
+                    <div class="form-group"><label>FR (rpm)</label><input type="number" id="respiratoryRate" placeholder="18" oninput="checkVital('rr')"><div id="rrAlert" class="vital-status"></div></div>
+                    <div class="form-group"><label>Temp (°C)</label><input type="number" step="0.1" id="temperature" placeholder="36.5" oninput="checkVital('temp')"><div id="tempAlert" class="vital-status"></div></div>
+                    <div class="form-group"><label>SpO2 (%)</label><input type="number" id="spo2" placeholder="96" oninput="checkVital('spo2')"><div id="spo2Alert" class="vital-status"></div></div>
+                    <div class="form-group"><label>Glucosa (mg/dL)</label><input type="number" id="glucose" placeholder="110" oninput="checkVital('glu')"><div id="gluAlert" class="vital-status"></div></div>
+                </div>
+                <h4>🟢 Escala EVA (Dolor)</h4>
+                <input type="range" id="evaScore" min="0" max="10" value="0" class="eva-slider" oninput="updateEVA()">
+                <div class="eva-faces"><span>😊</span><span>😐</span><span>😣</span><span>😭</span></div>
+                <p id="evaValue" style="text-align: center; font-size: 1.2rem; font-weight: bold;">0 - Sin dolor</p>
+                <h4>🧠 Escala Glasgow</h4>
+                <div class="grid">
+                    <div class="form-group"><label>Ojos (1-4)</label><input type="number" id="glasgowEyes" min="1" max="4" value="4" oninput="calculateGlasgow()"></div>
+                    <div class="form-group"><label>Verbal (1-5)</label><input type="number" id="glasgowVerbal" min="1" max="5" value="5" oninput="calculateGlasgow()"></div>
+                    <div class="form-group"><label>Motor (1-6)</label><input type="number" id="glasgowMotor" min="1" max="6" value="6" oninput="calculateGlasgow()"></div>
+                </div>
+                <div id="glasgowTotal" class="glasgow-total normal"><h3>15/15</h3><p>Normal</p></div>
+                <h4>🛏️ Escala Braden</h4>
+                <div class="grid">
+                    <div class="form-group"><label>Percepción</label><select id="bradenSensory" onchange="calculateBraden()"><option value="4">Sin deterioro</option><option value="3">Ligero</option><option value="2">Muy limitado</option><option value="1">Completamente</option></select></div>
+                    <div class="form-group"><label>Humedad</label><select id="bradenMoisture" onchange="calculateBraden()"><option value="4">Raramente</option><option value="3">Ocasional</option><option value="2">Frecuente</option><option value="1">Permanente</option></select></div>
+                    <div class="form-group"><label>Actividad</label><select id="bradenActivity" onchange="calculateBraden()"><option value="4">Camina</option><option value="3">Limitada</option><option value="2">Sillón</option><option value="1">Encamado</option></select></div>
+                    <div class="form-group"><label>Movilidad</label><select id="bradenMobility" onchange="calculateBraden()"><option value="4">Completa</option><option value="3">Ligera</option><option value="2">Muy limitada</option><option value="1">Inmóvil</option></select></div>
+                    <div class="form-group"><label>Nutrición</label><select id="bradenNutrition" onchange="calculateBraden()"><option value="4">Excelente</option><option value="3">Adecuada</option><option value="2">Inadecuada</option><option value="1">Muy inadecuada</option></select></div>
+                    <div class="form-group"><label>Fricción</label><select id="bradenFriction" onchange="calculateBraden()"><option value="4">Sin riesgo</option><option value="3">Leve</option><option value="2">Moderado</option><option value="1">Alto</option></select></div>
+                </div>
+                <div id="bradenTotal" class="braden-total risk-none"><h3>24/24</h3><p>Sin riesgo</p></div>
+                <h4>📋 Actividades Realizadas</h4>
+                <div class="accordion">
+                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>🧼 Higiene y Confort</span><i class="fas fa-chevron-down"></i></div>
+                    <div class="accordion-content">
+                        <div class="sub-activity">
+                            <div class="sub-activity-header"><input type="checkbox" id="actBath" onchange="toggleSubFields('bath', this)"><label for="actBath"><strong>🛁 Baño</strong></label><input type="time" id="actBathTime" style="width:auto; margin:0;"></div>
+                            <div class="sub-activity-fields" id="fields-bath"><div class="form-group"><label>Tipo</label><select id="bathType"><option value="en cama">En cama</option><option value="en ducha">En ducha</option><option value="en silla">En silla</option><option value="parcial">Parcial</option></select></div></div>
+                        </div>
+                        <div class="sub-activity">
+                            <div class="sub-activity-header"><input type="checkbox" id="actOralHygiene" onchange="toggleSubFields('oral', this)"><label for="actOralHygiene"><strong>🦷 Higiene Bucal</strong></label><input type="time" id="actOralTime" style="width:auto; margin:0;"></div>
+                            <div class="sub-activity-fields" id="fields-oral"><div class="form-group"><label>Tipo</label><select id="oralType"><option value="propia">Propia</option><option value="asistida">Asistida</option></select></div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion">
+                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>🧹 Aseo y Entorno</span><i class="fas fa-chevron-down"></i></div>
+                    <div class="accordion-content">
+                        <div class="sub-activity">
+                            <div class="sub-activity-header"><input type="checkbox" id="actBedClothes" onchange="toggleSubFields('bed', this)"><label for="actBedClothes"><strong>🛏️ Cambio de Ropa de Cama</strong></label><input type="time" id="actBedClothesTime" style="width:auto; margin:0;"></div>
+                            <div class="sub-activity-fields" id="fields-bed"><div class="form-group"><label>Detalle</label><input type="text" id="actBedClothesObs" placeholder="Ej: Sábanas y fundas"></div></div>
+                        </div>
+                        <div class="sub-activity">
+                            <div class="sub-activity-header"><input type="checkbox" id="actRoomClean" onchange="toggleSubFields('room', this)"><label for="actRoomClean"><strong>🧹 Aseo y Orden del Espacio</strong></label><input type="time" id="actRoomCleanTime" style="width:auto; margin:0;"></div>
+                            <div class="sub-activity-fields" id="fields-room"><div class="form-group"><label>Detalle</label><input type="text" id="actRoomCleanObs" placeholder="Ej: Limpieza de área y baño"></div></div>
+                        </div>
+                        <div class="sub-activity">
+                            <div class="sub-activity-header"><input type="checkbox" id="actWaste" onchange="toggleSubFields('waste', this)"><label for="actWaste"><strong>🗑️ Eliminación de Residuos</strong></label><input type="time" id="actWasteTime" style="width:auto; margin:0;"></div>
+                            <div class="sub-activity-fields" id="fields-waste"><div class="form-group"><label>Detalle</label><input type="text" id="actWasteObs" placeholder="Ej: Patogénicos y comunes"></div></div>
+                        </div>
+                        <div class="sub-activity">
+                            <div class="sub-activity-header"><input type="checkbox" id="actCompanion" onchange="toggleSubFields('comp', this)"><label for="actCompanion"><strong>🛋️ Acompañamiento Terapéutico</strong></label><input type="time" id="actCompanionTime" style="width:auto; margin:0;"></div>
+                            <div class="sub-activity-fields" id="fields-comp"><div class="form-group"><label>Detalle</label><input type="text" id="actCompanionObs" placeholder="Ej: Diálogo y apoyo emocional"></div></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion">
+                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>🍽️ Alimentación</span><i class="fas fa-chevron-down"></i></div>
+                    <div class="accordion-content">
+                        <div id="mealList"></div>
+                        <button class="btn-small btn-info" onclick="addMeal()"><i class="fas fa-plus"></i> Agregar Comida</button>
+                        <div style="margin-top: 15px; border-top: 1px solid var(--border); padding-top: 10px;">
+                            <div class="sub-activity">
+                                <div class="sub-activity-header"><input type="checkbox" id="actEnteralFood" onchange="toggleSubFields('enteral', this)"><label for="actEnteralFood"><strong>🥤 Alimentación Enteral (Sonda)</strong></label><input type="time" id="actEnteralFoodTime" style="width:auto; margin:0;"></div>
+                                <div class="sub-activity-fields" id="fields-enteral">
+                                    <div class="form-group"><label>Fórmula</label><input type="text" id="enteralFormula" placeholder="Ej: Nutricomp"></div>
+                                    <div class="form-group"><label>Volumen (mL)</label><input type="number" id="enteralVol"></div>
+                                </div>
+                            </div>
+                            <div class="sub-activity">
+                                <div class="sub-activity-header"><input type="checkbox" id="actParenteralFood" onchange="toggleSubFields('parenteral', this)"><label for="actParenteralFood"><strong>💉 Nutrición Parenteral</strong></label><input type="time" id="actParenteralFoodTime" style="width:auto; margin:0;"></div>
+                                <div class="sub-activity-fields" id="fields-parenteral">
+                                    <div class="form-group"><label>Fórmula</label><input type="text" id="parenteralFormula" placeholder="Ej: NPT"></div>
+                                    <div class="form-group"><label>Volumen (mL)</label><input type="number" id="parenteralVol"></div>
+                                </div>
+                            </div>
+                            <div class="sub-activity">
+                                <div class="sub-activity-header"><input type="checkbox" id="actHydration" onchange="toggleSubFields('hydration', this)"><label for="actHydration"><strong>💧 Hidratación</strong></label><input type="time" id="actHydrationTime" style="width:auto; margin:0;"></div>
+                                <div class="sub-activity-fields" id="fields-hydration"><div class="form-group"><label>mL</label><input type="number" id="hydrationMl"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion">
+                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>💊 Medicamentos</span><i class="fas fa-chevron-down"></i></div>
+                    <div class="accordion-content">
+                        <div id="medList"></div>
+                        <button class="btn-small btn-info" onclick="addMedication()"><i class="fas fa-plus"></i> Agregar</button>
+                    </div>
+                </div>
+                <div class="accordion">
+                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>🩺 Cuidados Clínicos</span><i class="fas fa-chevron-down"></i></div>
+                    <div class="accordion-content">
+                        <div class="sub-activity">
+                            <div class="sub-activity-header"><input type="checkbox" id="actWound" onchange="toggleSubFields('wound', this)"><label for="actWound"><strong>🩹 Curación</strong></label><input type="time" id="actWoundTime" style="width:auto; margin:0;"></div>
+                            <div class="sub-activity-fields" id="fields-wound"><div class="form-group"><label>Estado</label><select id="woundState"><option value="limpia">Limpia</option><option value="exudado">Con exudado</option><option value="infectada">Infectada</option></select></div></div>
+                        </div>
+                        <div class="sub-activity">
+                            <div class="sub-activity-header"><input type="checkbox" id="actOxygen" onchange="toggleSubFields('oxygen', this)"><label for="actOxygen"><strong>💨 Oxigenoterapia</strong></label><input type="time" id="actOxygenTime" style="width:auto; margin:0;"></div>
+                            <div class="sub-activity-fields" id="fields-oxygen">
+                                <div class="form-group"><label>L/min</label><input type="number" id="oxygenLpm" step="0.5"></div>
+                                <div class="form-group"><label>Dispositivo</label><select id="oxygenDevice"><option value="canula">Cánula nasal</option><option value="mascarilla">Mascarilla</option></select></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="accordion">
+                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>🚶 Movilización</span><i class="fas fa-chevron-down"></i></div>
+                    <div class="accordion-content">
+                        <div class="sub-activity">
+                            <div class="sub-activity-header"><input type="checkbox" id="actPosition" onchange="toggleSubFields('position', this)"><label for="actPosition"><strong>🔄 Cambio Postural</strong></label><input type="time" id="actPositionTime" style="width:auto; margin:0;"></div>
+                            <div class="sub-activity-fields" id="fields-position"><div class="form-group"><label>Posición</label><select id="positionType">
+                                <option value="supino">Supino</option><option value="prono">Prono</option><option value="lateral_derecho">Lateral Derecho</option>
+                                <option value="lateral_izquierdo">Lateral Izquierdo</option><option value="fowler">Fowler</option><option value="semi_fowler">Semi-Fowler</option>
+                            </select></div></div>
+                        </div>
+                        <div class="sub-activity">
+                            <div class="sub-activity-header"><input type="checkbox" id="actWalking" onchange="toggleSubFields('walking', this)"><label for="actWalking"><strong>🚶 Deambulación</strong></label><input type="time" id="actWalkingTime" style="width:auto; margin:0;"></div>
+                            <div class="sub-activity-fields" id="fields-walking">
+                                <div class="form-group"><label>Metros</label><input type="number" id="walkingDistance"></div>
+                                <div class="form-group"><label>Ayuda</label><select id="walkingHelp"><option value="no">No</option><option value="si">Sí</option></select></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <h4>🔄 SBAR (Novedades)</h4>
+                <div class="form-group"><label>S - Situación</label><textarea id="sbarSituation" rows="2" placeholder="¿Qué está pasando ahora?"></textarea></div>
+                <div class="form-group"><label>B - Antecedentes</label><textarea id="sbarBackground" rows="2" placeholder="Contexto clínico"></textarea></div>
+                <div class="form-group"><label>A - Evaluación</label><textarea id="sbarAssessment" rows="2" placeholder="Mi valoración"></textarea></div>
+                <div class="form-group"><label>R - Recomendación</label><textarea id="sbarRecommendation" rows="2" placeholder="Qué sugiero hacer"></textarea></div>
+                <h4>📝 Notas Adicionales</h4>
+                <div class="form-group">
+                    <div style="display:flex; gap:5px;"><textarea id="clinicalNotes" rows="3" placeholder="Observaciones..."></textarea><button class="mic-btn" onclick="startDictation('clinicalNotes')"><i class="fas fa-microphone"></i></button></div>
+                </div>
+                <button class="btn-primary" onclick="saveClinicalRecord()"><i class="fas fa-save"></i> Guardar Registro</button>
+            </div>
+            <div class="card">
+                <h3>Historial del Día</h3>
+                <div id="dailyHistory"></div>
+            </div>
+            <div class="card">
+                <h3>🔒 Cierre de Turno</h3>
+                <div class="form-group"><label>Estado de entrega</label>
+                    <select id="patientDeliveredStatus"><option value="estable">🟢 Estable</option><option value="con_novedades">🟡 Con Novedades</option><option value="critico">🔴 Crítico</option></select>
+                </div>
+                <div class="form-group"><label>Descripción de entrega</label><textarea id="patientDeliveredNotes" rows="2"></textarea></div>
+                <div class="form-group"><label>Pendientes</label><input type="text" id="pendingTasks" placeholder="Tareas pendientes"></div>
+                <div class="legal-warning">
+                    <h4>🚨 SALIDA DEL PACIENTE (RESPONSABILIDAD ARL)</h4>
+                    <div style="margin: 10px 0;"><input type="checkbox" id="patientLeavesHome" style="width:auto; margin-right:10px;" onchange="toggleLeaveDetails(this)"><label for="patientLeavesHome" style="display:inline;">El paciente saldrá del domicilio</label></div>
+                    <div id="leaveDetails" class="hidden">
+                        <div class="form-group"><label>Medio de Transporte</label>
+                            <select id="leaveTransport">
+                                <option value="taxi">Taxi</option><option value="uber">Uber</option><option value="idrive">iDrive</option><option value="cabify">Cabify</option>
+                                <option value="carro_particular">Carro Particular</option><option value="moto">Moto</option><option value="vehiculo_familiar">Vehículo Familiar</option>
+                                <option value="ambulancia">Ambulancia</option><option value="bus">Bus</option><option value="a_pie">A pie</option>
+                            </select>
+                        </div>
+                        <div class="grid">
+                            <div class="form-group"><label>Hora de salida</label><input type="time" id="leaveTime"></div>
+                            <div class="form-group"><label>Hora de regreso</label><input type="time" id="leaveReturnTime"></div>
+                        </div>
+                        <div style="margin: 10px 0; padding: 10px; background: #450a0a; border-radius: 6px; border: 1px solid var(--danger);">
+                            <input type="checkbox" id="leaveLiabilityAck" style="width:auto; margin-right:10px;">
+                            <label for="leaveLiabilityAck" style="display:inline; color: #fecaca;">El familiar asume la responsabilidad total del traslado. Vital Hogar Pro y el auxiliar NO se hacen responsables de eventos fuera del domicilio.</label>
+                        </div>
+                        <h4>✍️ Firma Autorizando Salida (ARL)</h4>
+                        <canvas id="leaveSigCanvas" class="signature-canvas"></canvas>
+                        <button class="btn-small btn-secondary" onclick="clearSig('leaveSigCanvas')">Borrar</button>
+                    </div>
+                </div>
+                <div class="legal-warning" style="border-color: var(--info);">
+                    <h4>🤝 RESPONSABILIDAD Y EDUCACIÓN</h4>
+                    <div style="margin: 10px 0;"><input type="checkbox" id="familyAcceptsResponsibility" style="width:auto; margin-right:10px;"><label for="familyAcceptsResponsibility" style="display:inline;">El familiar acepta la responsabilidad del paciente</label></div>
+                    <div style="margin: 10px 0;"><input type="checkbox" id="familyReceivedEducation" style="width:auto; margin-right:10px;" onchange="document.getElementById('educationDetails').classList.toggle('hidden', !this.checked)"><label for="familyReceivedEducation" style="display:inline;">Se brindó educación al familiar</label></div>
+                    <div id="educationDetails" class="hidden">
+                        <div class="form-group"><label>Tema Educativo Impartido</label><select id="educationTopicSelect"></select></div>
+                        <div class="form-group">
+                            <label>📸 Evidencia Fotográfica</label>
+                            <input type="file" id="eduPhoto" accept="image/*" capture="environment" style="display:none;" onchange="previewPhoto(this)">
+                            <button class="btn-small btn-info" onclick="document.getElementById('eduPhoto').click()"><i class="fas fa-camera"></i> Tomar Foto</button>
+                            <img id="eduPhotoPreview" class="photo-preview hidden">
+                        </div>
+                    </div>
+                </div>
+                <div class="grid">
+                    <div class="form-group"><label>Nombre Familiar *</label><input type="text" id="familySignName"></div>
+                    <div class="form-group"><label>Cédula Familiar *</label><input type="text" id="familySignId"></div>
+                    <div class="form-group"><label>Parentesco *</label>
+                        <select id="familyRelationship">
+                            <option value="">Seleccionar...</option><option value="Hijo/a">Hijo/a</option><option value="Esposo/a">Esposo/a</option>
+                            <option value="Padre/Madre">Padre/Madre</option><option value="Hermano/a">Hermano/a</option><option value="Sobrino/a">Sobrino/a</option>
+                            <option value="Nieto/a">Nieto/a</option><option value="Otro">Otro</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Celular Familiar</label><input type="tel" id="familyPhone"></div>
+                </div>
+                <h4>✍️ Firma Auxiliar</h4>
+                <canvas id="auxSigCanvas" class="signature-canvas"></canvas>
+                <button class="btn-small btn-secondary" onclick="clearSig('auxSigCanvas')">Borrar</button>
+                <h4>✍️ Firma Familiar (Cierre)</h4>
+                <canvas id="famSigCanvas" class="signature-canvas"></canvas>
+                <button class="btn-small btn-secondary" onclick="clearSig('famSigCanvas')">Borrar</button>
+                <button class="btn-primary btn-info" onclick="closeShift()"><i class="fas fa-check-circle"></i> Cerrar Turno</button>
+                <button id="generateClosurePDFBtn" class="btn-primary btn-warning hidden" onclick="generateClosurePDF()"><i class="fas fa-file-pdf"></i> Descargar Resumen Diario</button>
+            </div>
+        </div>
     </div>
 
-    <!-- PROFESSIONAL PANEL (NUEVO FASE 2) -->
+    <!-- PROFESSIONAL PANEL (FASE 2) -->
     <div id="profPanel" class="hidden">
         <div id="profPatientSelection" class="card">
             <h3>Selecciona un Paciente para Valoración</h3>
             <div id="profPatientList"></div>
         </div>
-
         <div id="profClinicalForm" class="hidden">
             <div class="card">
                 <h3>Nota de Evolución - <span id="profPatientName" style="color: var(--primary);"></span></h3>
-                
                 <h4>Signos Vitales y Antropometría</h4>
                 <div class="grid">
                     <div class="form-group"><label>PA (mmHg)</label><input type="text" id="profBP" placeholder="120/80"></div>
@@ -225,7 +494,6 @@ th { background: var(--card-bg); color: #94a3b8; }
                     <div class="form-group"><label>Talla (cm)</label><input type="number" step="0.1" id="profHeight" oninput="calculateIMC()" placeholder="170"></div>
                 </div>
                 <div class="form-group"><label>IMC (Calculado)</label><input type="text" id="profIMC" readonly><div id="imcResult" class="imc-result"></div></div>
-
                 <h4>Evaluación Clínica (SOAP)</h4>
                 <div class="form-group">
                     <label>S - Subjetivo (Motivo de consulta / Síntomas)</label>
@@ -243,14 +511,12 @@ th { background: var(--card-bg); color: #94a3b8; }
                     <label>P - Plan de Tratamiento / Órdenes</label>
                     <div style="display:flex; gap:5px;"><textarea id="profPlan" rows="2"></textarea><button class="mic-btn" onclick="startDictation('profPlan')"><i class="fas fa-microphone"></i></button></div>
                 </div>
-
                 <h4>📸 Registro Fotográfico (Hallazgos Clínicos)</h4>
                 <div class="form-group">
                     <input type="file" id="profPhoto" accept="image/*" capture="environment" style="display:none;" onchange="previewProfPhoto(this)">
                     <button class="btn-small btn-info" onclick="document.getElementById('profPhoto').click()"><i class="fas fa-camera"></i> Tomar Foto</button>
                     <img id="profPhotoPreview" class="photo-preview hidden">
                 </div>
-
                 <div class="legal-warning" style="border-color: var(--info);">
                     <h4>✍️ Firmas de Validación</h4>
                     <div class="grid">
@@ -262,7 +528,6 @@ th { background: var(--card-bg); color: #94a3b8; }
                         <div class="form-group"><label>Cédula Familiar *</label><input type="text" id="profFamId"></div>
                     </div>
                 </div>
-
                 <button class="btn-primary btn-info" onclick="saveProfRecord()"><i class="fas fa-save"></i> Guardar Nota de Evolución</button>
                 <button id="generateProfPDFBtn" class="btn-primary btn-warning hidden" onclick="generateProfPDF()"><i class="fas fa-file-pdf"></i> Descargar Informe Profesional PDF</button>
             </div>
@@ -273,64 +538,45 @@ th { background: var(--card-bg); color: #94a3b8; }
 <div id="toast" class="toast"></div>
 
 <script>
-const API_URL = 'https://vital-hogar-31.onrender.com'; // Asegúrate de que esta sea tu URL correcta de Render
+const API_URL = 'https://vital-hogar-31.onrender.com';
 const LOGO_URL = 'https://i.imgur.com/01YZxey.jpeg';
 
 const CIUDADES_COLOMBIA = {
-    'Bogotá': { altitud: 2640, spo2_min: 93, spo2_max: 98 },
-    'Medellín': { altitud: 1495, spo2_min: 95, spo2_max: 99 },
-    'Cali': { altitud: 1018, spo2_min: 96, spo2_max: 100 },
-    'Barranquilla': { altitud: 18, spo2_min: 97, spo2_max: 100 },
-    'Cartagena': { altitud: 2, spo2_min: 97, spo2_max: 100 },
-    'Cúcuta': { altitud: 320, spo2_min: 96, spo2_max: 100 },
-    'Bucaramanga': { altitud: 959, spo2_min: 96, spo2_max: 100 },
-    'Pereira': { altitud: 1467, spo2_min: 95, spo2_max: 99 },
-    'Manizales': { altitud: 2150, spo2_min: 94, spo2_max: 98 },
-    'Pasto': { altitud: 2527, spo2_min: 93, spo2_max: 98 },
-    'Tunja': { altitud: 2820, spo2_min: 92, spo2_max: 97 },
-    'Armenia': { altitud: 1483, spo2_min: 95, spo2_max: 99 },
-    'Ibagué': { altitud: 1285, spo2_min: 95, spo2_max: 99 },
-    'Neiva': { altitud: 442, spo2_min: 97, spo2_max: 100 },
+    'Bogotá': { altitud: 2640, spo2_min: 93, spo2_max: 98 }, 'Medellín': { altitud: 1495, spo2_min: 95, spo2_max: 99 },
+    'Cali': { altitud: 1018, spo2_min: 96, spo2_max: 100 }, 'Barranquilla': { altitud: 18, spo2_min: 97, spo2_max: 100 },
+    'Cartagena': { altitud: 2, spo2_min: 97, spo2_max: 100 }, 'Cúcuta': { altitud: 320, spo2_min: 96, spo2_max: 100 },
+    'Bucaramanga': { altitud: 959, spo2_min: 96, spo2_max: 100 }, 'Pereira': { altitud: 1467, spo2_min: 95, spo2_max: 99 },
+    'Manizales': { altitud: 2150, spo2_min: 94, spo2_max: 98 }, 'Pasto': { altitud: 2527, spo2_min: 93, spo2_max: 98 },
+    'Tunja': { altitud: 2820, spo2_min: 92, spo2_max: 97 }, 'Armenia': { altitud: 1483, spo2_min: 95, spo2_max: 99 },
+    'Ibagué': { altitud: 1285, spo2_min: 95, spo2_max: 99 }, 'Neiva': { altitud: 442, spo2_min: 97, spo2_max: 100 },
     'Popayán': { altitud: 1738, spo2_min: 95, spo2_max: 99 }
 };
 
-let currentUser = null, selectedPatient = null, currentShiftId = null;
-let profPhotoBase64 = null, lastProfRecordId = null;
+let currentUser = null, selectedPatient = null, currentShiftId = null, lastClosedShiftId = null;
+let shiftTimerInterval = null, shiftStartTime = null, medications = [], meals = [], eduPhotoBase64 = null;
+let lastShiftData = null, profPhotoBase64 = null, lastProfRecordId = null;
 
 // ===== UTILIDADES =====
-function showToast(msg, type = 'success') {
-    const toast = document.getElementById('toast');
-    toast.textContent = msg;
-    toast.className = `toast ${type} show`;
-    setTimeout(() => toast.classList.remove('show'), 3500);
-}
-
+function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
 function getVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
 function getChecked(id) { const el = document.getElementById(id); return el ? el.checked : false; }
+function getRangoSpO2(c) { return CIUDADES_COLOMBIA[c] || CIUDADES_COLOMBIA['Bogotá']; }
 function formatTime12h(t) { if(!t) return 'N/A'; const [h,m] = t.split(':'); const hr = parseInt(h); return `${hr%12||12}:${m} ${hr>=12?'PM':'AM'}`; }
 
-// ===== MODAL RECUPERACIÓN =====
+// ===== AUTENTICACIÓN =====
 function openResetModal() { document.getElementById('resetModal').classList.remove('hidden'); }
 function closeResetModal() { document.getElementById('resetModal').classList.add('hidden'); }
 async function sendResetEmail() {
     const email = document.getElementById('resetEmail').value.trim();
     if (!email) return showToast('Ingresa un correo', 'error');
-    try {
-        const res = await fetch(`${API_URL}/api/auth/reset-password`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
-        const data = await res.json();
-        showToast(data.message, data.success ? 'success' : 'error');
-        if (data.success) setTimeout(closeResetModal, 2000);
-    } catch (e) { showToast('Error de conexión', 'error'); }
+    try { const r = await fetch(`${API_URL}/api/auth/reset-password`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({email}) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); if(d.success) setTimeout(closeResetModal, 2000); } catch (e) { showToast('Error', 'error'); }
 }
-
-// ===== AUTENTICACIÓN =====
 async function login() {
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
+    const email = document.getElementById('loginEmail').value.trim(), password = document.getElementById('loginPassword').value;
     if (!email || !password) return showToast('Complete todos los campos', 'error');
     document.getElementById('loginBtn').innerHTML = 'Verificando...';
     try {
-        const res = await fetch(`${API_URL}/api/auth/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }) });
+        const res = await fetch(`${API_URL}/api/auth/login`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ email, password }) });
         const data = await res.json();
         if (data.success) {
             const specRes = await fetch(`${API_URL}/api/professionals`);
@@ -341,299 +587,81 @@ async function login() {
             showToast('Bienvenido ' + currentUser.full_name);
             initApp();
         } else { showToast(data.message || 'Credenciales inválidas', 'error'); }
-    } catch (error) { showToast('Error de conexión', 'error'); }
-    finally { document.getElementById('loginBtn').innerHTML = 'Ingresar'; }
+    } catch (e) { showToast('Error de conexión', 'error'); } finally { document.getElementById('loginBtn').innerHTML = 'Ingresar'; }
 }
-
 function logout() { localStorage.removeItem('vital_user'); currentUser = null; location.reload(); }
-
 function initApp() {
-    const userStr = localStorage.getItem('vital_user');
-    if (!userStr) return;
-    currentUser = JSON.parse(userStr);
-    document.getElementById('loginScreen').classList.add('hidden');
-    document.getElementById('mainScreen').classList.remove('hidden');
-    document.getElementById('userInfo').classList.remove('hidden');
-    document.getElementById('userName').textContent = currentUser.full_name;
-    document.getElementById('userRoleDisplay').textContent = currentUser.specialty_name;
-    
+    const u = localStorage.getItem('vital_user'); if (!u) return; currentUser = JSON.parse(u);
+    document.getElementById('loginScreen').classList.add('hidden'); document.getElementById('mainScreen').classList.remove('hidden'); document.getElementById('userInfo').classList.remove('hidden');
+    document.getElementById('userName').textContent = currentUser.full_name; document.getElementById('userRoleDisplay').textContent = currentUser.specialty_name;
     if (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE') {
         document.getElementById('adminPanel').classList.remove('hidden');
         loadProfs(); loadPats(); loadReportPatients();
         setTimeout(() => initSigCanvas('adminSigCanvas'), 100);
     } else if (currentUser.specialty_name === 'AUXILIAR_ENFERMERIA') {
-        document.getElementById('auxPanel').classList.remove('hidden');
-        // loadAuxPatients(); // Descomentar cuando integres el panel auxiliar completo
+        document.getElementById('auxPanel').classList.remove('hidden'); loadAuxPatients();
     } else {
-        // Es otro profesional (Médico, Fisio, etc.)
-        document.getElementById('profPanel').classList.remove('hidden');
-        loadProfPatients();
+        document.getElementById('profPanel').classList.remove('hidden'); loadProfPatients();
     }
 }
 
 // ===== ADMIN =====
-function showAdminTab(tab, btn) {
-    ['admin_prof', 'admin_pat', 'admin_reports'].forEach(t => document.getElementById(t).classList.add('hidden'));
-    document.getElementById('admin_' + tab).classList.remove('hidden');
-    document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active'));
-    btn.classList.add('active');
-    if (tab === 'reports') setTimeout(() => initSigCanvas('adminSigCanvas'), 100);
-}
+function showAdminTab(tab, btn) { ['admin_prof', 'admin_pat', 'admin_reports'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById('admin_'+tab).classList.remove('hidden'); document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); if (tab === 'reports') setTimeout(() => initSigCanvas('adminSigCanvas'), 100); }
+async function loadProfs() { try { const r = await fetch(`${API_URL}/api/professionals`); const d = await r.json(); document.querySelector('#profTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.document_number}</td><td>${p.specialties?.name||'N/A'}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small ${p.is_active?'btn-danger':'btn-warning'}" onclick="toggleProf('${p.id}', ${p.is_active})">${p.is_active?'Desactivar':'Activar'}</button></td></tr>`).join(''); } catch (e) {} }
+async function createProf() { const p = { fullName: getVal('pName'), documentNumber: getVal('pDoc'), professionalCard: getVal('pCard'), email: getVal('pEmail'), password: getVal('pPass'), specialtyName: getVal('pSpec') }; if (!p.fullName || !p.email || !p.password) return showToast('Campos obligatorios', 'error'); try { const r = await fetch(`${API_URL}/api/professionals`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); if(d.success) { ['pName','pDoc','pCard','pEmail','pPass'].forEach(id => document.getElementById(id).value=''); loadProfs(); } } catch (e) {} }
+async function toggleProf(id, s) { try { await fetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: !s }) }); loadProfs(); } catch (e) {} }
+async function loadPats() { try { const r = await fetch(`${API_URL}/api/patients`); const d = await r.json(); document.querySelector('#patTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.altitude_profiles?.city_name||'N/A'}</td><td>${p.family_name||'N/A'}</td><td>${p.contact_phone||'N/A'}</td><td>${p.is_active?'✅':'❌'}</td><td>-</td></tr>`).join(''); } catch (e) {} }
+async function createPat() { const p = { fullName: getVal('patName'), documentNumber: getVal('patDoc'), cityName: getVal('patCity'), familyName: getVal('famName'), contactPhone: getVal('famCel') }; if (!p.fullName) return showToast('Nombre obligatorio', 'error'); try { const r = await fetch(`${API_URL}/api/patients`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); showToast(d.message, d.success?'success':'error'); if(d.success) { ['patName','patDoc','famName','famCel'].forEach(id => document.getElementById(id).value=''); loadPats(); } } catch (e) {} }
+async function loadReportPatients() { try { const r = await fetch(`${API_URL}/api/reports/pending`); const d = await r.json(); const s = document.getElementById('reportPatient'); s.innerHTML = '<option value="">Seleccionar...</option>'; if (d.data) d.data.forEach(p => s.innerHTML += `<option value="${p.id}">${p.full_name}</option>`); } catch (e) {} }
+async function generateMonthlyPDF() { const pid = getVal('reportPatient'), m = getVal('reportMonth'), y = getVal('reportYear'); if (!pid) return showToast('Seleccione paciente', 'error'); try { const r = await fetch(`${API_URL}/api/reports/${pid}/${m}/${y}`); const res = await r.json(); if (!res.success) throw new Error(res.message); const { patient, records } = res.data; const { jsPDF } = window.jspdf; const doc = new jsPDF(); try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {} doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center"); doc.setFontSize(12); doc.text(`Informe Mensual - ${patient.full_name}`, 105, 30, null, null, "center"); doc.autoTable({ startY: 40, head: [['Fecha', 'PA', 'FC', 'SpO2']], body: records.map(r => [new Date(r.created_at).toLocaleDateString(), r.blood_pressure||'--', r.heart_rate||'--', r.spo2||'--']) }); let fY = doc.lastAutoTable.finalY + 20; doc.line(15, fY + 20, 85, fY + 20); const sig = document.getElementById('adminSigCanvas').toDataURL(); if (sig && sig !== 'data:,') { try { doc.addImage(sig, 'PNG', 20, fY, 50, 20); } catch(e) {} } doc.text(`Firma: ${currentUser.full_name}`, 15, fY + 26); doc.text(`Cargo: ${currentUser.specialty_name}`, 15, fY + 32); doc.save(`Informe_${patient.full_name}_${m}_${y}.pdf`); } catch (e) { showToast('Error: ' + e.message, 'error'); } }
 
-async function loadProfs() {
-    try {
-        const res = await fetch(`${API_URL}/api/professionals`);
-        const d = await res.json();
-        const tbody = document.querySelector('#profTable tbody');
-        tbody.innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.document_number}</td><td>${p.specialties?.name || 'N/A'}</td><td>${p.is_active ? '✅' : '❌'}</td><td><button class="btn-small ${p.is_active ? 'btn-danger' : 'btn-warning'}" onclick="toggleProf('${p.id}', ${p.is_active})">${p.is_active ? 'Desactivar' : 'Activar'}</button></td></tr>`).join('');
-    } catch (e) { console.error(e); }
-}
-async function createProf() {
-    const payload = { fullName: getVal('pName'), documentNumber: getVal('pDoc'), professionalCard: getVal('pCard'), email: getVal('pEmail'), password: getVal('pPass'), specialtyName: getVal('pSpec') };
-    if (!payload.fullName || !payload.email || !payload.password) return showToast('Complete campos obligatorios', 'error');
-    try {
-        const res = await fetch(`${API_URL}/api/professionals`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        const d = await res.json();
-        showToast(d.message, d.success ? 'success' : 'error');
-        if (d.success) { ['pName','pDoc','pCard','pEmail','pPass'].forEach(id => document.getElementById(id).value = ''); loadProfs(); }
-    } catch (e) { showToast('Error', 'error'); }
-}
-async function toggleProf(id, status) {
-    try { await fetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ isActive: !status }) }); loadProfs(); } catch (e) { showToast('Error', 'error'); }
-}
-
-async function loadPats() {
-    try {
-        const res = await fetch(`${API_URL}/api/patients`);
-        const d = await res.json();
-        const tbody = document.querySelector('#patTable tbody');
-        tbody.innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.altitude_profiles?.city_name || 'N/A'}</td><td>${p.family_name || 'N/A'}</td><td>${p.contact_phone || 'N/A'}</td><td>${p.is_active ? '✅' : '❌'}</td><td>-</td></tr>`).join('');
-    } catch (e) { console.error(e); }
-}
-async function createPat() {
-    const payload = { fullName: getVal('patName'), documentNumber: getVal('patDoc'), cityName: getVal('patCity'), familyName: getVal('famName'), contactPhone: getVal('famCel') };
-    if (!payload.fullName) return showToast('Nombre obligatorio', 'error');
-    try {
-        const res = await fetch(`${API_URL}/api/patients`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
-        const d = await res.json();
-        showToast(d.message, d.success ? 'success' : 'error');
-        if (d.success) { ['patName','patDoc','famName','famCel'].forEach(id => document.getElementById(id).value = ''); loadPats(); }
-    } catch (e) { showToast('Error', 'error'); }
-}
-
-async function loadReportPatients() {
-    try {
-        const res = await fetch(`${API_URL}/api/reports/pending`);
-        const d = await res.json();
-        const select = document.getElementById('reportPatient');
-        select.innerHTML = '<option value="">Seleccionar...</option>';
-        if (d.data) d.data.forEach(p => select.innerHTML += `<option value="${p.id}">${p.full_name}</option>`);
-    } catch (e) { console.error(e); }
-}
-
-async function generateMonthlyPDF() {
-    const patientId = getVal('reportPatient'), month = getVal('reportMonth'), year = getVal('reportYear');
-    if (!patientId) return showToast('Seleccione paciente', 'error');
-    showToast('Generando PDF...', 'success');
-    try {
-        const res = await fetch(`${API_URL}/api/reports/${patientId}/${month}/${year}`);
-        const result = await res.json();
-        if (!result.success) throw new Error(result.message);
-        const { patient, records } = result.data;
-        const { jsPDF } = window.jspdf;
-        const doc = new jsPDF();
-        try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
-        doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
-        doc.text(`Informe Mensual - ${patient.full_name}`, 105, 30, null, null, "center");
-        doc.autoTable({ startY: 40, head: [['Fecha', 'PA', 'FC', 'SpO2']], body: records.map(r => [new Date(r.created_at).toLocaleDateString(), r.blood_pressure||'--', r.heart_rate||'--', r.spo2||'--']) });
-        
-        let finalY = doc.lastAutoTable.finalY + 20;
-        doc.line(15, finalY + 20, 85, finalY + 20);
-        const adminSig = document.getElementById('adminSigCanvas').toDataURL();
-        if (adminSig && adminSig !== 'data:,') { try { doc.addImage(adminSig, 'PNG', 20, finalY, 50, 20); } catch(e) {} }
-        doc.text(`Firma: ${currentUser.full_name}`, 15, finalY + 26);
-        doc.text(`Cargo: ${currentUser.specialty_name}`, 15, finalY + 32);
-        doc.save(`Informe_${patient.full_name}_${month}_${year}.pdf`);
-    } catch (e) { showToast('Error: ' + e.message, 'error'); }
-}
+// ===== AUXILIAR =====
+function toggleCustomShift() { document.getElementById('customShiftTimes').classList.toggle('hidden', getVal('shiftType') !== 'personalizado'); }
+function toggleLeaveDetails(cb) { const d = document.getElementById('leaveDetails'); d.classList.toggle('hidden', !cb.checked); if (cb.checked) setTimeout(() => initSigCanvas('leaveSigCanvas'), 100); }
+async function loadAuxPatients() { try { const r = await fetch(`${API_URL}/api/auxiliar/patients`); const d = await r.json(); const c = document.getElementById('auxPatientList'); if (!d.data || d.data.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay pacientes activos</p>'; return; } c.innerHTML = d.data.map(p => `<div class="card" style="cursor:pointer; border-left: 4px solid var(--primary);" onclick='selectPatient(${JSON.stringify(p)})'><strong>${p.full_name}</strong><br><small>${p.pathology_summary || 'Sin patología'} - ${p.altitude_profiles?.city_name || 'N/A'}</small><br><small>Familiar: ${p.family_name || 'N/A'} 📱 ${p.contact_phone || ''}</small></div>`).join(''); } catch (e) {} }
+function selectPatient(p) { selectedPatient = p; document.getElementById('patientNameStart').innerText = p.full_name; document.getElementById('auxPatientSelection').classList.add('hidden'); document.getElementById('auxShiftStart').classList.remove('hidden'); }
+async function startShift() { const sT = getVal('shiftType'); let cS = null, cE = null; if (sT === 'personalizado') { if (!getVal('customStartTime') || !getVal('customEndTime')) return showToast('Ingrese hora inicio y fin', 'error'); const t = new Date().toISOString().split('T')[0]; cS = `${t}T${getVal('customStartTime')}:00`; cE = `${t}T${getVal('customEndTime')}:00`; } try { const r = await fetch(`${API_URL}/api/shifts/start`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ patientId: selectedPatient.id, professionalId: currentUser.id, shiftType: sT, patientStatus: getVal('patientReceivedStatus'), patientNotes: getVal('patientReceivedNotes'), customStartTime: cS, customEndTime: cE }) }); const d = await r.json(); if (d.success) { currentShiftId = d.data.id; shiftStartTime = new Date(); document.getElementById('patientNameClinical').innerText = selectedPatient.full_name; document.getElementById('auxShiftStart').classList.add('hidden'); document.getElementById('auxClinicalForm').classList.remove('hidden'); initSigCanvas('auxSigCanvas'); initSigCanvas('famSigCanvas'); startShiftTimer(); loadDailyHistory(); showToast('Turno iniciado', 'success'); } else { showToast(d.message || 'Error', 'error'); } } catch (e) { showToast('Error', 'error'); } }
+function startShiftTimer() { clearInterval(shiftTimerInterval); shiftTimerInterval = setInterval(() => { if (!shiftStartTime) return; const diff = new Date() - shiftStartTime; const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000); document.getElementById('timerDisplay').innerText = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; }, 1000); }
+function checkVital(t) { const c = selectedPatient?.altitude_profiles?.city_name || 'Bogotá'; const r = getRangoSpO2(c); const sM = r.spo2_min; const ch = { bp: () => { const m = getVal('bloodPressure').match(/(\d+)\/(\d+)/); if(!m) return {s:'none'}; const [s,d]=[parseInt(m[1]),parseInt(m[2])]; if(s<80||s>=160||d<50||d>=100) return {s:'danger',m:'🔴 CRÍTICO'}; if(s<90||s>=140||d<60||d>=90) return {s:'warning',m:'🟡 ALERTA'}; return {s:'normal',m:'🟢 Normal'}; }, hr: () => { const v=parseInt(getVal('heartRate')); if(!v) return {s:'none'}; if(v<50||v>=120) return {s:'danger',m:'🔴 CRÍTICO'}; if(v<60||v>100) return {s:'warning',m:'🟡 ALERTA'}; return {s:'normal',m:'🟢 Normal'}; }, rr: () => { const v=parseInt(getVal('respiratoryRate')); if(!v) return {s:'none'}; if(v<10||v>=25) return {s:'danger',m:'🔴 CRÍTICO'}; if(v<12||v>20) return {s:'warning',m:'🟡 ALERTA'}; return {s:'normal',m:'🟢 Normal'}; }, temp: () => { const v=parseFloat(getVal('temperature')); if(!v) return {s:'none'}; if(v<35.5||v>=38.0) return {s:'danger',m:'🔴 CRÍTICO'}; if(v<36.1||v>37.2) return {s:'warning',m:'🟡 ALERTA'}; return {s:'normal',m:'🟢 Normal'}; }, spo2: () => { const v=parseInt(getVal('spo2')); if(!v) return {s:'none'}; if(v<sM-3) return {s:'danger',m:'🔴 CRÍTICO'}; if(v<sM) return {s:'warning',m:'🟡 ALERTA'}; return {s:'normal',m:'🟢 Normal'}; }, glu: () => { const v=parseInt(getVal('glucose')); if(!v) return {s:'none'}; if(v<60||v>=200) return {s:'danger',m:'🔴 CRÍTICO'}; if(v<70||v>140) return {s:'warning',m:'🟡 ALERTA'}; return {s:'normal',m:'🟢 Normal'}; } }; const res = ch[t](); const ids = {bp:'bloodPressure',hr:'heartRate',rr:'respiratoryRate',temp:'temperature',spo2:'spo2',glu:'glucose'}; const aD = document.getElementById(t + 'Alert'); const inp = document.getElementById(ids[t]); if (res.s === 'none') { aD.classList.remove('show'); inp.className = ''; } else { aD.className = `vital-status show ${res.s}`; aD.innerHTML = res.m; inp.className = `vital-${res.s}`; } }
+function updateEVA() { const v = parseInt(getVal('evaScore')) || 0; let t = 'Sin dolor'; if (v >= 1 && v <= 3) t = 'Dolor leve'; if (v >= 4 && v <= 6) t = 'Dolor moderado'; if (v >= 7) t = 'Dolor severo'; document.getElementById('evaValue').innerText = `${v} - ${t}`; }
+function calculateGlasgow() { const t = (parseInt(getVal('glasgowEyes'))||0) + (parseInt(getVal('glasgowVerbal'))||0) + (parseInt(getVal('glasgowMotor'))||0); const d = document.getElementById('glasgowTotal'); let s = 'Normal', c = 'normal'; if (t >= 13 && t <= 14) { s = '⚠️ LEVE'; c = 'mild'; } else if (t >= 9 && t <= 12) { s = '⚠️ MODERADA'; c = 'moderate'; } else if (t >= 3 && t <= 8) { s = '🚨 SEVERA'; c = 'severe'; } d.className = `glasgow-total ${c}`; d.innerHTML = `<h3>${t}/15</h3><p>${s}</p>`; }
+function calculateBraden() { const ids = ['bradenSensory','bradenMoisture','bradenActivity','bradenMobility','bradenNutrition','bradenFriction']; const t = ids.reduce((s, id) => s + (parseInt(getVal(id))||0), 0); const d = document.getElementById('bradenTotal'); let s = 'Sin riesgo', c = 'risk-none'; if (t <= 9) { s = '🔴 MUY ALTO'; c = 'risk-high'; } else if (t <= 12) { s = '🟠 ALTO'; c = 'risk-high'; } else if (t <= 14) { s = '🟡 MODERADO'; c = 'risk-moderate'; } else if (t <= 18) { s = '🟢 LEVE'; c = 'risk-mild'; } d.className = `braden-total ${c}`; d.innerHTML = `<h3>${t}/24</h3><p>${s}</p>`; }
+function toggleAccordion(h) { h.classList.toggle('active'); h.nextElementSibling.classList.toggle('open'); }
+function toggleSubFields(i, c) { const f = document.getElementById(`fields-${i}`); if (f) f.classList.toggle('show', c.checked); }
+function addMeal() { meals.push({ id: Date.now(), time: '', type: 'Desayuno', qty: '100%', diet: 'Normal' }); renderMeals(); }
+function removeMeal(id) { meals = meals.filter(m => m.id !== id); renderMeals(); }
+function updateMeal(id, f, v) { const m = meals.find(m => m.id === id); if(m) m[f] = v; }
+function renderMeals() { const c = document.getElementById('mealList'); if (meals.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay comidas</p>'; return; } c.innerHTML = meals.map(m => `<div class="med-item"><select onchange="updateMeal(${m.id}, 'type', this.value)"><option value="Desayuno" ${m.type==='Desayuno'?'selected':''}>Desayuno</option><option value="Almuerzo" ${m.type==='Almuerzo'?'selected':''}>Almuerzo</option><option value="Cena" ${m.type==='Cena'?'selected':''}>Cena</option><option value="Onceno" ${m.type==='Onceno'?'selected':''}>Onceno</option></select><input type="time" value="${m.time}" onchange="updateMeal(${m.id}, 'time', this.value)"><select onchange="updateMeal(${m.id}, 'qty', this.value)"><option value="25%" ${m.qty==='25%'?'selected':''}>25%</option><option value="50%" ${m.qty==='50%'?'selected':''}>50%</option><option value="75%" ${m.qty==='75%'?'selected':''}>75%</option><option value="100%" ${m.qty==='100%'?'selected':''}>100%</option></select><button class="btn-small btn-danger" onclick="removeMeal(${m.id})">✕</button></div>`).join(''); }
+function addMedication() { medications.push({ id: Date.now(), name: '', dose: '', route: 'Oral', time: '' }); renderMedications(); }
+function removeMedication(id) { medications = medications.filter(m => m.id !== id); renderMedications(); }
+function updateMedication(id, f, v) { const m = medications.find(m => m.id === id); if(m) m[f] = v; }
+function renderMedications() { const c = document.getElementById('medList'); if (medications.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay medicamentos</p>'; return; } c.innerHTML = medications.map(m => `<div class="med-item"><input type="text" placeholder="Nombre" value="${m.name}" oninput="updateMedication(${m.id}, 'name', this.value)"><input type="text" placeholder="Dosis" value="${m.dose}" oninput="updateMedication(${m.id}, 'dose', this.value)"><select onchange="updateMedication(${m.id}, 'route', this.value)"><option value="Oral" ${m.route==='Oral'?'selected':''}>Oral</option><option value="Sublingual" ${m.route==='Sublingual'?'selected':''}>Sublingual</option><option value="IV" ${m.route==='IV'?'selected':''}>IV</option><option value="IM" ${m.route==='IM'?'selected':''}>IM</option><option value="SC" ${m.route==='SC'?'selected':''}>SC</option><option value="Tópica" ${m.route==='Tópica'?'selected':''}>Tópica</option><option value="Oftálmica" ${m.route==='Oftálmica'?'selected':''}>Oftálmica</option><option value="Ótica" ${m.route==='Ótica'?'selected':''}>Ótica</option><option value="Nasal" ${m.route==='Nasal'?'selected':''}>Nasal</option><option value="Rectal" ${m.route==='Rectal'?'selected':''}>Rectal</option><option value="Vaginal" ${m.route==='Vaginal'?'selected':''}>Vaginal</option></select><input type="time" value="${m.time}" onchange="updateMedication(${m.id}, 'time', this.value)" title="Hora"><button class="btn-small btn-danger" onclick="removeMedication(${m.id})">✕</button></div>`).join(''); }
+async function saveClinicalRecord() { for (let m of medications) { if ((m.name || m.dose) && !m.time) return showToast('Medicamentos deben tener hora', 'error'); } const acts = { hygiene: { bath: getChecked('actBath') ? {done:true, time:getVal('actBathTime'), type:getVal('bathType')} : null, oral_hygiene: getChecked('actOralHygiene') ? {done:true, time:getVal('actOralTime'), type:getVal('oralType')} : null }, environment: { bed_clothes: getChecked('actBedClothes') ? {done:true, time:getVal('actBedClothesTime'), obs:getVal('actBedClothesObs')} : null, room_clean: getChecked('actRoomClean') ? {done:true, time:getVal('actRoomCleanTime'), obs:getVal('actRoomCleanObs')} : null, waste: getChecked('actWaste') ? {done:true, time:getVal('actWasteTime'), obs:getVal('actWasteObs')} : null, companion: getChecked('actCompanion') ? {done:true, time:getVal('actCompanionTime'), obs:getVal('actCompanionObs')} : null }, feeding: { meals: meals.filter(m => m.time).map(m => ({type:m.type, time:m.time, qty:m.qty, diet:m.diet})), enteral: getChecked('actEnteralFood') ? {done:true, time:getVal('actEnteralFoodTime'), formula:getVal('enteralFormula'), vol:getVal('enteralVol')} : null, parenteral: getChecked('actParenteralFood') ? {done:true, time:getVal('actParenteralFoodTime'), formula:getVal('parenteralFormula'), vol:getVal('parenteralVol')} : null, hydration: getChecked('actHydration') ? {done:true, time:getVal('actHydrationTime'), ml:getVal('hydrationMl')} : null }, clinical: { wound: getChecked('actWound') ? {done:true, time:getVal('actWoundTime'), state:getVal('woundState')} : null, oxygen: getChecked('actOxygen') ? {done:true, time:getVal('actOxygenTime'), lpm:getVal('oxygenLpm'), device:getVal('oxygenDevice')} : null }, mobility: { position: getChecked('actPosition') ? {done:true, time:getVal('actPositionTime'), type:getVal('positionType')} : null, walking: getChecked('actWalking') ? {done:true, time:getVal('actWalkingTime'), distance:getVal('walkingDistance'), help:getVal('walkingHelp')} : null }, medications: medications.filter(m => m.name && m.dose && m.time).map(m => ({name:m.name, dose:m.dose, route:m.route, time:m.time})) }; const p = { shiftId: currentShiftId, patientId: selectedPatient.id, professionalId: currentUser.id, bloodPressure: getVal('bloodPressure') || null, heartRate: parseInt(getVal('heartRate')) || null, respiratoryRate: parseInt(getVal('respiratoryRate')) || null, temperature: parseFloat(getVal('temperature')) || null, spo2: parseInt(getVal('spo2')) || null, glucose: parseInt(getVal('glucose')) || null, evaScore: parseInt(getVal('evaScore')) || 0, glasgowEyes: parseInt(getVal('glasgowEyes')) || null, glasgowVerbal: parseInt(getVal('glasgowVerbal')) || null, glasgowMotor: parseInt(getVal('glasgowMotor')) || null, bradenScore: ['bradenSensory','bradenMoisture','bradenActivity','bradenMobility','bradenNutrition','bradenFriction'].reduce((s, id) => s + (parseInt(getVal(id))||0), 0), activitiesCompleted: acts, sbarSituation: getVal('sbarSituation'), sbarBackground: getVal('sbarBackground'), sbarAssessment: getVal('sbarAssessment'), sbarRecommendation: getVal('sbarRecommendation'), notes: getVal('clinicalNotes') }; try { const r = await fetch(`${API_URL}/api/clinical-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); if (d.success) { showToast('Registro guardado'); ['bloodPressure','heartRate','respiratoryRate','temperature','spo2','glucose','clinicalNotes'].forEach(id => { const el = document.getElementById(id); if(el) { el.value=''; el.className=''; } }); document.querySelectorAll('.vital-status').forEach(el => el.classList.remove('show')); document.querySelectorAll('.sub-activity input[type="checkbox"]').forEach(cb => cb.checked = false); document.querySelectorAll('.sub-activity-fields').forEach(f => f.classList.remove('show')); medications = []; renderMedications(); meals = []; renderMeals(); loadDailyHistory(); } } catch (e) {} }
+async function loadDailyHistory() { try { const r = await fetch(`${API_URL}/api/patients/${selectedPatient.id}/daily-history`); const d = await r.json(); const c = document.getElementById('dailyHistory'); if (!d.data.records || d.data.records.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay registros hoy</p>'; return; } c.innerHTML = d.data.records.map(r => `<div style="background:var(--bg-dark); padding:10px; border-radius:8px; margin-bottom:10px; border-left:3px solid var(--info);"><strong>🕐 ${new Date(r.created_at).toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'})}</strong><br><small>PA: ${r.blood_pressure||'--'} | FC: ${r.heart_rate||'--'} | SpO2: ${r.spo2||'--'} | Temp: ${r.temperature||'--'}</small><br><small>EVA: ${r.eva_score||'0'} | Glasgow: ${(r.glasgow_eyes||0)+(r.glasgow_verbal||0)+(r.glasgow_motor||0)}/15 | Braden: ${r.braden_score||'N/A'}</small>${r.notes ? `<br><small>📝 ${r.notes}</small>` : ''}</div>`).join(''); } catch (e) {} }
+function previewPhoto(i) { const f = i.files[0]; if (!f) return; const r = new FileReader(); r.onload = (e) => { eduPhotoBase64 = e.target.result; const p = document.getElementById('eduPhotoPreview'); p.src = eduPhotoBase64; p.classList.remove('hidden'); }; r.readAsDataURL(f); }
+async function closeShift() { if (!getChecked('familyAcceptsResponsibility')) return showToast('Familiar debe aceptar responsabilidad', 'error'); if (!getVal('familySignName') || !getVal('familySignId') || !getVal('familyRelationship')) return showToast('Datos familiar incompletos', 'error'); let lD = null; if (getChecked('patientLeavesHome')) { if (!getChecked('leaveLiabilityAck')) return showToast('Familiar debe aceptar responsabilidad traslado', 'error'); const lS = document.getElementById('leaveSigCanvas').toDataURL(); const b = document.createElement('canvas'); b.width = lS.width; b.height = lS.height; if (lS === b.toDataURL()) return showToast('Familiar debe firmar salida ARL', 'error'); lD = { transport: getVal('leaveTransport'), time: getVal('leaveTime'), returnTime: getVal('leaveReturnTime'), liabilityAck: true, signature: lS }; } const aS = document.getElementById('auxSigCanvas').toDataURL(); const fS = document.getElementById('famSigCanvas').toDataURL(); const fE = getChecked('familyReceivedEducation'); const eT = fE ? getVal('educationTopicSelect') : null; const eP = fE ? eduPhotoBase64 : null; lastShiftData = { leaveData: lD, educationPhotoData: eP, educationTopic: eT }; const p = { shiftId: currentShiftId, patientDeliveredStatus: getVal('patientDeliveredStatus'), patientDeliveredNotes: getVal('patientDeliveredNotes'), pendingTasks: getVal('pendingTasks'), auxiliarySignature: aS, auxiliaryName: currentUser.full_name, auxiliaryIdNumber: currentUser.document_number, familySignature: fS, familyName: getVal('familySignName'), familyIdNumber: getVal('familySignId'), familyRelationship: getVal('familyRelationship'), familyPhone: getVal('familyPhone'), patientLeavesHome: getChecked('patientLeavesHome'), leaveData: lD, familyAcceptsResponsibility: true, familyReceivedEducation: fE, educationTopicGiven: eT, educationPhotoData: eP }; try { const r = await fetch(`${API_URL}/api/shifts/close`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); if (d.success) { showToast('Turno cerrado exitosamente'); lastClosedShiftId = d.data.shiftId; clearInterval(shiftTimerInterval); document.getElementById('generateClosurePDFBtn').classList.remove('hidden'); } } catch (e) {} }
+async function generateClosurePDF() { if (!lastClosedShiftId) return; try { const r = await fetch(`${API_URL}/api/shifts/${lastClosedShiftId}/closure-data`); const res = await r.json(); if (!res.success) throw new Error(res.message); const { shift, records, signatures } = res.data; const { jsPDF } = window.jspdf; const doc = new jsPDF(); try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {} doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center"); doc.setFontSize(12); doc.setTextColor(0); doc.text("Resumen Diario de Atención", 105, 30, null, null, "center"); doc.text(`Paciente: ${shift?.patients?.full_name || 'N/A'}`, 14, 50); doc.text(`Fecha: ${new Date(shift?.start_time).toLocaleDateString('es-CO')}`, 14, 57); doc.text(`Turno: ${shift?.shift_type || 'N/A'}`, 14, 64); let fY = 80; doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Estado de Entrega", 14, fY); doc.setFontSize(10); doc.setTextColor(0); doc.text(`Estado: ${shift?.patient_delivered_status || 'N/A'}`, 14, fY + 7); doc.text(`Notas: ${shift?.patient_delivered_notes || 'N/A'}`, 14, fY + 14); doc.text(`Pendientes: ${shift?.pending_tasks || 'Ninguno'}`, 14, fY + 21); fY += 35; if (records && records.length > 0) { if (fY > 230) { doc.addPage(); fY = 30; } doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Actividades Realizadas", 14, fY); doc.setFontSize(9); doc.setTextColor(0); fY += 7; records.forEach(r => { if (r.activities_completed && fY < 230) { const a = r.activities_completed; let t = `Registro (${new Date(r.created_at).toLocaleTimeString('es-CO')}):\n`; if (a.hygiene?.bath?.done) t += `- Baño: ${a.hygiene.bath.type || ''} (${formatTime12h(a.hygiene.bath.time)})\n`; if (a.hygiene?.oral_hygiene?.done) t += `- Higiene Bucal: ${a.hygiene.oral_hygiene.type || ''} (${formatTime12h(a.hygiene.oral_hygiene.time)})\n`; if (a.environment?.bed_clothes?.done) t += `- Cambio Ropa Cama: ${a.environment.bed_clothes.obs || ''} (${formatTime12h(a.environment.bed_clothes.time)})\n`; if (a.environment?.room_clean?.done) t += `- Aseo: ${a.environment.room_clean.obs || ''} (${formatTime12h(a.environment.room_clean.time)})\n`; if (a.environment?.waste?.done) t += `- Residuos: ${a.environment.waste.obs || ''} (${formatTime12h(a.environment.waste.time)})\n`; if (a.environment?.companion?.done) t += `- Acompañamiento: ${a.environment.companion.obs || ''} (${formatTime12h(a.environment.companion.time)})\n`; if (a.feeding?.meals?.length > 0) { t += `- Comidas:\n`; a.feeding.meals.forEach(m => { t += `    * ${m.type}: ${m.qty} ${m.diet} (${formatTime12h(m.time)})\n`; }); } if (a.feeding?.enteral?.done) t += `- Enteral: ${a.feeding.enteral.formula || ''} ${a.feeding.enteral.vol || ''}mL (${formatTime12h(a.feeding.enteral.time)})\n`; if (a.feeding?.parenteral?.done) t += `- Parenteral: ${a.feeding.parenteral.formula || ''} ${a.feeding.parenteral.vol || ''}mL (${formatTime12h(a.feeding.parenteral.time)})\n`; if (a.feeding?.hydration?.done) t += `- Hidratación: ${a.feeding.hydration.ml || ''} mL (${formatTime12h(a.feeding.hydration.time)})\n`; if (a.clinical?.wound?.done) t += `- Curación: ${a.clinical.wound.state || ''} (${formatTime12h(a.clinical.wound.time)})\n`; if (a.clinical?.oxygen?.done) t += `- Oxígeno: ${a.clinical.oxygen.lpm || ''} L/min (${formatTime12h(a.clinical.oxygen.time)})\n`; if (a.mobility?.position?.done) t += `- Cambio Postural: ${a.mobility.position.type || ''} (${formatTime12h(a.mobility.position.time)})\n`; if (a.mobility?.walking?.done) t += `- Deambulación: ${a.mobility.walking.distance || ''}m (${formatTime12h(a.mobility.walking.time)})\n`; if (a.medications?.length > 0) { t += `- Medicamentos:\n`; a.medications.forEach(m => { t += `    * ${m.name} ${m.dose} (${m.route}) - ${formatTime12h(m.time)}\n`; }); } const sT = doc.splitTextToSize(t, 180); doc.text(sT, 14, fY); fY += (sT.length * 5) + 5; } }); } const s = signatures?.[0] || {}; const lD = s.leave_data || lastShiftData?.leaveData; if (lD || s.patient_leaves_home) { if (fY > 200) { doc.addPage(); fY = 30; } doc.setFontSize(12); doc.setTextColor(239, 68, 68); doc.text("AUTORIZACION DE SALIDA DEL DOMICILIO (ARL)", 14, fY); doc.setFontSize(10); doc.setTextColor(0); fY += 7; doc.text(`Transporte: ${lD?.transport || 'N/A'}`, 14, fY); doc.text(`Hora Salida: ${formatTime12h(lD?.time)}`, 14, fY + 7); doc.text(`Hora Regreso: ${formatTime12h(lD?.returnTime)}`, 14, fY + 14); doc.setFontSize(9); doc.setTextColor(100); const wT = doc.splitTextToSize("El familiar asume la responsabilidad total del traslado. Vital Hogar Pro y el auxiliar NO se hacen responsables de eventos fuera del domicilio.", 180); doc.text(wT, 14, fY + 21); fY += 21 + (wT.length * 5) + 10; doc.setDrawColor(150); doc.setLineWidth(0.3); if (lD?.signature) { try { doc.addImage(lD.signature, 'PNG', 15, fY, 60, 20); } catch(e) {} } doc.line(15, fY + 25, 90, fY + 25); doc.setFontSize(9); doc.setTextColor(0); doc.text(`Firma Familiar: ${s?.family_name || ''}`, 15, fY + 30); doc.text(`C.C.: ${s?.family_id_number || ''}`, 15, fY + 35); fY += 45; } const cP = eduPhotoBase64 || s.education_photo_data || lastShiftData?.educationPhotoData; const eT = s.education_topic_given || lastShiftData?.educationTopic; if (s.family_received_education || cP) { if (fY > 220) { doc.addPage(); fY = 30; } doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Educación Impartida", 14, fY); doc.setFontSize(10); doc.setTextColor(0); doc.text(`Tema: ${eT || 'N/A'}`, 14, fY + 7); if (cP) { try { doc.addImage(cP, 'JPEG', 14, fY + 12, 60, 40); } catch(e) {} } fY += 60; } if (fY > 220) { doc.addPage(); fY = 30; } doc.setDrawColor(150); doc.setLineWidth(0.3); doc.setFontSize(10); doc.setTextColor(0); doc.text("FIRMA AUXILIAR", 15, fY); if (s?.auxiliary_signature) { try { doc.addImage(s.auxiliary_signature, 'PNG', 15, fY + 2, 60, 20); } catch(e) {} } doc.line(15, fY + 25, 90, fY + 25); doc.setFontSize(9); doc.text(`Nombre: ${s?.auxiliary_name || '________________'}`, 15, fY + 30); doc.text(`C.C.: ${s?.auxiliary_id_number || '________'}`, 15, fY + 35); doc.setFontSize(10); doc.text("FIRMA FAMILIAR", 110, fY); if (s?.family_signature) { try { doc.addImage(s.family_signature, 'PNG', 110, fY + 2, 60, 20); } catch(e) {} } doc.line(110, fY + 25, 190, fY + 25); doc.setFontSize(9); doc.text(`Nombre: ${s?.family_name || '________________'}`, 110, fY + 30); doc.text(`C.C.: ${s?.family_id_number || '________'}`, 110, fY + 35); doc.text(`Parentesco: ${s?.family_relationship || '________'}`, 110, fY + 40); doc.save(`Resumen_${shift?.patients?.full_name || 'paciente'}.pdf`); showToast('PDF generado'); } catch (e) { showToast('Error: ' + e.message, 'error'); } }
 
 // ===== PROFESIONALES (FASE 2) =====
-async function loadProfPatients() {
-    try {
-        const res = await fetch(`${API_URL}/api/auxiliar/patients`); // Reutilizamos el endpoint de pacientes activos
-        const d = await res.json();
-        const container = document.getElementById('profPatientList');
-        if (!d.data || d.data.length === 0) { container.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay pacientes activos</p>'; return; }
-        container.innerHTML = d.data.map(p => `<div class="card" style="cursor:pointer; border-left: 4px solid var(--info);" onclick='selectProfPatient(${JSON.stringify(p)})'>
-            <strong>${p.full_name}</strong><br><small>${p.pathology_summary || 'Sin patología'}</small>
-        </div>`).join('');
-    } catch (e) { console.error(e); }
-}
-
-function selectProfPatient(patient) {
-    selectedPatient = patient;
-    document.getElementById('profPatientName').innerText = patient.full_name;
-    document.getElementById('profPatientSelection').classList.add('hidden');
-    document.getElementById('profClinicalForm').classList.remove('hidden');
-    initSigCanvas('profSigCanvas'); initSigCanvas('famProfSigCanvas');
-}
-
-function calculateIMC() {
-    const w = parseFloat(getVal('profWeight'));
-    const h = parseFloat(getVal('profHeight')) / 100; // cm to m
-    if (w > 0 && h > 0) {
-        const imc = (w / (h * h)).toFixed(1);
-        document.getElementById('profIMC').value = imc;
-        let classif = '';
-        if (imc < 18.5) classif = 'Bajo peso';
-        else if (imc < 25) classif = 'Normal';
-        else if (imc < 30) classif = 'Sobrepeso';
-        else classif = 'Obesidad';
-        document.getElementById('imcResult').innerText = `Clasificación: ${classif}`;
-    } else {
-        document.getElementById('profIMC').value = '';
-        document.getElementById('imcResult').innerText = '';
-    }
-}
-
-function previewProfPhoto(input) {
-    const file = input.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        profPhotoBase64 = e.target.result;
-        const preview = document.getElementById('profPhotoPreview');
-        preview.src = profPhotoBase64;
-        preview.classList.remove('hidden');
-    };
-    reader.readAsDataURL(file);
-}
-
-async function saveProfRecord() {
-    if (!getVal('profFamName') || !getVal('profFamId')) return showToast('Datos del familiar incompletos', 'error');
-    
-    const payload = {
-        patientId: selectedPatient.id, professionalId: currentUser.id, recordType: `Nota de Evolución - ${currentUser.specialty_name}`,
-        weight: parseFloat(getVal('profWeight')) || null, height: parseFloat(getVal('profHeight')) || null, imc: parseFloat(getVal('profIMC')) || null,
-        vitalSigns: { pa: getVal('profBP'), hr: getVal('profHR') },
-        subjective: getVal('profSubjective'), objective: getVal('profObjective'), analysis: getVal('profAnalysis'), plan: getVal('profPlan'),
-        photoData: profPhotoBase64,
-        professionalSignature: document.getElementById('profSigCanvas').toDataURL(),
-        familySignature: document.getElementById('famProfSigCanvas').toDataURL(),
-        familyName: getVal('profFamName'), familyId: getVal('profFamId')
-    };
-
-    try {
-        const res = await fetch(`${API_URL}/api/professional-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
-        const d = await res.json();
-        if (d.success) {
-            showToast('Nota de evolución guardada');
-            lastProfRecordId = d.data.id;
-            document.getElementById('generateProfPDFBtn').classList.remove('hidden');
-        } else { showToast(d.message || 'Error', 'error'); }
-    } catch (e) { showToast('Error de conexión', 'error'); }
-}
-
-async function generateProfPDF() {
-    if (!lastProfRecordId) return;
-    showToast('Generando PDF...', 'success');
-    // Para simplicidad, generamos el PDF con los datos que tenemos en memoria + currentUser.
-    // En una Fase 3, podemos hacer fetch al backend para traer el registro exacto.
-    
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
-    doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
-    doc.setFontSize(12); doc.setTextColor(0); doc.text("Informe de Evolución Profesional", 105, 30, null, null, "center");
-    
-    doc.setFontSize(10);
-    doc.text(`Paciente: ${selectedPatient.full_name}`, 14, 45);
-    doc.text(`Cédula Paciente: ${selectedPatient.document_number || 'N/A'}`, 14, 52);
-    doc.text(`Fecha: ${new Date().toLocaleString('es-CO')}`, 14, 59);
-    
-    doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Datos Clínicos", 14, 70);
-    doc.setFontSize(10); doc.setTextColor(0);
-    doc.text(`PA: ${getVal('profBP') || '--'} | FC: ${getVal('profHR') || '--'}`, 14, 77);
-    doc.text(`Peso: ${getVal('profWeight') || '--'} kg | Talla: ${getVal('profHeight') || '--'} cm | IMC: ${getVal('profIMC') || '--'} (${document.getElementById('imcResult').innerText})`, 14, 84);
-    
-    let y = 95;
-    doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Nota SOAP", 14, y);
-    doc.setFontSize(10); doc.setTextColor(0); y += 7;
-    doc.text(`S (Subjetivo): ${getVal('profSubjective') || 'N/A'}`, 14, y); y += 14;
-    doc.text(`O (Objetivo): ${getVal('profObjective') || 'N/A'}`, 14, y); y += 14;
-    doc.text(`A (Análisis): ${getVal('profAnalysis') || 'N/A'}`, 14, y); y += 14;
-    doc.text(`P (Plan): ${getVal('profPlan') || 'N/A'}`, 14, y); y += 14;
-
-    if (profPhotoBase64) {
-        doc.text("Evidencia Fotográfica:", 14, y); y += 7;
-        try { doc.addImage(profPhotoBase64, 'JPEG', 14, y, 60, 40); y += 45; } catch(e) {}
-    }
-
-    if (y > 220) { doc.addPage(); y = 30; }
-    
-    // Firmas y Datos de Ley
-    doc.setDrawColor(150); doc.setLineWidth(0.3);
-    const profSig = document.getElementById('profSigCanvas').toDataURL();
-    const famSig = document.getElementById('famProfSigCanvas').toDataURL();
-    
-    doc.text("FIRMA PROFESIONAL", 15, y);
-    if (profSig && profSig !== 'data:,') { try { doc.addImage(profSig, 'PNG', 15, y + 2, 60, 20); } catch(e) {} }
-    doc.line(15, y + 25, 90, y + 25);
-    doc.setFontSize(9);
-    doc.text(`Nombre: ${currentUser.full_name}`, 15, y + 30);
-    doc.text(`C.C.: ${currentUser.document_number}`, 15, y + 35);
-    doc.text(`T.P./RETHUS: ${currentUser.professional_card || 'N/A'}`, 15, y + 40);
-    doc.text(`Especialidad: ${currentUser.specialty_name}`, 15, y + 45);
-    
-    doc.setFontSize(10);
-    doc.text("FIRMA FAMILIAR (TESTIGO)", 110, y);
-    if (famSig && famSig !== 'data:,') { try { doc.addImage(famSig, 'PNG', 110, y + 2, 60, 20); } catch(e) {} }
-    doc.line(110, y + 25, 190, y + 25);
-    doc.setFontSize(9);
-    doc.text(`Nombre: ${getVal('profFamName')}`, 110, y + 30);
-    doc.text(`C.C.: ${getVal('profFamId')}`, 110, y + 35);
-
-    doc.save(`Evolucion_${selectedPatient.full_name}_${currentUser.full_name}.pdf`);
-}
+async function loadProfPatients() { try { const r = await fetch(`${API_URL}/api/auxiliar/patients`); const d = await r.json(); const c = document.getElementById('profPatientList'); if (!d.data || d.data.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay pacientes activos</p>'; return; } c.innerHTML = d.data.map(p => `<div class="card" style="cursor:pointer; border-left: 4px solid var(--info);" onclick='selectProfPatient(${JSON.stringify(p)})'><strong>${p.full_name}</strong><br><small>${p.pathology_summary || 'Sin patología'}</small></div>`).join(''); } catch (e) {} }
+function selectProfPatient(p) { selectedPatient = p; document.getElementById('profPatientName').innerText = p.full_name; document.getElementById('profPatientSelection').classList.add('hidden'); document.getElementById('profClinicalForm').classList.remove('hidden'); initSigCanvas('profSigCanvas'); initSigCanvas('famProfSigCanvas'); }
+function calculateIMC() { const w = parseFloat(getVal('profWeight')); const h = parseFloat(getVal('profHeight')) / 100; if (w > 0 && h > 0) { const i = (w / (h * h)).toFixed(1); document.getElementById('profIMC').value = i; let c = ''; if (i < 18.5) c = 'Bajo peso'; else if (i < 25) c = 'Normal'; else if (i < 30) c = 'Sobrepeso'; else c = 'Obesidad'; document.getElementById('imcResult').innerText = `Clasificación: ${c}`; } else { document.getElementById('profIMC').value = ''; document.getElementById('imcResult').innerText = ''; } }
+function previewProfPhoto(i) { const f = i.files[0]; if (!f) return; const r = new FileReader(); r.onload = (e) => { profPhotoBase64 = e.target.result; const p = document.getElementById('profPhotoPreview'); p.src = profPhotoBase64; p.classList.remove('hidden'); }; r.readAsDataURL(f); }
+async function saveProfRecord() { if (!getVal('profFamName') || !getVal('profFamId')) return showToast('Datos familiar incompletos', 'error'); const p = { patientId: selectedPatient.id, professionalId: currentUser.id, recordType: `Nota de Evolución - ${currentUser.specialty_name}`, weight: parseFloat(getVal('profWeight')) || null, height: parseFloat(getVal('profHeight')) || null, imc: parseFloat(getVal('profIMC')) || null, vitalSigns: { pa: getVal('profBP'), hr: getVal('profHR') }, subjective: getVal('profSubjective'), objective: getVal('profObjective'), analysis: getVal('profAnalysis'), plan: getVal('profPlan'), photoData: profPhotoBase64, professionalSignature: document.getElementById('profSigCanvas').toDataURL(), familySignature: document.getElementById('famProfSigCanvas').toDataURL(), familyName: getVal('profFamName'), familyId: getVal('profFamId') }; try { const r = await fetch(`${API_URL}/api/professional-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); if (d.success) { showToast('Nota de evolución guardada'); lastProfRecordId = d.data.id; document.getElementById('generateProfPDFBtn').classList.remove('hidden'); } } catch (e) {} }
+function generateProfPDF() { if (!lastProfRecordId) return; const { jsPDF } = window.jspdf; const doc = new jsPDF(); try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {} doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center"); doc.setFontSize(12); doc.setTextColor(0); doc.text("Informe de Evolución Profesional", 105, 30, null, null, "center"); doc.setFontSize(10); doc.text(`Paciente: ${selectedPatient.full_name}`, 14, 45); doc.text(`Cédula: ${selectedPatient.document_number || 'N/A'}`, 14, 52); doc.text(`Fecha: ${new Date().toLocaleString('es-CO')}`, 14, 59); doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Datos Clínicos", 14, 70); doc.setFontSize(10); doc.setTextColor(0); doc.text(`PA: ${getVal('profBP') || '--'} | FC: ${getVal('profHR') || '--'}`, 14, 77); doc.text(`Peso: ${getVal('profWeight') || '--'} kg | Talla: ${getVal('profHeight') || '--'} cm | IMC: ${getVal('profIMC') || '--'} (${document.getElementById('imcResult').innerText})`, 14, 84); let y = 95; doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Nota SOAP", 14, y); doc.setFontSize(10); doc.setTextColor(0); y += 7; doc.text(`S (Subjetivo): ${getVal('profSubjective') || 'N/A'}`, 14, y); y += 14; doc.text(`O (Objetivo): ${getVal('profObjective') || 'N/A'}`, 14, y); y += 14; doc.text(`A (Análisis): ${getVal('profAnalysis') || 'N/A'}`, 14, y); y += 14; doc.text(`P (Plan): ${getVal('profPlan') || 'N/A'}`, 14, y); y += 14; if (profPhotoBase64) { doc.text("Evidencia Fotográfica:", 14, y); y += 7; try { doc.addImage(profPhotoBase64, 'JPEG', 14, y, 60, 40); y += 45; } catch(e) {} } if (y > 220) { doc.addPage(); y = 30; } doc.setDrawColor(150); doc.setLineWidth(0.3); const pS = document.getElementById('profSigCanvas').toDataURL(); const fS = document.getElementById('famProfSigCanvas').toDataURL(); doc.text("FIRMA PROFESIONAL", 15, y); if (pS && pS !== 'data:,') { try { doc.addImage(pS, 'PNG', 15, y + 2, 60, 20); } catch(e) {} } doc.line(15, y + 25, 90, y + 25); doc.setFontSize(9); doc.text(`Nombre: ${currentUser.full_name}`, 15, y + 30); doc.text(`C.C.: ${currentUser.document_number}`, 15, y + 35); doc.text(`T.P./RETHUS: ${currentUser.professional_card || 'N/A'}`, 15, y + 40); doc.text(`Especialidad: ${currentUser.specialty_name}`, 15, y + 45); doc.setFontSize(10); doc.text("FIRMA FAMILIAR (TESTIGO)", 110, y); if (fS && fS !== 'data:,') { try { doc.addImage(fS, 'PNG', 110, y + 2, 60, 20); } catch(e) {} } doc.line(110, y + 25, 190, y + 25); doc.setFontSize(9); doc.text(`Nombre: ${getVal('profFamName')}`, 110, y + 30); doc.text(`C.C.: ${getVal('profFamId')}`, 110, y + 35); doc.save(`Evolucion_${selectedPatient.full_name}_${currentUser.full_name}.pdf`); showToast('PDF generado'); }
 
 // ===== FIRMAS CANVAS =====
-function initSigCanvas(canvasId) {
-    const canvas = document.getElementById(canvasId); if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    canvas.width = canvas.offsetWidth > 0 ? canvas.offsetWidth : 400; canvas.height = 150;
-    ctx.fillStyle = 'white'; ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.strokeStyle = 'black'; ctx.lineWidth = 2; ctx.lineCap = 'round';
-    let drawing = false;
-    const pos = (e) => { const r = canvas.getBoundingClientRect(); return { x: (e.touches ? e.touches[0].clientX : e.clientX) - r.left, y: (e.touches ? e.touches[0].clientY : e.clientY) - r.top }; };
-    const start = (e) => { e.preventDefault(); drawing = true; const p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); };
-    const move = (e) => { if(!drawing) return; e.preventDefault(); const p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); };
-    const end = () => drawing = false;
-    canvas.onmousedown = start; canvas.onmousemove = move; canvas.onmouseup = end; canvas.onmouseleave = end;
-    canvas.ontouchstart = start; canvas.ontouchmove = move; canvas.ontouchend = end;
-}
-function clearSig(canvasId) { const canvas = document.getElementById(canvasId); const ctx = canvas.getContext('2d'); ctx.fillStyle = 'white'; ctx.fillRect(0, 0, canvas.width, canvas.height); }
+function initSigCanvas(id) { const c = document.getElementById(id); if (!c) return; const ctx = c.getContext('2d'); c.width = c.offsetWidth > 0 ? c.offsetWidth : 400; c.height = 150; ctx.fillStyle = 'white'; ctx.fillRect(0, 0, c.width, c.height); ctx.strokeStyle = 'black'; ctx.lineWidth = 2; ctx.lineCap = 'round'; let d = false; const p = (e) => { const r = c.getBoundingClientRect(); return { x: (e.touches ? e.touches[0].clientX : e.clientX) - r.left, y: (e.touches ? e.touches[0].clientY : e.clientY) - r.top }; }; const s = (e) => { e.preventDefault(); d = true; const pt = p(e); ctx.beginPath(); ctx.moveTo(pt.x, pt.y); }; const m = (e) => { if(!d) return; e.preventDefault(); const pt = p(e); ctx.lineTo(pt.x, pt.y); ctx.stroke(); }; const e = () => d = false; c.onmousedown = s; c.onmousemove = m; c.onmouseup = e; c.onmouseleave = e; c.ontouchstart = s; c.ontouchmove = m; c.ontouchend = e; }
+function clearSig(id) { const c = document.getElementById(id); const ctx = c.getContext('2d'); ctx.fillStyle = 'white'; ctx.fillRect(0, 0, c.width, c.height); }
 
 // ===== DICTADO POR VOZ =====
-function startDictation(elementId) {
-    const btn = event.target.closest('button');
-    if (!('webkitSpeechRecognition' in window)) return showToast('Navegador no soporta dictado', 'error');
-    const rec = new webkitSpeechRecognition(); rec.lang = 'es-CO'; rec.continuous = false; rec.interimResults = true;
-    btn.classList.add('recording'); rec.start();
-    rec.onresult = (e) => { document.getElementById(elementId).value = e.results[0][0].transcript; };
-    rec.onerror = () => btn.classList.remove('recording');
-    rec.onend = () => btn.classList.remove('recording');
-}
+function startDictation(id) { const b = event.target.closest('button'); if (!('webkitSpeechRecognition' in window)) return showToast('Navegador no soporta dictado', 'error'); const r = new webkitSpeechRecognition(); r.lang = 'es-CO'; r.continuous = false; r.interimResults = true; b.classList.add('recording'); r.start(); r.onresult = (e) => { document.getElementById(id).value = e.results[0][0].transcript; }; r.onerror = () => b.classList.remove('recording'); r.onend = () => b.classList.remove('recording'); }
 
 // ===== INICIALIZACIÓN =====
 document.addEventListener('DOMContentLoaded', () => {
-    document.getElementById('togglePassword').addEventListener('click', function() {
-        const input = document.getElementById('loginPassword');
-        input.type = input.type === 'password' ? 'text' : 'password';
-        this.textContent = input.type === 'password' ? '👁️' : '🙈';
-    });
+    document.getElementById('togglePassword').addEventListener('click', function() { const i = document.getElementById('loginPassword'); i.type = i.type === 'password' ? 'text' : 'password'; this.textContent = i.type === 'password' ? '👁️' : '🙈'; });
     document.getElementById('loginBtn').addEventListener('click', login);
-    const patCitySelect = document.getElementById('patCity');
-    if (patCitySelect) { Object.keys(CIUDADES_COLOMBIA).forEach(city => { patCitySelect.innerHTML += `<option value="${city}">${city}</option>`; }); }
+    const p = document.getElementById('patCity'); if (p) { Object.keys(CIUDADES_COLOMBIA).forEach(c => { p.innerHTML += `<option value="${c}">${c}</option>`; }); }
     if (localStorage.getItem('vital_user')) initApp();
 });
 </script>
