@@ -205,6 +205,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <h3>Asignar Tema Educativo</h3>
 <div class="form-group"><label>Título del Tema *</label><input type="text" id="eduTitle" placeholder="Ej: Manejo de sonda vesical"></div>
 <div class="form-group"><label>Descripción</label><textarea id="eduDesc" rows="2"></textarea></div>
+<div class="form-group"><label>Responsable de dictarlo</label><select id="eduResp"><option value="">Seleccionar profesional...</option></select></div>
 <button class="btn-primary" onclick="createEdu()"><i class="fas fa-save"></i> Guardar Tema</button>
 </div>
 <div class="card">
@@ -322,11 +323,25 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="sub-activity-fields" id="fields-bath"><div class="form-group"><label>Tipo</label><select id="bathType"><option value="en cama">En cama</option><option value="en ducha">En ducha</option><option value="en silla">En silla</option><option value="parcial">Parcial</option></select></div></div>
 </div>
 <div class="sub-activity">
-<div class="sub-activity-header"><input type="checkbox" id="actOralFood" onchange="toggleSubFields('oralfood', this)"><label for="actOralFood"><strong>🥣 Alimentación</strong></label><input type="time" id="actOralFoodTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-header"><input type="checkbox" id="actOralHygiene" onchange="toggleSubFields('oral', this)"><label for="actOralHygiene"><strong>🦷 Higiene Bucal</strong></label><input type="time" id="actOralTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-fields" id="fields-oral"><div class="form-group"><label>Tipo</label><select id="oralType"><option value="propia">Propia</option><option value="asistida">Asistida</option></select></div></div>
+</div>
+</div>
+</div>
+
+<div class="accordion">
+<div class="accordion-header" onclick="toggleAccordion(this)"><span>🍽️ Alimentación</span><i class="fas fa-chevron-down"></i></div>
+<div class="accordion-content">
+<div class="sub-activity">
+<div class="sub-activity-header"><input type="checkbox" id="actOralFood" onchange="toggleSubFields('oralfood', this)"><label for="actOralFood"><strong>🥣 Alimentación Oral</strong></label><input type="time" id="actOralFoodTime" style="width:auto; margin:0;"></div>
 <div class="sub-activity-fields" id="fields-oralfood">
 <div class="form-group"><label>Cantidad</label><select id="oralFoodQty"><option value="25%">25%</option><option value="50%">50%</option><option value="75%">75%</option><option value="100%">100%</option></select></div>
 <div class="form-group"><label>Dieta</label><select id="oralFoodDiet"><option value="normal">Normal</option><option value="blanda">Blanda</option><option value="licuada">Licuada</option><option value="diabetica">Diabética</option></select></div>
 </div>
+</div>
+<div class="sub-activity">
+<div class="sub-activity-header"><input type="checkbox" id="actHydration" onchange="toggleSubFields('hydration', this)"><label for="actHydration"><strong>💧 Hidratación</strong></label><input type="time" id="actHydrationTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-fields" id="fields-hydration"><div class="form-group"><label>mL</label><input type="number" id="hydrationMl"></div></div>
 </div>
 </div>
 </div>
@@ -336,6 +351,40 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="accordion-content">
 <div id="medList"></div>
 <button class="btn-small btn-info" onclick="addMedication()"><i class="fas fa-plus"></i> Agregar</button>
+</div>
+</div>
+
+<div class="accordion">
+<div class="accordion-header" onclick="toggleAccordion(this)"><span>🩺 Cuidados Clínicos</span><i class="fas fa-chevron-down"></i></div>
+<div class="accordion-content">
+<div class="sub-activity">
+<div class="sub-activity-header"><input type="checkbox" id="actWound" onchange="toggleSubFields('wound', this)"><label for="actWound"><strong>🩹 Curación</strong></label><input type="time" id="actWoundTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-fields" id="fields-wound"><div class="form-group"><label>Estado</label><select id="woundState"><option value="limpia">Limpia</option><option value="exudado">Con exudado</option><option value="infectada">Infectada</option></select></div></div>
+</div>
+<div class="sub-activity">
+<div class="sub-activity-header"><input type="checkbox" id="actOxygen" onchange="toggleSubFields('oxygen', this)"><label for="actOxygen"><strong>💨 Oxigenoterapia</strong></label><input type="time" id="actOxygenTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-fields" id="fields-oxygen">
+<div class="form-group"><label>L/min</label><input type="number" id="oxygenLpm" step="0.5"></div>
+<div class="form-group"><label>Dispositivo</label><select id="oxygenDevice"><option value="canula">Cánula nasal</option><option value="mascarilla">Mascarilla</option></select></div>
+</div>
+</div>
+</div>
+</div>
+
+<div class="accordion">
+<div class="accordion-header" onclick="toggleAccordion(this)"><span>🚶 Movilización</span><i class="fas fa-chevron-down"></i></div>
+<div class="accordion-content">
+<div class="sub-activity">
+<div class="sub-activity-header"><input type="checkbox" id="actPosition" onchange="toggleSubFields('position', this)"><label for="actPosition"><strong>🔄 Cambio Postural</strong></label><input type="time" id="actPositionTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-fields" id="fields-position"><div class="form-group"><label>Posición</label><select id="positionType"><option value="supino">Supino</option><option value="lateral">Lateral</option><option value="fowler">Semi-Fowler</option></select></div></div>
+</div>
+<div class="sub-activity">
+<div class="sub-activity-header"><input type="checkbox" id="actWalking" onchange="toggleSubFields('walking', this)"><label for="actWalking"><strong>🚶 Deambulación</strong></label><input type="time" id="actWalkingTime" style="width:auto; margin:0;"></div>
+<div class="sub-activity-fields" id="fields-walking">
+<div class="form-group"><label>Metros</label><input type="number" id="walkingDistance"></div>
+<div class="form-group"><label>Ayuda</label><select id="walkingHelp"><option value="no">No</option><option value="si">Sí</option></select></div>
+</div>
+</div>
 </div>
 </div>
 
@@ -446,6 +495,7 @@ function showToast(msg, type = 'success') {
 function getVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
 function getChecked(id) { const el = document.getElementById(id); return el ? el.checked : false; }
 function getRangoSpO2(ciudad) { return CIUDADES_COLOMBIA[ciudad] || CIUDADES_COLOMBIA['Bogotá']; }
+function formatTime12h(t) { if(!t) return 'N/A'; const [h,m] = t.split(':'); const hr = parseInt(h); return `${hr%12||12}:${m} ${hr>=12?'PM':'AM'}`; }
 
 // ===== MODAL RECUPERACIÓN =====
 function openResetModal() { document.getElementById('resetModal').classList.remove('hidden'); document.getElementById('resetMsg').innerText = ''; }
@@ -547,6 +597,12 @@ async function loadProfs() {
             <td>${p.is_active ? '✅ Activo' : '❌ Inactivo'}</td>
             <td><button class="btn-small ${p.is_active ? 'btn-danger' : 'btn-warning'}" onclick="toggleProf('${p.id}', ${p.is_active})">${p.is_active ? 'Desactivar' : 'Activar'}</button></td>
         </tr>`).join('');
+        
+        const eduRespSelect = document.getElementById('eduResp');
+        eduRespSelect.innerHTML = '<option value="">Seleccionar profesional...</option>';
+        d.data.filter(p => p.is_active).forEach(p => {
+            eduRespSelect.innerHTML += `<option value="${p.id}">${p.full_name} (${p.specialties?.name || 'N/A'})</option>`;
+        });
     } catch (e) { console.error(e); }
 }
 
@@ -605,7 +661,7 @@ async function loadEdus() {
 }
 
 async function createEdu() {
-    const payload = { title: getVal('eduTitle'), description: getVal('eduDesc') };
+    const payload = { title: getVal('eduTitle'), description: getVal('eduDesc'), responsibleId: getVal('eduResp') };
     if (!payload.title) return showToast('El título es obligatorio', 'error');
     try {
         const res = await fetch(`${API_URL}/api/education/topics`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
@@ -798,10 +854,25 @@ function renderMedications() {
 // ===== AUXILIAR: GUARDAR REGISTRO =====
 async function saveClinicalRecord() {
     const acts = {
-        hygiene: { bath: getChecked('actBath') ? {done:true, time:getVal('actBathTime'), type:getVal('bathType')} : null },
-        feeding: { oral: getChecked('actOralFood') ? {done:true, time:getVal('actOralFoodTime'), qty:getVal('oralFoodQty'), diet:getVal('oralFoodDiet')} : null },
+        hygiene: {
+            bath: getChecked('actBath') ? {done:true, time:getVal('actBathTime'), type:getVal('bathType')} : null,
+            oral_hygiene: getChecked('actOralHygiene') ? {done:true, time:getVal('actOralTime'), type:getVal('oralType')} : null
+        },
+        feeding: {
+            oral: getChecked('actOralFood') ? {done:true, time:getVal('actOralFoodTime'), qty:getVal('oralFoodQty'), diet:getVal('oralFoodDiet')} : null,
+            hydration: getChecked('actHydration') ? {done:true, time:getVal('actHydrationTime'), ml:getVal('hydrationMl')} : null
+        },
+        clinical: {
+            wound: getChecked('actWound') ? {done:true, time:getVal('actWoundTime'), state:getVal('woundState')} : null,
+            oxygen: getChecked('actOxygen') ? {done:true, time:getVal('actOxygenTime'), lpm:getVal('oxygenLpm'), device:getVal('oxygenDevice')} : null
+        },
+        mobility: {
+            position: getChecked('actPosition') ? {done:true, time:getVal('actPositionTime'), type:getVal('positionType')} : null,
+            walking: getChecked('actWalking') ? {done:true, time:getVal('actWalkingTime'), distance:getVal('walkingDistance'), help:getVal('walkingHelp')} : null
+        },
         medications: medications.filter(m => m.name && m.dose).map(m => ({name:m.name, dose:m.dose, route:m.route, time:m.time}))
     };
+    
     const payload = {
         shiftId: currentShiftId, patientId: selectedPatient.id, professionalId: currentUser.id,
         bloodPressure: getVal('bloodPressure') || null, heartRate: parseInt(getVal('heartRate')) || null,
@@ -913,46 +984,84 @@ async function generateClosurePDF() {
         const res = await fetch(`${API_URL}/api/shifts/${lastClosedShiftId}/closure-data`);
         const result = await res.json();
         if (!result.success) throw new Error(result.message);
-        const { shift, signatures } = result.data;
+        const { shift, records, signatures } = result.data;
         const { jsPDF } = window.jspdf;
         const doc = new jsPDF();
+        
         try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
         doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
         doc.setFontSize(12); doc.setTextColor(0); doc.text("Resumen Diario de Atención", 105, 30, null, null, "center");
+        
         doc.text(`Paciente: ${shift?.patients?.full_name || 'N/A'}`, 14, 50);
         doc.text(`Fecha: ${new Date(shift?.start_time).toLocaleDateString('es-CO')}`, 14, 57);
         doc.text(`Turno: ${shift?.shift_type || 'N/A'}`, 14, 64);
+        
         let finalY = 80;
         doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Estado de Entrega", 14, finalY);
         doc.setFontSize(10); doc.setTextColor(0);
         doc.text(`Estado: ${shift?.patient_delivered_status || 'N/A'}`, 14, finalY + 7);
         doc.text(`Notas: ${shift?.patient_delivered_notes || 'N/A'}`, 14, finalY + 14);
         doc.text(`Pendientes: ${shift?.pending_tasks || 'Ninguno'}`, 14, finalY + 21);
+        
         finalY += 35;
+
+        // Sección de Actividades Realizadas en el turno
+        if (records && records.length > 0) {
+            doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Actividades Realizadas en el Turno", 14, finalY);
+            doc.setFontSize(9); doc.setTextColor(0);
+            finalY += 7;
+            
+            records.forEach(r => {
+                if (r.activities_completed && finalY < 230) {
+                    const acts = r.activities_completed;
+                    let actText = `Registro (${new Date(r.created_at).toLocaleTimeString('es-CO')}):\n`;
+                    if (acts.hygiene?.bath?.done) actText += `- Baño: ${acts.hygiene.bath.type || ''} (${formatTime12h(acts.hygiene.bath.time)})\n`;
+                    if (acts.hygiene?.oral_hygiene?.done) actText += `- Higiene Bucal: ${acts.hygiene.oral_hygiene.type || ''} (${formatTime12h(acts.hygiene.oral_hygiene.time)})\n`;
+                    if (acts.feeding?.oral?.done) actText += `- Alimentación: ${acts.feeding.oral.qty || ''} ${acts.feeding.oral.diet || ''} (${formatTime12h(acts.feeding.oral.time)})\n`;
+                    if (acts.feeding?.hydration?.done) actText += `- Hidratación: ${acts.feeding.hydration.ml || ''} mL (${formatTime12h(acts.feeding.hydration.time)})\n`;
+                    if (acts.clinical?.wound?.done) actText += `- Curación: ${acts.clinical.wound.state || ''} (${formatTime12h(acts.clinical.wound.time)})\n`;
+                    if (acts.clinical?.oxygen?.done) actText += `- Oxígeno: ${acts.clinical.oxygen.lpm || ''} L/min (${formatTime12h(acts.clinical.oxygen.time)})\n`;
+                    if (acts.mobility?.position?.done) actText += `- Cambio Postural: ${acts.mobility.position.type || ''} (${formatTime12h(acts.mobility.position.time)})\n`;
+                    if (acts.mobility?.walking?.done) actText += `- Deambulación: ${acts.mobility.walking.distance || ''}m (${formatTime12h(acts.mobility.walking.time)})\n`;
+                    if (acts.medications?.length > 0) actText += `- Medicamentos administrados: ${acts.medications.length}\n`;
+                    
+                    const splitText = doc.splitTextToSize(actText, 180);
+                    doc.text(splitText, 14, finalY);
+                    finalY += (splitText.length * 5) + 5;
+                }
+            });
+        }
 
         // Sección de Educación
         const sig = signatures?.[0];
-        if (sig?.family_received_education) {
+        const currentEduPhoto = eduPhotoBase64 || sig?.education_photo_data; // Prioriza la foto actual en memoria
+        
+        if (sig?.family_received_education || currentEduPhoto) {
+            if (finalY > 220) { doc.addPage(); finalY = 30; }
             doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Educación Impartida", 14, finalY);
             doc.setFontSize(10); doc.setTextColor(0);
-            doc.text(`Tema: ${sig.education_topic_given || 'N/A'}`, 14, finalY + 7);
-            if (sig.education_photo_data) {
-                try { doc.addImage(sig.education_photo_data, 'JPEG', 14, finalY + 12, 60, 40); } catch(e) {}
+            doc.text(`Tema: ${sig?.education_topic_given || 'N/A'}`, 14, finalY + 7);
+            if (currentEduPhoto) {
+                try { doc.addImage(currentEduPhoto, 'JPEG', 14, finalY + 12, 60, 40); } catch(e) {}
             }
             finalY += 60;
         }
 
         if (finalY > 220) { doc.addPage(); finalY = 30; }
+        
+        // Firmas
         doc.setDrawColor(0); doc.setLineWidth(0.5);
         doc.rect(14, finalY, 80, 40);
         doc.text("FIRMA AUXILIAR", 18, finalY + 6);
         if (sig?.auxiliary_signature) { try { doc.addImage(sig.auxiliary_signature, 'PNG', 20, finalY + 8, 50, 20); } catch(e) {} }
         doc.text(`Nombre: ${sig?.auxiliary_name || '________________'}`, 18, finalY + 33);
+        
         doc.rect(110, finalY, 80, 40);
         doc.text("FIRMA FAMILIAR", 114, finalY + 6);
         if (sig?.family_signature) { try { doc.addImage(sig.family_signature, 'PNG', 116, finalY + 8, 50, 20); } catch(e) {} }
         doc.text(`Nombre: ${sig?.family_name || '________________'}`, 114, finalY + 33);
         doc.text(`C.C.: ${sig?.family_id_number || '________'}`, 114, finalY + 38);
+        
         doc.save(`Resumen_${shift?.patients?.full_name || 'paciente'}.pdf`);
         showToast('PDF generado');
     } catch (e) { showToast('Error: ' + e.message, 'error'); }
