@@ -954,7 +954,7 @@ async function generateClosurePDF() {
         if (adverseEvents && adverseEvents.length > 0) {
             if (fY > 220) { doc.addPage(); fY = 30; }
             doc.setFontSize(12); doc.setTextColor(239, 68, 68); 
-            doc.text("⚠️ EVENTOS ADVERSOS REPORTADOS EN ESTE TURNO", 14, fY);
+            doc.text("EVENTOS ADVERSOS REPORTADOS EN ESTE TURNO", 14, fY);
             doc.setFontSize(9); doc.setTextColor(0);
             fY += 7;
             adverseEvents.forEach(ev => {
