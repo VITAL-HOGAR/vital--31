@@ -106,7 +106,7 @@ app.patch('/api/professionals/:id/deactivate', async (req, res) => {
 });
 
 // ==========================================
-// 4. PACIENTES (CON CIE-10 Y EPS)
+// 4. PACIENTES
 // ==========================================
 app.get('/api/patients', async (req, res) => {
     try {
@@ -202,15 +202,28 @@ app.post('/api/shifts/close', async (req, res) => {
 });
 
 app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
-    try { const { data: shift, error: shiftError } = await supabase.from('shifts').select('*, patients(*, altitude_profiles(city_name))').eq('id', req.params.shiftId).single(); if (shiftError) throw shiftError; const { data: records, error: recordsError } = await supabase.from('clinical_records').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: true }); if (recordsError) throw recordsError; const { data: signatures, error: sigError } = await supabase.from('shift_signatures').select('*').order('created_at', { ascending: false }).limit(1); if (sigError) throw sigError; res.json({ success: true, data: { shift, records: records || [], signatures: signatures || [] } }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+    try {
+        const { data: shift, error: shiftError } = await supabase.from('shifts').select('*, patients(*, altitude_profiles(city_name))').eq('id', req.params.shiftId).single();
+        if (shiftError) throw shiftError;
+        const { data: records, error: recordsError } = await supabase.from('clinical_records').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: true });
+        if (recordsError) throw recordsError;
+        const { data: signatures, error: sigError } = await supabase.from('shift_signatures').select('*').order('created_at', { ascending: false }).limit(1);
+        if (sigError) throw sigError;
+        
+        // BUSCAR EVENTOS ADVERSOS DE ESTE TURNO
+        const { data: adverseEvents, error: advError } = await supabase.from('adverse_events').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: true });
+        if (advError) throw advError;
+
+        res.json({ success: true, data: { shift, records: records || [], signatures: signatures || [], adverseEvents: adverseEvents || [] } });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// EVENTOS ADVERSOS (NUEVO)
+// EVENTOS ADVERSOS (GUARDA SHIFT_ID)
 app.post('/api/adverse-events', async (req, res) => {
     try {
-        const { patientId, professionalId, eventType, description } = req.body;
+        const { patientId, professionalId, shiftId, eventType, description } = req.body;
         if (!patientId || !professionalId || !description) return res.status(400).json({ success: false, message: 'Datos del evento incompletos' });
-        const { error } = await supabase.from('adverse_events').insert([{ patient_id: patientId, professional_id: professionalId, event_type: eventType || 'Otro', description: description }]);
+        const { error } = await supabase.from('adverse_events').insert([{ patient_id: patientId, professional_id: professionalId, shift_id: shiftId || null, event_type: eventType || 'Otro', description: description }]);
         if (error) throw error;
         res.json({ success: true, message: 'Evento adverso reportado exitosamente' });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
