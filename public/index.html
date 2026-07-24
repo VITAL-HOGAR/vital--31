@@ -168,14 +168,17 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     </div>
 </div>
 
-<!-- MODAL CONSENTIMIENTO (LIENZO ARREGLADO) -->
+<!-- MODAL CONSENTIMIENTO (ARREGLADO CON CAMPOS DE TEXTO) -->
 <div id="consentModal" class="modal-overlay hidden">
     <div class="card" style="max-width: 500px; width: 100%;">
         <h3 style="text-align:center; color: var(--primary); cursor:default;">Consentimiento Informado</h3>
-        <p style="font-size:0.85rem; color:#94a3b8;">Yo, <span id="consentFamName"></span>, actuando como familiar responsable de <span id="consentPatName"></span>, autorizo al personal de Vital Hogar Pro para realizar los procedimientos de cuidado domiciliario necesarios.</p>
+        <div class="grid">
+            <div class="form-group"><label>Nombre del Familiar</label><input type="text" id="consentFamNameInput" placeholder="Escribe el nombre completo"></div>
+            <div class="form-group"><label>Cédula del Familiar</label><input type="text" id="consentFamIdInput" placeholder="Número de cédula"></div>
+        </div>
         <div class="form-group">
             <label>Firma del Familiar</label>
-            <canvas id="consentSigCanvas" width="400" height="150" class="signature-canvas" style="width: 100%; max-width: 400px; height: 150px;"></canvas>
+            <canvas id="consentSigCanvas" width="400" height="150" class="signature-canvas" style="width: 100%; max-width: 400px; height: 150px; touch-action: none;"></canvas>
             <button class="btn-small btn-secondary" onclick="clearSig('consentSigCanvas')">Borrar</button>
         </div>
         <button class="btn-primary btn-info" onclick="generateConsentPDF()">Descargar PDF</button>
@@ -723,18 +726,22 @@ async function saveEdit() {
 
 function openConsentModal() {
     if (!selectedPatient) return showToast('Selecciona un paciente primero', 'error');
-    document.getElementById('consentFamName').innerText = getVal('familySignName') || '____________________';
-    document.getElementById('consentPatName').innerText = selectedPatient.full_name;
+    document.getElementById('consentFamNameInput').value = getVal('familySignName') || '';
+    document.getElementById('consentFamIdInput').value = getVal('familySignId') || '';
     document.getElementById('consentModal').classList.remove('hidden');
-    setTimeout(() => initSigCanvas('consentSigCanvas'), 100);
+    requestAnimationFrame(() => initSigCanvas('consentSigCanvas'));
 }
 function generateConsentPDF() {
+    const famName = getVal('consentFamNameInput');
+    const famId = getVal('consentFamIdInput');
+    if (!famName || !famId) return showToast('Ingresa nombre y cédula del familiar', 'error');
+    
     const { jsPDF } = window.jspdf; const doc = new jsPDF();
     try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
     doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
     doc.setFontSize(12); doc.setTextColor(0); doc.text("Consentimiento Informado para Cuidados Domiciliarios", 105, 30, null, null, "center");
     doc.setFontSize(10);
-    const text = `Yo, ${getVal('familySignName') || '____________________'}, actuando como familiar responsable del paciente ${selectedPatient.full_name} (C.C. ${selectedPatient.document_number || 'N/A'}), autorizo de manera libre y voluntaria al personal de Vital Hogar Pro IPS para que realice los procedimientos de cuidado, higiene, movilización y administración de medicamentos necesarios para la atención de mi familiar en el domicilio.\n\nEntiendo que el personal está capacitado y que seguiré las indicaciones del equipo de salud. Eximo a la institución de responsabilidad ante eventos fortuitos o fuera de su control directo durante la prestación del servicio.`;
+    const text = `Yo, ${famName}, identificado/a con C.C. ${famId}, actuando como familiar responsable del paciente ${selectedPatient.full_name} (C.C. ${selectedPatient.document_number || 'N/A'}), autorizo de manera libre y voluntaria al personal de Vital Hogar Pro IPS para que realice los procedimientos de cuidado, higiene, movilización y administración de medicamentos necesarios para la atención de mi familiar en el domicilio.\n\nEntiendo que el personal está capacitado y que seguiré las indicaciones del equipo de salud. Eximo a la institución de responsabilidad ante eventos fortuitos o fuera de su control directo durante la prestación del servicio.`;
     const splitText = doc.splitTextToSize(text, 180);
     doc.text(splitText, 14, 45);
     const sig = document.getElementById('consentSigCanvas').toDataURL();
