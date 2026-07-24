@@ -168,7 +168,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     </div>
 </div>
 
-<!-- MODAL CONSENTIMIENTO (ARREGLADO CON CAMPOS DE TEXTO) -->
+<!-- MODAL CONSENTIMIENTO -->
 <div id="consentModal" class="modal-overlay hidden">
     <div class="card" style="max-width: 500px; width: 100%;">
         <h3 style="text-align:center; color: var(--primary); cursor:default;">Consentimiento Informado</h3>
@@ -752,12 +752,13 @@ function generateConsentPDF() {
     document.getElementById('consentModal').classList.add('hidden');
 }
 
+// EVENTOS ADVERSOS (MODIFICADO PARA ENVIAR SHIFT_ID)
 async function reportAdverseEvent() {
     const desc = prompt("Describe el evento adverso o cuasi-falla (Ej: El paciente se marea al levantarlo):");
     if (!desc) return;
     const type = prompt("Tipo de evento (Ej: Caída, Medicamento, Procedimiento, Otro):", "Otro");
     try {
-        const r = await fetch(`${API_URL}/api/adverse-events`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ patientId: selectedPatient.id, professionalId: currentUser.id, eventType: type, description: desc }) });
+        const r = await fetch(`${API_URL}/api/adverse-events`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ patientId: selectedPatient.id, professionalId: currentUser.id, shiftId: currentShiftId, eventType: type, description: desc }) });
         const d = await r.json();
         showToast(d.message, d.success?'success':'error');
     } catch (e) { showToast('Error', 'error'); }
@@ -885,7 +886,93 @@ async function saveClinicalRecord() {
 async function loadDailyHistory() { try { const r = await fetch(`${API_URL}/api/patients/${selectedPatient.id}/daily-history`); const d = await r.json(); const c = document.getElementById('dailyHistory'); if (!d.data.records || d.data.records.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay registros hoy</p>'; return; } c.innerHTML = d.data.records.map(r => `<div style="background:var(--bg-dark); padding:10px; border-radius:8px; margin-bottom:10px; border-left:3px solid var(--info);"><strong>🕐 ${new Date(r.created_at).toLocaleTimeString('es-CO', {hour:'2-digit', minute:'2-digit'})}</strong><br><small>PA: ${r.blood_pressure||'--'} | FC: ${r.heart_rate||'--'} | SpO2: ${r.spo2||'--'} | Temp: ${r.temperature||'--'}</small><br><small>EVA: ${r.eva_score||'0'} | Glasgow: ${(r.glasgow_eyes||0)+(r.glasgow_verbal||0)+(r.glasgow_motor||0)}/15 | Braden: ${r.braden_score||'N/A'} | Morse: ${r.morse_score||'N/A'}</small>${r.notes ? `<br><small>📝 ${r.notes}</small>` : ''}</div>`).join(''); } catch (e) {} }
 function previewPhoto(i) { const f = i.files[0]; if (!f) return; const r = new FileReader(); r.onload = (e) => { eduPhotoBase64 = e.target.result; const p = document.getElementById('eduPhotoPreview'); p.src = eduPhotoBase64; p.classList.remove('hidden'); }; r.readAsDataURL(f); }
 async function closeShift() { if (!getChecked('familyAcceptsResponsibility')) return showToast('Familiar debe aceptar responsabilidad', 'error'); if (!getVal('familySignName') || !getVal('familySignId') || !getVal('familyRelationship')) return showToast('Datos familiar incompletos', 'error'); let lD = null; if (getChecked('patientLeavesHome')) { if (!getChecked('leaveLiabilityAck')) return showToast('Familiar debe aceptar responsabilidad traslado', 'error'); const lS = document.getElementById('leaveSigCanvas').toDataURL(); const b = document.createElement('canvas'); b.width = lS.width; b.height = lS.height; if (lS === b.toDataURL()) return showToast('Familiar debe firmar salida ARL', 'error'); lD = { transport: getVal('leaveTransport'), time: getVal('leaveTime'), returnTime: getVal('leaveReturnTime'), liabilityAck: true, signature: lS }; } const aS = document.getElementById('auxSigCanvas').toDataURL(); const fS = document.getElementById('famSigCanvas').toDataURL(); const fE = getChecked('familyReceivedEducation'); const eT = fE ? getVal('educationTopicSelect') : null; const eP = fE ? eduPhotoBase64 : null; lastShiftData = { leaveData: lD, educationPhotoData: eP, educationTopic: eT }; const p = { shiftId: currentShiftId, patientDeliveredStatus: getVal('patientDeliveredStatus'), patientDeliveredNotes: getVal('patientDeliveredNotes'), pendingTasks: getVal('pendingTasks'), auxiliarySignature: aS, auxiliaryName: currentUser.full_name, auxiliaryIdNumber: currentUser.document_number, familySignature: fS, familyName: getVal('familySignName'), familyIdNumber: getVal('familySignId'), familyRelationship: getVal('familyRelationship'), familyPhone: getVal('familyPhone'), patientLeavesHome: getChecked('patientLeavesHome'), leaveData: lD, familyAcceptsResponsibility: true, familyReceivedEducation: fE, educationTopicGiven: eT, educationPhotoData: eP }; try { const r = await fetch(`${API_URL}/api/shifts/close`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(p) }); const d = await r.json(); if (d.success) { showToast('Turno cerrado exitosamente'); lastClosedShiftId = d.data.shiftId; clearInterval(shiftTimerInterval); document.getElementById('generateClosurePDFBtn').classList.remove('hidden'); } } catch (e) {} }
-async function generateClosurePDF() { if (!lastClosedShiftId) return; try { const r = await fetch(`${API_URL}/api/shifts/${lastClosedShiftId}/closure-data`); const res = await r.json(); if (!res.success) throw new Error(res.message); const { shift, records, signatures } = res.data; const { jsPDF } = window.jspdf; const doc = new jsPDF(); try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {} doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center"); doc.setFontSize(12); doc.setTextColor(0); doc.text("Resumen Diario de Atención", 105, 30, null, null, "center"); doc.text(`Paciente: ${shift?.patients?.full_name || 'N/A'}`, 14, 50); doc.text(`Fecha: ${new Date(shift?.start_time).toLocaleDateString('es-CO')}`, 14, 57); doc.text(`Turno: ${shift?.shift_type || 'N/A'}`, 14, 64); let fY = 80; doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Estado de Entrega", 14, fY); doc.setFontSize(10); doc.setTextColor(0); doc.text(`Estado: ${shift?.patient_delivered_status || 'N/A'}`, 14, fY + 7); doc.text(`Notas: ${shift?.patient_delivered_notes || 'N/A'}`, 14, fY + 14); doc.text(`Pendientes: ${shift?.pending_tasks || 'Ninguno'}`, 14, fY + 21); fY += 35; if (records && records.length > 0) { if (fY > 230) { doc.addPage(); fY = 30; } doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Actividades Realizadas", 14, fY); doc.setFontSize(9); doc.setTextColor(0); fY += 7; records.forEach(r => { if (r.activities_completed && fY < 230) { const a = r.activities_completed; let t = `Registro (${new Date(r.created_at).toLocaleTimeString('es-CO')}):\n`; if (a.hygiene?.bath?.done) t += `- Baño: ${a.hygiene.bath.type || ''} (${formatTime12h(a.hygiene.bath.time)})\n`; if (a.hygiene?.oral_hygiene?.done) t += `- Higiene Bucal: ${a.hygiene.oral_hygiene.type || ''} (${formatTime12h(a.hygiene.oral_hygiene.time)})\n`; if (a.environment?.bed_clothes?.done) t += `- Cambio Ropa Cama: ${a.environment.bed_clothes.obs || ''} (${formatTime12h(a.environment.bed_clothes.time)})\n`; if (a.environment?.room_clean?.done) t += `- Aseo: ${a.environment.room_clean.obs || ''} (${formatTime12h(a.environment.room_clean.time)})\n`; if (a.environment?.waste?.done) t += `- Residuos: ${a.environment.waste.obs || ''} (${formatTime12h(a.environment.waste.time)})\n`; if (a.environment?.companion?.done) t += `- Acompañamiento: ${a.environment.companion.obs || ''} (${formatTime12h(a.environment.companion.time)})\n`; if (a.feeding?.meals?.length > 0) { t += `- Comidas:\n`; a.feeding.meals.forEach(m => { t += `    * ${m.type}: ${m.qty} ${m.diet} (${formatTime12h(m.time)})\n`; }); } if (a.feeding?.enteral?.done) t += `- Enteral: ${a.feeding.enteral.formula || ''} ${a.feeding.enteral.vol || ''}mL (${formatTime12h(a.feeding.enteral.time)})\n`; if (a.feeding?.parenteral?.done) t += `- Parenteral: ${a.feeding.parenteral.formula || ''} ${a.feeding.parenteral.vol || ''}mL (${formatTime12h(a.feeding.parenteral.time)})\n`; if (a.feeding?.hydration?.done) t += `- Hidratación: ${a.feeding.hydration.ml || ''} mL (${formatTime12h(a.feeding.hydration.time)})\n`; if (a.clinical?.wound?.done) t += `- Curación: ${a.clinical.wound.state || ''} (${formatTime12h(a.clinical.wound.time)})\n`; if (a.clinical?.oxygen?.done) t += `- Oxígeno: ${a.clinical.oxygen.lpm || ''} L/min (${formatTime12h(a.clinical.oxygen.time)})\n`; if (a.mobility?.position?.done) t += `- Cambio Postural: ${a.mobility.position.type || ''} (${formatTime12h(a.mobility.position.time)})\n`; if (a.mobility?.walking?.done) t += `- Deambulación: ${a.mobility.walking.distance || ''}m (${formatTime12h(a.mobility.walking.time)})\n`; if (a.medications?.length > 0) { t += `- Medicamentos:\n`; a.medications.forEach(m => { t += `    * ${m.name} ${m.dose} (${m.route}) - ${formatTime12h(m.time)}\n`; }); } const sT = doc.splitTextToSize(t, 180); doc.text(sT, 14, fY); fY += (sT.length * 5) + 5; } }); } const s = signatures?.[0] || {}; const lD = s.leave_data || lastShiftData?.leaveData; if (lD || s.patient_leaves_home) { if (fY > 200) { doc.addPage(); fY = 30; } doc.setFontSize(12); doc.setTextColor(239, 68, 68); doc.text("AUTORIZACION DE SALIDA DEL DOMICILIO (ARL)", 14, fY); doc.setFontSize(10); doc.setTextColor(0); fY += 7; doc.text(`Transporte: ${lD?.transport || 'N/A'}`, 14, fY); doc.text(`Hora Salida: ${formatTime12h(lD?.time)}`, 14, fY + 7); doc.text(`Hora Regreso: ${formatTime12h(lD?.returnTime)}`, 14, fY + 14); doc.setFontSize(9); doc.setTextColor(100); const wT = doc.splitTextToSize("El familiar asume la responsabilidad total del traslado. Vital Hogar Pro y el auxiliar NO se hacen responsables de eventos fuera del domicilio.", 180); doc.text(wT, 14, fY + 21); fY += 21 + (wT.length * 5) + 10; doc.setDrawColor(150); doc.setLineWidth(0.3); if (lD?.signature) { try { doc.addImage(lD.signature, 'PNG', 15, fY, 60, 20); } catch(e) {} } doc.line(15, fY + 25, 90, fY + 25); doc.setFontSize(9); doc.setTextColor(0); doc.text(`Firma Familiar: ${s?.family_name || ''}`, 15, fY + 30); doc.text(`C.C.: ${s?.family_id_number || ''}`, 15, fY + 35); fY += 45; } const cP = eduPhotoBase64 || s.education_photo_data || lastShiftData?.educationPhotoData; const eT = s.education_topic_given || lastShiftData?.educationTopic; if (s.family_received_education || cP) { if (fY > 220) { doc.addPage(); fY = 30; } doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Educación Impartida", 14, fY); doc.setFontSize(10); doc.setTextColor(0); doc.text(`Tema: ${eT || 'N/A'}`, 14, fY + 7); if (cP) { try { doc.addImage(cP, 'JPEG', 14, fY + 12, 60, 40); } catch(e) {} } fY += 60; } if (fY > 220) { doc.addPage(); fY = 30; } doc.setDrawColor(150); doc.setLineWidth(0.3); doc.setFontSize(10); doc.setTextColor(0); doc.text("FIRMA AUXILIAR", 15, fY); if (s?.auxiliary_signature) { try { doc.addImage(s.auxiliary_signature, 'PNG', 15, fY + 2, 60, 20); } catch(e) {} } doc.line(15, fY + 25, 90, fY + 25); doc.setFontSize(9); doc.text(`Nombre: ${s?.auxiliary_name || '________________'}`, 15, fY + 30); doc.text(`C.C.: ${s?.auxiliary_id_number || '________'}`, 15, fY + 35); doc.setFontSize(10); doc.text("FIRMA FAMILIAR", 110, fY); if (s?.family_signature) { try { doc.addImage(s.family_signature, 'PNG', 110, fY + 2, 60, 20); } catch(e) {} } doc.line(110, fY + 25, 190, fY + 25); doc.setFontSize(9); doc.text(`Nombre: ${s?.family_name || '________________'}`, 110, fY + 30); doc.text(`C.C.: ${s?.family_id_number || '________'}`, 110, fY + 35); doc.text(`Parentesco: ${s?.family_relationship || '________'}`, 110, fY + 40); doc.save(`Resumen_${shift?.patients?.full_name || 'paciente'}.pdf`); showToast('PDF generado'); } catch (e) { showToast('Error: ' + e.message, 'error'); } }
+
+// PDF CIERRE (MODIFICADO PARA INCLUIR EVENTOS ADVERSOS)
+async function generateClosurePDF() { 
+    if (!lastClosedShiftId) return; 
+    try { 
+        const r = await fetch(`${API_URL}/api/shifts/${lastClosedShiftId}/closure-data`); 
+        const res = await r.json(); if (!res.success) throw new Error(res.message); 
+        const { shift, records, signatures, adverseEvents } = res.data; 
+        const { jsPDF } = window.jspdf; const doc = new jsPDF(); 
+        try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {} 
+        doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center"); 
+        doc.setFontSize(12); doc.setTextColor(0); doc.text("Resumen Diario de Atención", 105, 30, null, null, "center"); 
+        doc.text(`Paciente: ${shift?.patients?.full_name || 'N/A'}`, 14, 50); doc.text(`Fecha: ${new Date(shift?.start_time).toLocaleDateString('es-CO')}`, 14, 57); doc.text(`Turno: ${shift?.shift_type || 'N/A'}`, 14, 64); 
+        let fY = 80; doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Estado de Entrega", 14, fY); 
+        doc.setFontSize(10); doc.setTextColor(0); doc.text(`Estado: ${shift?.patient_delivered_status || 'N/A'}`, 14, fY + 7); doc.text(`Notas: ${shift?.patient_delivered_notes || 'N/A'}`, 14, fY + 14); doc.text(`Pendientes: ${shift?.pending_tasks || 'Ninguno'}`, 14, fY + 21); fY += 35; 
+        
+        if (records && records.length > 0) { 
+            if (fY > 230) { doc.addPage(); fY = 30; } 
+            doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Actividades Realizadas", 14, fY); 
+            doc.setFontSize(9); doc.setTextColor(0); fY += 7; 
+            records.forEach(r => { 
+                if (r.activities_completed && fY < 230) { 
+                    const a = r.activities_completed; let t = `Registro (${new Date(r.created_at).toLocaleTimeString('es-CO')}):\n`; 
+                    if (a.hygiene?.bath?.done) t += `- Baño: ${a.hygiene.bath.type || ''} (${formatTime12h(a.hygiene.bath.time)})\n`; 
+                    if (a.hygiene?.oral_hygiene?.done) t += `- Higiene Bucal: ${a.hygiene.oral_hygiene.type || ''} (${formatTime12h(a.hygiene.oral_hygiene.time)})\n`; 
+                    if (a.environment?.bed_clothes?.done) t += `- Cambio Ropa Cama: ${a.environment.bed_clothes.obs || ''} (${formatTime12h(a.environment.bed_clothes.time)})\n`; 
+                    if (a.environment?.room_clean?.done) t += `- Aseo: ${a.environment.room_clean.obs || ''} (${formatTime12h(a.environment.room_clean.time)})\n`; 
+                    if (a.environment?.waste?.done) t += `- Residuos: ${a.environment.waste.obs || ''} (${formatTime12h(a.environment.waste.time)})\n`; 
+                    if (a.environment?.companion?.done) t += `- Acompañamiento: ${a.environment.companion.obs || ''} (${formatTime12h(a.environment.companion.time)})\n`; 
+                    if (a.feeding?.meals?.length > 0) { t += `- Comidas:\n`; a.feeding.meals.forEach(m => { t += `    * ${m.type}: ${m.qty} ${m.diet} (${formatTime12h(m.time)})\n`; }); } 
+                    if (a.feeding?.enteral?.done) t += `- Enteral: ${a.feeding.enteral.formula || ''} ${a.feeding.enteral.vol || ''}mL (${formatTime12h(a.feeding.enteral.time)})\n`; 
+                    if (a.feeding?.parenteral?.done) t += `- Parenteral: ${a.feeding.parenteral.formula || ''} ${a.feeding.parenteral.vol || ''}mL (${formatTime12h(a.feeding.parenteral.time)})\n`; 
+                    if (a.feeding?.hydration?.done) t += `- Hidratación: ${a.feeding.hydration.ml || ''} mL (${formatTime12h(a.feeding.hydration.time)})\n`; 
+                    if (a.clinical?.wound?.done) t += `- Curación: ${a.clinical.wound.state || ''} (${formatTime12h(a.clinical.wound.time)})\n`; 
+                    if (a.clinical?.oxygen?.done) t += `- Oxígeno: ${a.clinical.oxygen.lpm || ''} L/min (${formatTime12h(a.clinical.oxygen.time)})\n`; 
+                    if (a.mobility?.position?.done) t += `- Cambio Postural: ${a.mobility.position.type || ''} (${formatTime12h(a.mobility.position.time)})\n`; 
+                    if (a.mobility?.walking?.done) t += `- Deambulación: ${a.mobility.walking.distance || ''}m (${formatTime12h(a.mobility.walking.time)})\n`; 
+                    if (a.medications?.length > 0) { t += `- Medicamentos:\n`; a.medications.forEach(m => { t += `    * ${m.name} ${m.dose} (${m.route}) - ${formatTime12h(m.time)}\n`; }); } 
+                    const sT = doc.splitTextToSize(t, 180); doc.text(sT, 14, fY); fY += (sT.length * 5) + 5; 
+                } 
+            }); 
+        } 
+        
+        const s = signatures?.[0] || {}; 
+        const lD = s.leave_data || lastShiftData?.leaveData; 
+        if (lD || s.patient_leaves_home) { 
+            if (fY > 200) { doc.addPage(); fY = 30; } 
+            doc.setFontSize(12); doc.setTextColor(239, 68, 68); doc.text("AUTORIZACION DE SALIDA DEL DOMICILIO (ARL)", 14, fY); 
+            doc.setFontSize(10); doc.setTextColor(0); fY += 7; doc.text(`Transporte: ${lD?.transport || 'N/A'}`, 14, fY); doc.text(`Hora Salida: ${formatTime12h(lD?.time)}`, 14, fY + 7); doc.text(`Hora Regreso: ${formatTime12h(lD?.returnTime)}`, 14, fY + 14); 
+            doc.setFontSize(9); doc.setTextColor(100); const wT = doc.splitTextToSize("El familiar asume la responsabilidad total del traslado. Vital Hogar Pro y el auxiliar NO se hacen responsables de eventos fuera del domicilio.", 180); doc.text(wT, 14, fY + 21); fY += 21 + (wT.length * 5) + 10; 
+            doc.setDrawColor(150); doc.setLineWidth(0.3); if (lD?.signature) { try { doc.addImage(lD.signature, 'PNG', 15, fY, 60, 20); } catch(e) {} } 
+            doc.line(15, fY + 25, 90, fY + 25); doc.setFontSize(9); doc.setTextColor(0); doc.text(`Firma Familiar: ${s?.family_name || ''}`, 15, fY + 30); doc.text(`C.C.: ${s?.family_id_number || ''}`, 15, fY + 35); fY += 45; 
+        } 
+        
+        const cP = eduPhotoBase64 || s.education_photo_data || lastShiftData?.educationPhotoData; const eT = s.education_topic_given || lastShiftData?.educationTopic; 
+        if (s.family_received_education || cP) { 
+            if (fY > 220) { doc.addPage(); fY = 30; } 
+            doc.setFontSize(12); doc.setTextColor(59, 130, 246); doc.text("Educación Impartida", 14, fY); 
+            doc.setFontSize(10); doc.setTextColor(0); doc.text(`Tema: ${eT || 'N/A'}`, 14, fY + 7); 
+            if (cP) { try { doc.addImage(cP, 'JPEG', 14, fY + 12, 60, 40); } catch(e) {} } 
+            fY += 60; 
+        } 
+
+        // IMPRESIÓN DE EVENTOS ADVERSOS EN EL PDF
+        if (adverseEvents && adverseEvents.length > 0) {
+            if (fY > 220) { doc.addPage(); fY = 30; }
+            doc.setFontSize(12); doc.setTextColor(239, 68, 68); // Rojo
+            doc.text("⚠️ EVENTOS ADVERSOS REPORTADOS EN ESTE TURNO", 14, fY);
+            doc.setFontSize(9); doc.setTextColor(0);
+            fY += 7;
+            adverseEvents.forEach(ev => {
+                const splitDesc = doc.splitTextToSize(`- ${ev.event_type}: ${ev.description}`, 180);
+                doc.text(splitDesc, 14, fY);
+                fY += (splitDesc.length * 5) + 3;
+            });
+            fY += 10;
+        }
+
+        if (fY > 220) { doc.addPage(); fY = 30; } 
+        doc.setDrawColor(150); doc.setLineWidth(0.3); doc.setFontSize(10); doc.setTextColor(0); 
+        doc.text("FIRMA AUXILIAR", 15, fY); if (s?.auxiliary_signature) { try { doc.addImage(s.auxiliary_signature, 'PNG', 15, fY + 2, 60, 20); } catch(e) {} } 
+        doc.line(15, fY + 25, 90, fY + 25); doc.setFontSize(9); doc.text(`Nombre: ${s?.auxiliary_name || '________________'}`, 15, fY + 30); doc.text(`C.C.: ${s?.auxiliary_id_number || '________'}`, 15, fY + 35); 
+        doc.setFontSize(10); doc.text("FIRMA FAMILIAR", 110, fY); if (s?.family_signature) { try { doc.addImage(s.family_signature, 'PNG', 110, fY + 2, 60, 20); } catch(e) {} } 
+        doc.line(110, fY + 25, 190, fY + 25); doc.setFontSize(9); doc.text(`Nombre: ${s?.family_name || '________________'}`, 110, fY + 30); doc.text(`C.C.: ${s?.family_id_number || '________'}`, 110, fY + 35); doc.text(`Parentesco: ${s?.family_relationship || '________'}`, 110, fY + 40); 
+        doc.save(`Resumen_${shift?.patients?.full_name || 'paciente'}.pdf`); showToast('PDF generado'); 
+    } catch (e) { showToast('Error: ' + e.message, 'error'); } 
+}
 
 async function loadProfPatients() { try { const r = await fetch(`${API_URL}/api/auxiliar/patients`); const d = await r.json(); const c = document.getElementById('profPatientList'); if (!d.data || d.data.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay pacientes activos</p>'; return; } c.innerHTML = d.data.map(p => `<div class="card" style="cursor:pointer; border-left: 4px solid var(--info);" onclick='selectProfPatient(${JSON.stringify(p)})'><strong>${p.full_name}</strong><br><small>${p.pathology_summary || 'Sin patología'}</small></div>`).join(''); } catch (e) {} }
 function selectProfPatient(p) { selectedPatient = p; document.getElementById('profPatientName').innerText = p.full_name; document.getElementById('profPatientSelection').classList.add('hidden'); document.getElementById('profClinicalForm').classList.remove('hidden'); initSigCanvas('profSigCanvas'); initSigCanvas('famProfSigCanvas'); }
