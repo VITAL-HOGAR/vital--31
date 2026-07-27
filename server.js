@@ -315,6 +315,4 @@ app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) { res.sendFile(path.join(__dirname, 'public', 'index.html')); } else { res.status(404).json({ success: false, message: 'Endpoint no encontrado' }); }
 });
 
-app.listen(PORT, '0.0.0.0', () => { console.log(`🚀 Servidor en puerto ${PORT}`); });
-
 export default app;
