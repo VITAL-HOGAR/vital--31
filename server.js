@@ -23,7 +23,32 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-app.use(cors({ origin: '*' }));
+// ==========================================
+// CONFIGURACIÓN DE CORS CORREGIDA
+// ==========================================
+const allowedOrigins = [
+    'https://vital-31.vercel.app', 
+    'http://localhost:3000', 
+    'http://127.0.0.1:5500' // Por si pruebas en local con Live Server
+];
+
+app.use(cors({
+    origin: function (origin, callback) {
+        // Permite peticiones sin origen (como curl o postman) o de tus dominios
+        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+        } else {
+            callback(new Error('No permitido por CORS'));
+        }
+    },
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true
+}));
+
+// Forzar respuestas a las peticiones preflight (OPTIONS) de forma rápida
+app.options('*', cors());
+
 app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -315,4 +340,12 @@ app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) { res.sendFile(path.join(__dirname, 'public', 'index.html')); } else { res.status(404).json({ success: false, message: 'Endpoint no encontrado' }); }
 });
 
+// ==========================================
+// INICIO DEL SERVIDOR (CORRECCIÓN CRÍTICA PARA RENDER)
+// ==========================================
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Servidor corriendo exitosamente en el puerto ${PORT}`);
+});
+
+// Necesario para Vercel (por si lo usas ahí algún día)
 export default app;
