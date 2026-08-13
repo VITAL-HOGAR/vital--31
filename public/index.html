@@ -98,6 +98,19 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .message-bubble small { display: block; font-size: 0.7rem; opacity: 0.8; margin-top: 4px; text-align: right; }
 .chart-wrapper { background: var(--bg-dark); padding: 15px; border-radius: 8px; margin-top: 10px; position: relative; height: 300px; }
 </style>
+
+<!-- ====== CÓDIGO PARA CONVERTIR EN APP INSTALABLE (PWA) ====== -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('/sw.js')
+        .then(reg => console.log('Service Worker registrado'))
+        .catch(err => console.log('Error:', err));
+    });
+  }
+</script>
+<!-- ============================================================= -->
+
 </head>
 <body>
 
@@ -846,7 +859,7 @@ async function startShift() { const sT = getVal('shiftType'); let cS = null, cE 
 function startShiftTimer() { clearInterval(shiftTimerInterval); shiftTimerInterval = setInterval(() => { if (!shiftStartTime) return; const diff = new Date() - shiftStartTime; const h = Math.floor(diff / 3600000), m = Math.floor((diff % 3600000) / 60000), s = Math.floor((diff % 60000) / 1000); document.getElementById('timerDisplay').innerText = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`; }, 1000); }
 function checkVital(t) { const c = selectedPatient?.altitude_profiles?.city_name || 'Bogotá'; const r = getRangoSpO2(c); const sM = r.spo2_min; const ch = { bp: () => { const m = getVal('bloodPressure').match(/(\d+)\/(\d+)/); if(!m) return {s:'none'}; const [s,d]=[parseInt(m[1]),parseInt(m[2])]; if(s<80||s>=160||d<50||d>=100) return {s:'danger',m:'🔴 CRÍTICO'}; if(s<90||s>=140||d<60||d>=90) return {s:'warning',m:'🟡 ALERTA'}; return {s:'normal',m:'🟢 Normal'}; }, hr: () => { const v=parseInt(getVal('heartRate')); if(!v) return {s:'none'}; if(v<50||v>=120) return {s:'danger',m:'🔴 CRÍTICO'}; if(v<60||v>100) return {s:'warning',m:'🟡 ALERTA'}; return {s:'normal',m:'🟢 Normal'}; }, rr: () => { const v=parseInt(getVal('respiratoryRate')); if(!v) return {s:'none'}; if(v<10||v>=25) return {s:'danger',m:'🔴 CRÍTICO'}; if(v<12||v>20) return {s:'warning',m:'🟡 ALERTA'}; return {s:'normal',m:'🟢 Normal'}; }, temp: () => { const v=parseFloat(getVal('temperature')); if(!v) return {s:'none'}; if(v<35.5||v>=38.0) return {s:'danger',m:'🔴 CRÍTICO'}; if(v<36.1||v>37.2) return {s:'warning',m:'🟡 ALERTA'}; return {s:'normal',m:'🟢 Normal'}; }, spo2: () => { const v=parseInt(getVal('spo2')); if(!v) return {s:'none'}; if(v<sM-3) return {s:'danger',m:'🔴 CRÍTICO'}; if(v<sM) return {s:'warning',m:'🟡 ALERTA'}; return {s:'normal',m:'🟢 Normal'}; }, glu: () => { const v=parseInt(getVal('glucose')); if(!v) return {s:'none'}; if(v<60||v>=200) return {s:'danger',m:'🔴 CRÍTICO'}; if(v<70||v>140) return {s:'warning',m:'🟡 ALERTA'}; return {s:'normal',m:'🟢 Normal'}; } }; const res = ch[t](); const ids = {bp:'bloodPressure',hr:'heartRate',rr:'respiratoryRate',temp:'temperature',spo2:'spo2',glu:'glucose'}; const aD = document.getElementById(t + 'Alert'); const inp = document.getElementById(ids[t]); if (res.s === 'none') { aD.classList.remove('show'); inp.className = ''; } else { aD.className = `vital-status show ${res.s}`; aD.innerHTML = res.m; inp.className = `vital-${res.s}`; } }
 function updateEVA() { const v = parseInt(getVal('evaScore')) || 0; let t = 'Sin dolor'; if (v >= 1 && v <= 3) t = 'Dolor leve'; if (v >= 4 && v <= 6) t = 'Dolor moderado'; if (v >= 7) t = 'Dolor severo'; document.getElementById('evaValue').innerText = `${v} - ${t}`; }
-function calculateGlasgow() { const t = (parseInt(getVal('glasgowEyes'))||0) + (parseInt(getVal('glasgowVerbal'))||0) + (parseInt(getVal('glasgowMotor'))||0); const d = document.getElementById('glasgowTotal'); let s = 'Normal', c = 'normal'; if (t >= 13 && t <= 14) { s = '⚠️ LEVE'; c = 'mild'; } else if (t >= 9 && t <= 12) { s = '⚠️ MODERADA'; c = 'moderate'; } else if (t >= 3 && t <= 8) { s = '🚨 SEVERA'; c = 'severe'; } d.className = `glasgow-total ${c}`; d.innerHTML = `<h3>${t}/15</h3><p>${s}</p>`; }
+function calculateGlasgow() { const t = (parseInt(getVal('glasgowEyes'))||0) + (parseInt(getVal('glasgowVerbal'))||0) + (parseInt(getVal('glasgowMotor'))||0); const d = document.getElementById('glasgowTotal'); let s = 'Normal', c = 'normal'; if (t >= 13 && t <= 14) { s = '⚠️ LEVE'; c = 'mild'; } else if (t >= 9 && t <= 12) { s = '⚠️ MODERATA'; c = 'moderate'; } else if (t >= 3 && t <= 8) { s = '🚨 SEVERA'; c = 'severe'; } d.className = `glasgow-total ${c}`; d.innerHTML = `<h3>${t}/15</h3><p>${s}</p>`; }
 function calculateBraden() { const ids = ['bradenSensory','bradenMoisture','bradenActivity','bradenMobility','bradenNutrition','bradenFriction']; const t = ids.reduce((s, id) => s + (parseInt(getVal(id))||0), 0); const d = document.getElementById('bradenTotal'); let s = 'Sin riesgo', c = 'risk-none'; if (t <= 9) { s = '🔴 MUY ALTO'; c = 'risk-high'; } else if (t <= 12) { s = '🟠 ALTO'; c = 'risk-high'; } else if (t <= 14) { s = '🟡 MODERADO'; c = 'risk-moderate'; } else if (t <= 18) { s = '🟢 LEVE'; c = 'risk-mild'; } d.className = `braden-total ${c}`; d.innerHTML = `<h3>${t}/24</h3><p>${s}</p>`; }
 function calculateMorse() { const ids = ['morseFall','morseDiag','morseAid','morseIV','morseGait','morseMental']; const t = ids.reduce((s, id) => s + (parseInt(getVal(id))||0), 0); const d = document.getElementById('morseTotal'); let s = 'Sin riesgo', c = 'risk-low'; if (t > 50) { s = '🔴 ALTO RIESGO'; c = 'risk-high'; } else if (t >= 25) { s = '🟡 RIESGO MEDIO'; c = 'risk-medium'; } d.className = `morse-total ${c}`; d.innerHTML = `<h3>${t}</h3><p>${s}</p>`; }
 function toggleAccordion(h) { h.classList.toggle('active'); h.nextElementSibling.classList.toggle('open'); }
