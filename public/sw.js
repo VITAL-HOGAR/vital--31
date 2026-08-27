@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vital-hogar-v1';
+const CACHE_NAME = 'vital-hogar-v2'; // Versión actualizada
 const urlsToCache = [
   '/',
   '/index.html',
