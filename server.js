@@ -180,46 +180,46 @@ app.patch('/api/patients/:id/reactivate', async (req, res) => {
 });
 
 // ==========================================
-// 5. ELIMINACIÓN PERMANENTE (protegida)
+// 5. ELIMINACIÓN PERMANENTE CON CASCADA
+// (Borra el registro Y todos sus datos asociados)
+// Para datos de PRUEBA. Para datos reales usa Archivar.
 // ==========================================
-app.delete('/api/professionals/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const checks = [
-            ['shifts', 'professional_id'], ['clinical_records', 'professional_id'],
-            ['professional_records', 'professional_id'], ['adverse_events', 'professional_id'],
-            ['scheduled_shifts', 'professional_id'], ['education_topics', 'created_by'],
-            ['internal_messages', 'sender_id']
-        ];
-        for (const [table, col] of checks) {
-            const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true }).eq(col, id);
-            if (error) throw error;
-            if (count > 0) return res.status(409).json({ success: false, message: `No se puede eliminar: tiene ${count} registro(s) en "${table}". Usa ARCHIVAR para ocultarlo sin perder el historial clínico.` });
-        }
-        const { data: prof } = await supabase.from('professionals').select('user_id').eq('id', id).single();
-        const { error: delError } = await supabase.from('professionals').delete().eq('id', id);
-        if (delError) throw delError;
-        if (prof?.user_id) await supabase.auth.admin.deleteUser(prof.user_id);
-        res.json({ success: true, message: 'Profesional eliminado permanentemente (incluido su acceso)' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
 app.delete('/api/patients/:id', async (req, res) => {
     try {
         const { id } = req.params;
-        const checks = [
-            ['shifts', 'patient_id'], ['clinical_records', 'patient_id'],
-            ['professional_records', 'patient_id'], ['adverse_events', 'patient_id'],
-            ['scheduled_shifts', 'patient_id'], ['internal_messages', 'patient_id']
-        ];
-        for (const [table, col] of checks) {
-            const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true }).eq(col, id);
-            if (error) throw error;
-            if (count > 0) return res.status(409).json({ success: false, message: `No se puede eliminar: tiene ${count} registro(s) en "${table}". Usa ARCHIVAR (dar de baja) para conservar el historial.` });
-        }
-        const { error: delError } = await supabase.from('patients').delete().eq('id', id);
-        if (delError) throw delError;
-        res.json({ success: true, message: 'Paciente eliminado permanentemente' });
+        await supabase.from('clinical_records').delete().eq('patient_id', id);
+        await supabase.from('professional_records').delete().eq('patient_id', id);
+        await supabase.from('adverse_events').delete().eq('patient_id', id);
+        await supabase.from('scheduled_shifts').delete().eq('patient_id', id);
+        await supabase.from('internal_messages').delete().eq('patient_id', id);
+        const { data: shiftRows } = await supabase.from('shifts').select('id').eq('patient_id', id);
+        const shiftIds = (shiftRows || []).map(s => s.id);
+        if (shiftIds.length) { try { await supabase.from('shift_signatures').delete().in('shift_id', shiftIds); } catch (e) { console.log('Firmas ya eliminadas'); } }
+        await supabase.from('shifts').delete().eq('patient_id', id);
+        const { error } = await supabase.from('patients').delete().eq('id', id);
+        if (error) throw error;
+        res.json({ success: true, message: 'Paciente y TODOS sus registros asociados eliminados' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.delete('/api/professionals/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        await supabase.from('clinical_records').delete().eq('professional_id', id);
+        await supabase.from('professional_records').delete().eq('professional_id', id);
+        await supabase.from('adverse_events').delete().eq('professional_id', id);
+        await supabase.from('scheduled_shifts').delete().eq('professional_id', id);
+        await supabase.from('education_topics').delete().eq('created_by', id);
+        await supabase.from('internal_messages').delete().eq('sender_id', id);
+        const { data: shiftRows } = await supabase.from('shifts').select('id').eq('professional_id', id);
+        const shiftIds = (shiftRows || []).map(s => s.id);
+        if (shiftIds.length) { try { await supabase.from('shift_signatures').delete().in('shift_id', shiftIds); } catch (e) { console.log('Firmas ya eliminadas'); } }
+        await supabase.from('shifts').delete().eq('professional_id', id);
+        const { data: prof } = await supabase.from('professionals').select('user_id').eq('id', id).single();
+        const { error } = await supabase.from('professionals').delete().eq('id', id);
+        if (error) throw error;
+        if (prof?.user_id) { try { await supabase.auth.admin.deleteUser(prof.user_id); } catch (e) { console.log('Usuario Auth ya no existe'); } }
+        res.json({ success: true, message: 'Profesional y TODOS sus registros eliminados (incluido su acceso)' });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
