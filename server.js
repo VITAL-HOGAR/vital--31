@@ -24,17 +24,17 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ==========================================
-// CONFIGURACIÓN DE CORS CORREGIDA
+// CONFIGURACIÓN DE CORS
 // ==========================================
 const allowedOrigins = [
-    'https://vital-31.vercel.app', 
-    'http://localhost:3000', 
-    'http://127.0.0.1:5500' // Por si pruebas en local con Live Server
+    'https://vital-31.vercel.app',
+    'https://vital-31-efpj46po4-vital-hogar-cuidados-domiciliarios.vercel.app',
+    'http://localhost:3000',
+    'http://127.0.0.1:5500'
 ];
 
 app.use(cors({
     origin: function (origin, callback) {
-        // Permite peticiones sin origen (como curl o postman) o de tus dominios
         if (!origin || allowedOrigins.indexOf(origin) !== -1) {
             callback(null, true);
         } else {
@@ -46,7 +46,6 @@ app.use(cors({
     credentials: true
 }));
 
-// Forzar respuestas a las peticiones preflight (OPTIONS) de forma rápida
 app.options('*', cors());
 
 app.use(express.json({ limit: '50mb' }));
@@ -181,7 +180,51 @@ app.patch('/api/patients/:id/reactivate', async (req, res) => {
 });
 
 // ==========================================
-// 5. EDUCACIÓN
+// 5. ELIMINACIÓN PERMANENTE (protegida)
+// ==========================================
+app.delete('/api/professionals/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const checks = [
+            ['shifts', 'professional_id'], ['clinical_records', 'professional_id'],
+            ['professional_records', 'professional_id'], ['adverse_events', 'professional_id'],
+            ['scheduled_shifts', 'professional_id'], ['education_topics', 'created_by'],
+            ['internal_messages', 'sender_id']
+        ];
+        for (const [table, col] of checks) {
+            const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true }).eq(col, id);
+            if (error) throw error;
+            if (count > 0) return res.status(409).json({ success: false, message: `No se puede eliminar: tiene ${count} registro(s) en "${table}". Usa ARCHIVAR para ocultarlo sin perder el historial clínico.` });
+        }
+        const { data: prof } = await supabase.from('professionals').select('user_id').eq('id', id).single();
+        const { error: delError } = await supabase.from('professionals').delete().eq('id', id);
+        if (delError) throw delError;
+        if (prof?.user_id) await supabase.auth.admin.deleteUser(prof.user_id);
+        res.json({ success: true, message: 'Profesional eliminado permanentemente (incluido su acceso)' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.delete('/api/patients/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const checks = [
+            ['shifts', 'patient_id'], ['clinical_records', 'patient_id'],
+            ['professional_records', 'patient_id'], ['adverse_events', 'patient_id'],
+            ['scheduled_shifts', 'patient_id'], ['internal_messages', 'patient_id']
+        ];
+        for (const [table, col] of checks) {
+            const { count, error } = await supabase.from(table).select('*', { count: 'exact', head: true }).eq(col, id);
+            if (error) throw error;
+            if (count > 0) return res.status(409).json({ success: false, message: `No se puede eliminar: tiene ${count} registro(s) en "${table}". Usa ARCHIVAR (dar de baja) para conservar el historial.` });
+        }
+        const { error: delError } = await supabase.from('patients').delete().eq('id', id);
+        if (delError) throw delError;
+        res.json({ success: true, message: 'Paciente eliminado permanentemente' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// ==========================================
+// 6. EDUCACIÓN
 // ==========================================
 app.get('/api/education/topics', async (req, res) => {
     try { const { data, error } = await supabase.from('education_topics').select(`*, professionals!education_topics_created_by_fkey(full_name, document_number, professional_card)`).order('created_at', { ascending: false }); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
@@ -192,7 +235,7 @@ app.post('/api/education/topics', async (req, res) => {
 });
 
 // ==========================================
-// 6. AUXILIAR - TURNOS, REGISTROS Y EVENTOS
+// 7. AUXILIAR - TURNOS, REGISTROS Y EVENTOS
 // ==========================================
 app.get('/api/auxiliar/patients', async (req, res) => {
     try {
@@ -234,16 +277,12 @@ app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
         if (recordsError) throw recordsError;
         const { data: signatures, error: sigError } = await supabase.from('shift_signatures').select('*').order('created_at', { ascending: false }).limit(1);
         if (sigError) throw sigError;
-        
-        // BUSCAR EVENTOS ADVERSOS DE ESTE TURNO
         const { data: adverseEvents, error: advError } = await supabase.from('adverse_events').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: true });
         if (advError) throw advError;
-
         res.json({ success: true, data: { shift, records: records || [], signatures: signatures || [], adverseEvents: adverseEvents || [] } });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// EVENTOS ADVERSOS (GUARDA SHIFT_ID)
 app.post('/api/adverse-events', async (req, res) => {
     try {
         const { patientId, professionalId, shiftId, eventType, description } = req.body;
@@ -255,7 +294,7 @@ app.post('/api/adverse-events', async (req, res) => {
 });
 
 // ==========================================
-// 7. INFORMES CONSOLIDADOS
+// 8. INFORMES CONSOLIDADOS
 // ==========================================
 app.get('/api/reports/pending', async (req, res) => {
     try { const { data, error } = await supabase.from('patients').select('id, full_name, family_name').eq('is_active', true).order('full_name'); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
@@ -281,7 +320,7 @@ app.post('/api/professional-records', async (req, res) => {
 });
 
 // ==========================================
-// 8. MÓDULO FINANCIERO
+// 9. MÓDULO FINANCIERO
 // ==========================================
 app.get('/api/finance/parameters', async (req, res) => { try { const { data, error } = await supabase.from('financial_parameters').select('*').eq('is_active', true).single(); if (error) throw error; res.json({ success: true, data: data || {} }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
 app.patch('/api/finance/parameters/:id', async (req, res) => { try { const { smmlv, subsidy_transport, night_surcharge_percentage, holiday_surcharge_percentage, night_start_hour, night_end_hour, year } = req.body; const { error } = await supabase.from('financial_parameters').update({ smmlv, subsidy_transport, night_surcharge_percentage, holiday_surcharge_percentage, night_start_hour, night_end_hour, year }).eq('id', req.params.id); if (error) throw error; res.json({ success: true, message: 'Parámetros de ley actualizados' }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
@@ -324,7 +363,7 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
 });
 
 // ==========================================
-// 9. AGENDA Y MENSAJERÍA
+// 10. AGENDA Y MENSAJERÍA
 // ==========================================
 app.get('/api/scheduled-shifts', async (req, res) => { try { const { data, error } = await supabase.from('scheduled_shifts').select('*, patients(full_name), professionals(full_name)').order('shift_date', { ascending: true }); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
 app.get('/api/scheduled-shifts/professional/:profId', async (req, res) => { try { const { data, error } = await supabase.from('scheduled_shifts').select('*, patients(*, altitude_profiles(city_name))').eq('professional_id', req.params.profId).eq('status', 'Programado').order('shift_date', { ascending: true }); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
@@ -340,12 +379,8 @@ app.get('*', (req, res) => {
     if (!req.path.startsWith('/api')) { res.sendFile(path.join(__dirname, 'public', 'index.html')); } else { res.status(404).json({ success: false, message: 'Endpoint no encontrado' }); }
 });
 
-// ==========================================
-// INICIO DEL SERVIDOR (CORRECCIÓN CRÍTICA PARA RENDER)
-// ==========================================
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Servidor corriendo exitosamente en el puerto ${PORT}`);
 });
 
-// Necesario para Vercel (por si lo usas ahí algún día)
 export default app;
