@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -29,6 +29,7 @@ h3 { margin-top: 0; color: var(--text-main); cursor: pointer; display: flex; jus
 h4 { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-top: 20px; }
 .btn-primary { background: var(--primary); color: white; padding: 12px 20px; border-radius: 12px; font-weight: 600; cursor: pointer; border: none; width: 100%; font-size: 1rem; transition: 0.2s; margin-top: 10px; }
 .btn-primary:hover { background: #16a34a; }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .btn-danger { background: var(--danger); }
 .btn-warning { background: var(--warning); color: black; }
 .btn-info { background: var(--info); }
@@ -98,6 +99,8 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .message-bubble.alert { background: var(--danger); color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
 .message-bubble small { display: block; font-size: 0.7rem; opacity: 0.8; margin-top: 4px; text-align: right; }
 .chart-wrapper { background: var(--bg-dark); padding: 15px; border-radius: 8px; margin-top: 10px; position: relative; height: 300px; }
+.patient-card { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 15px; margin-bottom: 10px; cursor: pointer; transition: 0.2s; }
+.patient-card:hover { border-color: var(--primary); transform: translateY(-2px); }
 
 /* === PAQUETE A: Modal de confirmación reutilizable === */
 .modal-overlay-confirm { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px; }
@@ -125,7 +128,6 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 </script>
 </head>
 <body>
-
 <header class="header">
 <div class="logo-area">
 <img src="https://i.imgur.com/01YZxey.jpeg" alt="Vital Hogar" onerror="this.style.display='none'">
@@ -238,15 +240,14 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                         <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
                     </select>
                     </div>
-                    <div class="form-group"><label>Año</label><input type="number" id="reportYear" value="2024"></div>
+                    <div class="form-group"><label>Año</label><input type="number" id="reportYear" value="2026"></div>
                 </div>
                 <div class="form-group"><label>✍️ Firma del Profesional Validador</label><canvas id="adminSigCanvas" class="signature-canvas"></canvas><button class="btn-small btn-secondary" onclick="clearSig('adminSigCanvas')">Borrar Firma</button></div>
                 <button class="btn-primary btn-info" onclick="generateMonthlyPDF()"><i class="fas fa-file-pdf"></i> Generar y Firmar PDF</button>
                 <p id="pdfStatus" style="margin-top: 10px; color: var(--primary); text-align:center;"></p>
             </div>
         </div>
-
-        <div id="admin_finance" class="hidden">
+  <div id="admin_finance" class="hidden">
             <div class="card">
                 <h3 style="cursor:default;">⚙️ Parámetros de Ley Vigentes</h3>
                 <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:10px;">Configura los valores legales actuales para el cálculo de honorarios de contratistas.</p>
@@ -434,7 +435,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                     </div>
                 </div>
                 <div class="accordion">
-                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>🧹 Aseo y Entorno</span><i class="fas fa-chevron-down"></i></div>
+ <div class="accordion-header" onclick="toggleAccordion(this)"><span>🧹 Aseo y Entorno</span><i class="fas fa-chevron-down"></i></div>
                     <div class="accordion-content">
                         <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actBedClothes" onchange="toggleSubFields('bed', this)"><label for="actBedClothes"><strong>🛏️ Cambio de Ropa de Cama</strong></label><input type="time" id="actBedClothesTime" style="width:auto; margin:0;"></div><div class="sub-activity-fields" id="fields-bed"><div class="form-group"><label>Detalle</label><input type="text" id="actBedClothesObs" placeholder="Ej: Sábanas y fundas"></div></div></div>
                         <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actRoomClean" onchange="toggleSubFields('room', this)"><label for="actRoomClean"><strong>🧹 Aseo y Orden del Espacio</strong></label><input type="time" id="actRoomCleanTime" style="width:auto; margin:0;"></div><div class="sub-activity-fields" id="fields-room"><div class="form-group"><label>Detalle</label><input type="text" id="actRoomCleanObs" placeholder="Ej: Limpieza de área y baño"></div></div></div>
@@ -497,7 +498,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                     </div>
                 </div>
                 <div class="grid">
-                    <div class="form-group"><label>Nombre Familiar *</label><input type="text" id="familySignName"></div>
+ <div class="form-group"><label>Nombre Familiar *</label><input type="text" id="familySignName"></div>
                     <div class="form-group"><label>Cédula Familiar *</label><input type="text" id="familySignId"></div>
                     <div class="form-group"><label>Parentesco *</label><select id="familyRelationship"><option value="">Seleccionar...</option><option value="Hijo/a">Hijo/a</option><option value="Esposo/a">Esposo/a</option><option value="Padre/Madre">Padre/Madre</option></select></div>
                     <div class="form-group"><label>Celular Familiar</label><input type="tel" id="familyPhone"></div>
@@ -594,7 +595,6 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
         </div>
     </div>
 </div>
-
 <div id="toast" class="toast"></div>
 
 <script>
@@ -605,6 +605,8 @@ const CIUDADES_COLOMBIA = { 'Bogotá': { altitud: 2640, spo2_min: 93 }, 'Cúcuta
 let currentUser = null, selectedPatient = null, currentShiftId = null, lastClosedShiftId = null;
 let shiftTimerInterval = null, shiftStartTime = null, medications = [], meals = [];
 let lastShiftData = null, lastLiquidationData = null, lastInvoiceData = null, lastMessageCount = 0;
+let lastProfRecordData = null; // PAQUETE B: datos de la última nota profesional para su PDF
+let sessionRecords = []; // PAQUETE B: respaldo local del historial del día si el backend falla
 
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
 function getVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
@@ -618,6 +620,7 @@ async function login() {
         const res = await fetch(`${API_URL}/api/auth/login`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ email, password }) });
         const data = await res.json();
         if (data.success) {
+            if (data.data.token) localStorage.setItem('vital_token', data.data.token); // PAQUETE B: guardar token si el backend lo envía
             const specRes = await fetch(`${API_URL}/api/professionals`);
             const specData = await specRes.json();
             const prof = specData.data.find(p => p.id === data.data.user.id);
@@ -627,15 +630,18 @@ async function login() {
         } else { showToast(data.message || 'Credenciales inválidas', 'error'); }
     } catch (e) { showToast('Error de conexión', 'error'); console.error(e); }
 }
-function logout() { localStorage.removeItem('vital_user'); currentUser = null; location.reload(); }
+function logout() { localStorage.removeItem('vital_user'); localStorage.removeItem('vital_token'); currentUser = null; location.reload(); }
 function initApp() {
     const u = localStorage.getItem('vital_user'); if (!u) return; currentUser = JSON.parse(u);
     document.getElementById('loginScreen').classList.add('hidden'); document.getElementById('mainScreen').classList.remove('hidden'); document.getElementById('userInfo').classList.remove('hidden');
     document.getElementById('userName').textContent = currentUser.full_name; document.getElementById('userRoleDisplay').textContent = currentUser.specialty_name;
     if (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE') {
-        document.getElementById('adminPanel').classList.remove('hidden'); loadProfs(); loadPats();
+        document.getElementById('adminPanel').classList.remove('hidden');
+        loadProfs(); loadPats(); loadEduList(); loadScheduledShiftsAdmin(); loadFinanceData(); updateStats();
+        loadAdminMessages(); setInterval(() => { if (!document.getElementById('admin_messages').classList.contains('hidden')) loadAdminMessages(); }, 7000);
     } else if (currentUser.specialty_name === 'AUXILIAR_ENFERMERIA') {
-        document.getElementById('auxPanel').classList.remove('hidden'); loadAuxPatients(); loadAuxScheduledShifts();
+        document.getElementById('auxPanel').classList.remove('hidden'); loadAuxPatients(); loadAuxScheduledShifts(); loadAuxMessages();
+        setInterval(() => { if (!document.getElementById('auxChatBody') || !document.getElementById('auxChatBody').offsetParent) return; loadAuxMessages(); }, 7000);
     } else {
         document.getElementById('profPanel').classList.remove('hidden'); loadProfPatients();
     }
@@ -644,10 +650,10 @@ function initApp() {
 // ADMIN LOGIC
 function showAdminTab(tab, btn) { ['admin_prof', 'admin_pat', 'admin_edu', 'admin_reports', 'admin_finance', 'admin_agenda', 'admin_messages'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById('admin_'+tab).classList.remove('hidden'); document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); }
 let profsRegistry = []; // PAQUETE A: cache local para lookup en deleteProf
-async function loadProfs() { try { const r = await fetch(`${API_URL}/api/professionals`); const d = await r.json(); profsRegistry = d.data || []; document.querySelector('#profTable tbody').innerHTML = profsRegistry.map(p => { const safeName = escapeHtml(p.full_name); const safeDoc = escapeHtml(p.document_number); const safeSpec = escapeHtml(p.specialties?.name||'N/A'); return `<tr><td>${safeName}</td><td>${safeDoc}</td><td>${safeSpec}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-warning" onclick="alert('Editar (próximamente)')">Editar</button> <button class="btn-small btn-archive" onclick="archiveProf('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deleteProf('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`; }).join(''); } catch (e) { console.error(e); showToast('Error cargando profesionales', 'error'); } }
+async function loadProfs() { try { const r = await fetch(`${API_URL}/api/professionals`); const d = await r.json(); profsRegistry = d.data || []; document.querySelector('#profTable tbody').innerHTML = profsRegistry.map(p => { const safeName = escapeHtml(p.full_name); const safeDoc = escapeHtml(p.document_number); const safeSpec = escapeHtml(p.specialties?.name||'N/A'); return `<tr><td>${safeName}</td><td>${safeDoc}</td><td>${safeSpec}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-warning" onclick="alert('Editar (próximamente)')">Editar</button> <button class="btn-small btn-archive" onclick="archiveProf('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deleteProf('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`; }).join(''); fillSelects(); updateStats(); } catch (e) { console.error(e); showToast('Error cargando profesionales', 'error'); } }
 async function archiveProf(id) { if(!confirm('¿Archivar este profesional? Desaparecerá de la lista activa.')) return; try { await fetch(`${API_URL}/api/professionals/${id}/archive`, { method: 'PATCH' }); showToast('Archivado'); loadProfs(); } catch(e) { showToast('Error al archivar', 'error'); } }
 let patientsRegistry = []; // PAQUETE A: cache local para lookup en deletePatient
-async function loadPats() { try { const r = await fetch(`${API_URL}/api/patients`); const d = await r.json(); patientsRegistry = d.data || []; document.querySelector('#patTable tbody').innerHTML = patientsRegistry.map(p => { const safeName = escapeHtml(p.full_name); const safeCity = escapeHtml(p.altitude_profiles?.city_name||'N/A'); const safeFam = escapeHtml(p.family_name||'N/A'); const safePhone = escapeHtml(p.contact_phone||'N/A'); return `<tr><td>${safeName}</td><td>${safeCity}</td><td>${safeFam}</td><td>${safePhone}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-archive" onclick="archivePatient('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deletePatient('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`; }).join(''); } catch (e) { console.error(e); } }
+async function loadPats() { try { const r = await fetch(`${API_URL}/api/patients`); const d = await r.json(); patientsRegistry = d.data || []; document.querySelector('#patTable tbody').innerHTML = patientsRegistry.map(p => { const safeName = escapeHtml(p.full_name); const safeCity = escapeHtml(p.altitude_profiles?.city_name||'N/A'); const safeFam = escapeHtml(p.family_name||'N/A'); const safePhone = escapeHtml(p.contact_phone||'N/A'); return `<tr><td>${safeName}</td><td>${safeCity}</td><td>${safeFam}</td><td>${safePhone}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-archive" onclick="archivePatient('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deletePatient('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`; }).join(''); fillSelects(); updateStats(); } catch (e) { console.error(e); } }
 async function archivePatient(id) { if(!confirm('¿Archivar este paciente? Desaparecerá de la lista activa.')) return; try { await fetch(`${API_URL}/api/patients/${id}/archive`, { method: 'PATCH' }); showToast('Archivado'); loadPats(); } catch(e) { showToast('Error al archivar', 'error'); } }
 
 // AUX LOGIC
@@ -655,9 +661,8 @@ let scheduledShiftsMap = {}; // PAQUETE A: registro por id para evitar XSS en ac
 async function loadAuxScheduledShifts() { try { const r = await fetch(`${API_URL}/api/scheduled-shifts/professional/${currentUser.id}`); const d = await r.json(); const c = document.getElementById('auxScheduledList'); if (!d.data || d.data.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay turnos publicados para ti.</p>'; return; } scheduledShiftsMap = {}; c.innerHTML = d.data.map(s => { scheduledShiftsMap[s.id] = s; const safeName = escapeHtml(s.patients?.full_name||''); const safeType = escapeHtml(s.shift_type||''); const safeDate = escapeHtml(new Date(s.shift_date).toLocaleDateString('es-CO')); return `<div class="card" style="cursor:pointer; border-left: 4px solid var(--info); margin-bottom:10px;"><strong>${safeDate}</strong> - ${safeName}<br><small>Turno: ${safeType}</small><button class="btn-small btn-primary" style="margin-top:10px;" onclick="acceptShiftById('${s.id}')">Aceptar y Atender</button></div>`; }).join(''); } catch (e) { console.error(e); } }
 function acceptShiftById(shiftId) { const s = scheduledShiftsMap[shiftId]; if (!s) return showToast('Turno no encontrado', 'error'); acceptShift(s); }
 function acceptShift(s) { showToast('Turno aceptado'); selectPatient(s.patients); }
-function selectPatient(p) { selectedPatient = p; document.getElementById('patientNameStart').innerText = p.full_name; document.getElementById('auxPatientSelection').classList.add('hidden'); document.getElementById('auxShiftStart').classList.remove('hidden'); }
+function selectPatient(p) { selectedPatient = p; document.getElementById('patientNameStart').innerText = p.full_name; document.getElementById('patientNameClinical').innerText = p.full_name; document.getElementById('auxPatientSelection').classList.add('hidden'); document.getElementById('auxShiftStart').classList.remove('hidden'); }
 function startShiftTimer() { clearInterval(shiftTimerInterval); /* Oculto para el usuario, corriendo solo en backend si se necesita */ }
-async function saveClinicalRecord() { showToast('Registro guardado (simulado)'); }
 
 // PROF DYNAMIC LOGIC
 function selectProfPatient(p) { 
@@ -669,7 +674,6 @@ function selectProfPatient(p) {
     renderDynamicProfForm(currentUser.specialty_name);
 }
 function renderDynamicProfForm(specialty) {
-    // Ocultar todo por defecto
     document.getElementById('profVitalsSection').classList.add('hidden');
     document.getElementById('profSOAPSection').classList.add('hidden');
     document.getElementById('profPsychFields').classList.add('hidden');
@@ -688,9 +692,8 @@ function renderDynamicProfForm(specialty) {
     }
 }
 async function saveProfRecord() { 
-    if (!getVal('profFamName') || !getVal('profFamId')) return showToast('Datos familiar incompletos', 'error'); 
+ if (!getVal('profFamName') || !getVal('profFamId')) return showToast('Datos familiar incompletos', 'error'); 
     let payload = { patientId: selectedPatient.id, professionalId: currentUser.id, recordType: `Nota de Evolución - ${currentUser.specialty_name}` }; 
-    // Mapeo dinámico a los campos del backend (usando subjective/objective para guardar todo)
     if (currentUser.specialty_name === 'PSICOLOGIA') {
         payload.subjective = `Estado Mental: ${getVal('psychMentalState')}`;
         payload.objective = `Técnica: ${getVal('psychTechnique')}`;
@@ -705,37 +708,37 @@ async function saveProfRecord() {
         payload.objective = `Calorías: ${getVal('nutriCalories')}`;
         payload.plan = getVal('nutriPlan');
     } else {
-        // Medicina / Enfermeria
         payload.subjective = getVal('profSubjective'); payload.objective = getVal('profObjective'); payload.analysis = getVal('profAnalysis'); payload.plan = getVal('profPlan');
     }
-    try { const r = await fetch(`${API_URL}/api/professional-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }); const d = await r.json(); if (d.success) { showToast('Nota de evolución guardada'); } else { showToast(d.message || 'Error', 'error'); } } catch (e) { showToast('Error de conexión', 'error'); console.error(e); } 
+    // PAQUETE B: guardar snapshot para el PDF (incluye vitales, IMC y firmas)
+    lastProfRecordData = { ...payload, patientName: selectedPatient.full_name, profName: currentUser.full_name, specialty: currentUser.specialty_name, bp: getVal('profBP'), hr: getVal('profHR'), weight: getVal('profWeight'), height: getVal('profHeight'), imc: getVal('profIMC'), sigProf: getSigData('profSigCanvas'), sigFam: getSigData('famProfSigCanvas'), famName: getVal('profFamName'), famId: getVal('profFamId'), fecha: new Date().toLocaleString('es-CO') };
+    try { const r = await fetch(`${API_URL}/api/professional-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) }); const d = await r.json(); if (d.success) { showToast('Nota de evolución guardada'); document.getElementById('generateProfPDFBtn').classList.remove('hidden'); } else { showToast(d.message || 'Error', 'error'); } } catch (e) { showToast('Error de conexión', 'error'); console.error(e); } 
 }
 
 // FINANCE PDF BLINDADO (Nombres ocultos)
 async function calculateInvoice() { 
     const patId = getVal('invoicePatient'); if (!patId) return showToast('Selecciona un paciente', 'error'); 
-    const month = getVal('invoiceMonth') || '01'; const year = getVal('invoiceYear') || new Date().getFullYear(); // PAQUETE A: usar mes/año reales del formulario
+    const month = getVal('invoiceMonth') || '01'; const year = getVal('invoiceYear') || new Date().getFullYear();
     try { const r = await fetch(`${API_URL}/api/finance/invoice/${patId}/${month}/${year}`); const d = await r.json(); if (d.success) { lastInvoiceData = { ...d.data, _month: month, _year: year }; renderInvoice(lastInvoiceData); } else { showToast(d.message || 'Error al generar', 'error'); } } catch (e) { showToast('Error de conexión', 'error'); console.error(e); } 
 }
 function renderInvoice(data) { 
     const container = document.getElementById('invoiceResult'); container.classList.remove('hidden'); 
-    const mesNombre = MESES_ES[data._month] || ''; // PAQUETE A: período real dinámico
-    // Ocultamos la columna de auxiliares reemplazándola por "Equipo Vital Hogar"
+    const mesNombre = MESES_ES[data._month] || '';
     let detailsHtml = data.details.map(d => `<tr><td>${escapeHtml(d.date)}</td><td>${escapeHtml(d.service)}</td><td>Equipo Vital Hogar</td><td>${formatCurrency(d.amount)}</td></tr>`).join(''); 
     container.innerHTML = `<h4 style="color: var(--primary);">Cuenta de Cobro Generada</h4><p style="color:#94a3b8; font-size:0.9rem; margin:5px 0 15px;">Período: ${mesNombre} ${data._year}</p><table><thead><tr><th>Fecha</th><th>Servicio Prestado</th><th>Personal Asignado</th><th>Valor</th></tr></thead><tbody>${detailsHtml}</tbody></table><div style="margin-top: 15px; text-align: right;"><h3 style="color: var(--primary);">Total a Pagar: ${formatCurrency(data.totalAmount)}</h3><button class="btn-primary btn-warning" style="margin-top: 10px; width: auto; display: inline-block;" onclick="generateInvoicePDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button></div>`; 
 }
-function generateInvoicePDF() { if (!lastInvoiceData) return; const { jsPDF } = window.jspdf; const doc = new jsPDF(); const patName = document.getElementById('invoicePatient').selectedOptions[0].text; const mesNombre = MESES_ES[lastInvoiceData._month] || ''; const periodoTexto = `${mesNombre} ${lastInvoiceData._year}`; // PAQUETE A: período real dinámico
+function generateInvoicePDF() { if (!lastInvoiceData) return; const { jsPDF } = window.jspdf; const doc = new jsPDF(); const patName = document.getElementById('invoicePatient').selectedOptions[0].text; const mesNombre = MESES_ES[lastInvoiceData._month] || ''; const periodoTexto = `${mesNombre} ${lastInvoiceData._year}`;
     try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {} doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center"); doc.setFontSize(12); doc.setTextColor(0); doc.text("Cuenta de Cobro", 105, 30, null, null, "center"); doc.text(`Paciente: ${patName}`, 14, 45); doc.text(`Periodo: ${periodoTexto}`, 14, 52); const tableData = lastInvoiceData.details.map(d => [d.date, d.service, "Equipo Vital Hogar", formatCurrency(d.amount)]); doc.autoTable({ startY: 60, head: [['Fecha', 'Servicio Prestado', 'Personal Asignado', 'Valor']], body: tableData, headStyles: { fillColor: [34, 197, 94] } }); let finalY = doc.lastAutoTable.finalY + 10; doc.setFontSize(14); doc.setTextColor(34, 197, 94); doc.text(`Total: ${formatCurrency(lastInvoiceData.totalAmount)}`, 14, finalY); doc.save(`Cuenta_Cobro_${patName}_${lastInvoiceData._month}_${lastInvoiceData._year}.pdf`); showToast('PDF generado'); }
 
 // Signature Canvas Helper
-function initSigCanvas(id) { const c = document.getElementById(id); if (!c) return; let w = c.offsetWidth > 0 ? c.offsetWidth : 400; c.width = w; c.height = 150; const ctx = c.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height); ctx.strokeStyle = '#000000'; ctx.lineWidth = 2; ctx.lineCap = 'round'; let drawing = false; const getPos = (e) => { const r = c.getBoundingClientRect(); const x = (e.touches && e.touches.length > 0) ? e.touches[0].clientX - r.left : e.clientX - r.left; const y = (e.touches && e.touches.length > 0) ? e.touches[0].clientY - r.top : e.clientY - r.top; return { x, y }; }; const start = (e) => { e.preventDefault(); drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }; const move = (e) => { if (!drawing) return; e.preventDefault(); const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }; const end = () => { drawing = false; }; c.onmousedown = start; c.onmousemove = move; c.onmouseup = end; c.onmouseleave = end; c.ontouchstart = start; c.ontouchmove = move; c.ontouchend = end; }
-function clearSig(id) { const c = document.getElementById(id); const ctx = c.getContext('2d'); ctx.fillStyle = 'white'; ctx.fillRect(0, 0, c.width, c.height); }
+function initSigCanvas(id) { const c = document.getElementById(id); if (!c) return; let w = c.offsetWidth > 0 ? c.offsetWidth : 400; c.width = w; c.height = 150; const ctx = c.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height); ctx.strokeStyle = '#000000'; ctx.lineWidth = 2; ctx.lineCap = 'round'; let drawing = false; const getPos = (e) => { const r = c.getBoundingClientRect(); const x = (e.touches && e.touches.length > 0) ? e.touches[0].clientX - r.left : e.clientX - r.left; const y = (e.touches && e.touches.length > 0) ? e.touches[0].clientY - r.top : e.clientY - r.top; return { x, y }; }; const start = (e) => { e.preventDefault(); drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }; const move = (e) => { if (!drawing) return; e.preventDefault(); sigHasInk[id] = true; const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }; const end = () => { drawing = false; }; c.onmousedown = start; c.onmousemove = move; c.onmouseup = end; c.onmouseleave = end; c.ontouchstart = start; c.ontouchmove = move; c.ontouchend = end; }
+function clearSig(id) { const c = document.getElementById(id); const ctx = c.getContext('2d'); ctx.fillStyle = 'white'; ctx.fillRect(0, 0, c.width, c.height); sigHasInk[id] = false; }
+function getSigData(id) { if (!sigHasInk[id]) return null; try { return document.getElementById(id).toDataURL('image/jpeg', 0.8); } catch(e) { return null; } }
 
 document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('loginBtn').addEventListener('click', login);
     const p = document.getElementById('patCity'); if (p) { Object.keys(CIUDADES_COLOMBIA).forEach(c => { p.innerHTML += `<option value="${c}">${c}</option>`; }); }
     if (localStorage.getItem('vital_user')) initApp();
-    // PAQUETE A: bind del botón del modal de confirmación
     const confirmBtn = document.getElementById('confirmModalBtn');
     if (confirmBtn) confirmBtn.addEventListener('click', () => {
         if (typeof _confirmModalCallback === 'function') { const cb = _confirmModalCallback; closeConfirmModal(); cb(); }
@@ -808,7 +811,6 @@ async function deleteProf(id) {
         }
     });
 }
-
 async function deletePatient(id) {
     const pat = patientsRegistry.find(p => p.id === id);
     if (!pat) return showToast('Paciente no encontrado', 'error');
@@ -827,6 +829,614 @@ async function deletePatient(id) {
             } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
         }
     });
+}
+
+/* ============================================================
+   === PAQUETE B: Funciones reconstruidas (faltaban en el código) ===
+   ============================================================ */
+
+// ---------- HELPERS GENERALES ----------
+function fillSelects() {
+    const pats = patientsRegistry.filter(p => p.is_active !== false);
+    const profs = profsRegistry.filter(p => p.is_active !== false);
+    const setOpts = (id, arr, labelFn) => { const el = document.getElementById(id); if (!el) return; const cur = el.value; el.innerHTML = '<option value="">Seleccionar...</option>' + arr.map(x => `<option value="${x.id}">${escapeHtml(labelFn(x))}</option>`).join(''); el.value = cur; };
+    setOpts('reportPatient', pats, p => p.full_name);
+    setOpts('invoicePatient', pats, p => p.full_name);
+    setOpts('schedPatient', pats, p => p.full_name);
+    setOpts('liquidationProf', profs, p => p.full_name);
+    setOpts('schedProf', profs, p => p.full_name);
+    setOpts('eduResp', profs, p => p.full_name);
+}
+
+function updateStats() {
+    const patCount = patientsRegistry.filter(p => p.is_active !== false).length;
+    const profCount = profsRegistry.filter(p => p.is_active !== false).length;
+    const elPat = document.getElementById('statPat'); if (elPat) elPat.textContent = patCount;
+    const elProf = document.getElementById('statProf'); if (elProf) elProf.textContent = profCount;
+    fetch(`${API_URL}/api/clinical-records`).then(r => r.json()).then(d => {
+        const n = (d.data || []).length;
+        const elRep = document.getElementById('statReports'); if (elRep) elRep.textContent = n;
+        initAdminChart([patCount, profCount, n]);
+    }).catch(() => { initAdminChart([patCount, profCount, 0]); });
+}
+
+function initAdminChart(values) {
+    const ctx = document.getElementById('adminDashboardChart');
+    if (!ctx || !window.Chart) return;
+    if (window._adminChart) window._adminChart.destroy();
+    window._adminChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: ['Pacientes', 'Profesionales', 'Registros'], datasets: [{ data: values, backgroundColor: ['#22c55e', '#3b82f6', '#f59e0b'], borderRadius: 8 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, x: { ticks: { color: '#94a3b8' }, grid: { display: false } } } }
+    });
+}
+
+// ---------- ADMIN: CREAR PROFESIONAL / PACIENTE / EDUCACIÓN ----------
+async function createProf() {
+    const fullName = getVal('pName').trim(), doc = getVal('pDoc').trim(), email = getVal('pEmail').trim(), pass = getVal('pPass');
+    if (!fullName || !doc || !email || !pass) return showToast('Completa: nombre, cédula, correo y contraseña', 'error');
+    try {
+        const r = await fetch(`${API_URL}/api/professionals`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fullName, documentNumber: doc, professionalCard: getVal('pCard'), email, password: pass, specialtyCode: getVal('pSpec') }) });
+        const d = await r.json();
+        if (d.success) { showToast('✅ Profesional creado'); ['pName','pDoc','pCard','pEmail','pPass'].forEach(i => document.getElementById(i).value = ''); loadProfs(); }
+        else showToast(d.message || 'Error al crear', 'error');
+    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+}
+
+async function createPat() {
+    const fullName = getVal('patName').trim(), doc = getVal('patDoc').trim();
+    if (!fullName || !doc) return showToast('Completa: nombre y cédula', 'error');
+    try {
+        const r = await fetch(`${API_URL}/api/patients`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fullName, documentNumber: doc, city: getVal('patCity'), familyName: getVal('famName'), contactPhone: getVal('famCel'), cie10: getVal('patCie'), eps: getVal('patEps'), authNumber: getVal('patAuth') }) });
+        const d = await r.json();
+        if (d.success) { showToast('✅ Paciente creado'); ['patName','patDoc','famName','famCel','patCie','patEps','patAuth'].forEach(i => document.getElementById(i).value = ''); loadPats(); }
+        else showToast(d.message || 'Error al crear', 'error');
+    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+}
+
+async function createEdu() {
+    const title = getVal('eduTitle').trim();
+    if (!title) return showToast('Escribe el título del tema', 'error');
+    try {
+        const r = await fetch(`${API_URL}/api/educational-topics`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title, description: getVal('eduDesc'), responsibleId: getVal('eduResp') || null }) });
+        const d = await r.json();
+        if (d.success) { showToast('✅ Tema educativo guardado'); document.getElementById('eduTitle').value = ''; document.getElementById('eduDesc').value = ''; loadEduList(); }
+        else showToast(d.message || 'Error al guardar', 'error');
+    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+}
+
+async function loadEduList() {
+    try {
+        const r = await fetch(`${API_URL}/api/educational-topics`); const d = await r.json();
+        const list = d.data || [];
+        document.getElementById('eduList').innerHTML = list.length ? list.map(t => {
+            const resp = profsRegistry.find(p => p.id === t.responsible_id || p.id === t.responsibleId);
+            return `<div class="sub-activity"><strong>${escapeHtml(t.title)}</strong><br><small>${escapeHtml(t.description || '')}</small><br><small style="color:#94a3b8;">👤 ${escapeHtml(resp ? resp.full_name : 'Sin asignar')}</small></div>`;
+        }).join('') : '<p style="color:#94a3b8;">No hay temas registrados.</p>';
+    } catch (e) { console.error(e); }
+}
+
+// ---------- ADMIN: AGENDA ----------
+async function createScheduledShift() {
+    const date = getVal('schedDate'), patId = getVal('schedPatient'), profId = getVal('schedProf');
+    if (!date || !patId || !profId) return showToast('Completa: fecha, paciente y profesional', 'error');
+    try {
+        const r = await fetch(`${API_URL}/api/scheduled-shifts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shiftDate: date, patientId: patId, professionalId: profId, shiftType: getVal('schedType') }) });
+        const d = await r.json();
+        if (d.success) { showToast('✅ Turno publicado'); loadScheduledShiftsAdmin(); }
+        else showToast(d.message || 'Error al publicar', 'error');
+    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+}
+
+async function loadScheduledShiftsAdmin() {
+    try {
+        const r = await fetch(`${API_URL}/api/scheduled-shifts`); const d = await r.json();
+        const list = d.data || [];
+        document.querySelector('#schedTable tbody').innerHTML = list.length ? list.map(s => {
+            const safeDate = escapeHtml(new Date(s.shift_date || s.shiftDate).toLocaleDateString('es-CO'));
+            const safePat = escapeHtml(s.patients?.full_name || s.patientName || 'N/A');
+            const safeProf = escapeHtml(s.professionals?.full_name || s.professionalName || 'N/A');
+            const safeType = escapeHtml(s.shift_type || s.shiftType || '');
+            const safeStatus = escapeHtml(s.status || (s.is_accepted ? 'Aceptado' : 'Pendiente'));
+            return `<tr><td>${safeDate}</td><td>${safePat}</td><td>${safeProf}</td><td>${safeType}</td><td>${safeStatus}</td></tr>`;
+        }).join('') : '<tr><td colspan="5" style="text-align:center; color:#94a3b8;">No hay turnos publicados</td></tr>';
+    } catch (e) { console.error(e); }
+}
+
+// ---------- ADMIN: FINANZAS ----------
+async function loadFinanceData() {
+    try { const r = await fetch(`${API_URL}/api/finance/params`); const d = await r.json(); const p = d.data; if (p) { if (p.year) document.getElementById('finYear').value = p.year; if (p.smmlv) document.getElementById('finSmmlv').value = p.smmlv; if (p.transport_subsidy) document.getElementById('finSubsidy').value = p.transport_subsidy; if (p.night_pct) document.getElementById('finNightPct').value = p.night_pct; if (p.sunday_pct) document.getElementById('finSunPct').value = p.sunday_pct; } } catch (e) {}
+    try { const r = await fetch(`${API_URL}/api/finance/tariffs`); const d = await r.json(); const t = d.data; if (t) { Object.keys(t).forEach(k => { const el = document.getElementById('t_' + k); if (el && t[k]) el.value = t[k]; }); } } catch (e) {}
+}
+
+async function saveFinanceParams() {
+    if (!getVal('finSmmlv')) return showToast('Ingresa el SMMLV', 'error');
+    try {
+        const r = await fetch(`${API_URL}/api/finance/params`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ year: getVal('finYear'), smmlv: Number(getVal('finSmmlv')), transport_subsidy: Number(getVal('finSubsidy')), night_pct: Number(getVal('finNightPct')), sunday_pct: Number(getVal('finSunPct')) }) });
+        const d = await r.json();
+        if (d.success) showToast('✅ Parámetros guardados'); else showToast(d.message || 'Error', 'error');
+    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+}
+
+async function saveClientTariffs() {
+    const keys = ['6h_diurno','6h_nocturno','8h_diurno','8h_nocturno','12h_diurno','12h_nocturno','24h'];
+    const tariffs = {}; keys.forEach(k => tariffs[k] = Number(getVal('t_' + k)) || 0);
+    try {
+        const r = await fetch(`${API_URL}/api/finance/tariffs`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tariffs) });
+        const d = await r.json();
+        if (d.success) showToast('✅ Tarifas guardadas'); else showToast(d.message || 'Error', 'error');
+    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+}
+
+async function calculateLiquidation() {
+    const profId = getVal('liquidationProf');
+    if (!profId) return showToast('Selecciona un profesional', 'error');
+    const month = getVal('liquidationMonth') || '01', year = getVal('liquidationYear') || new Date().getFullYear();
+    try {
+        const r = await fetch(`${API_URL}/api/finance/liquidation/${profId}/${month}/${year}`); const d = await r.json();
+        if (d.success) { lastLiquidationData = { ...d.data, _month: month, _year: year }; renderLiquidation(lastLiquidationData); }
+        else showToast(d.message || 'Error al calcular', 'error');
+    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+}
+
+function renderLiquidation(data) {
+    const c = document.getElementById('liquidationResult'); c.classList.remove('hidden');
+    const mesNombre = MESES_ES[data._month] || '';
+    const rows = (data.details || []).map(x => `<tr><td>${escapeHtml(x.date || '')}</td><td>${escapeHtml(x.description || x.shiftType || '')}</td><td>${formatCurrency(x.amount)}</td></tr>`).join('');
+    c.innerHTML = `<h4 style="color: var(--primary);">Liquidación Generada</h4><p style="color:#94a3b8; font-size:0.9rem;">Período: ${mesNombre} ${data._year}</p><table><thead><tr><th>Fecha</th><th>Concepto</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table><div style="margin-top: 15px; text-align: right;"><h3 style="color: var(--primary);">Total: ${formatCurrency(data.totalAmount)}</h3><button class="btn-primary btn-warning" style="margin-top: 10px; width: auto; display: inline-block;" onclick="generateLiquidationPDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button></div>`;
+}
+
+function generateLiquidationPDF() {
+    if (!lastLiquidationData) return;
+    const { jsPDF } = window.jspdf; const doc = new jsPDF();
+    const profName = document.getElementById('liquidationProf').selectedOptions[0].text;
+    const mesNombre = MESES_ES[lastLiquidationData._month] || '';
+    try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
+    doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
+    doc.setFontSize(12); doc.setTextColor(0); doc.text("Liquidación de Honorarios", 105, 30, null, null, "center");
+    doc.text(`Profesional: ${profName}`, 14, 45); doc.text(`Periodo: ${mesNombre} ${lastLiquidationData._year}`, 14, 52);
+    const rows = (lastLiquidationData.details || []).map(x => [x.date || '', x.description || x.shiftType || '', formatCurrency(x.amount)]);
+    doc.autoTable({ startY: 60, head: [['Fecha', 'Concepto', 'Valor']], body: rows, headStyles: { fillColor: [34, 197, 94] } });
+    const finalY = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(14); doc.setTextColor(34, 197, 94); doc.text(`Total: ${formatCurrency(lastLiquidationData.totalAmount)}`, 14, finalY);
+    doc.save(`Liquidacion_${profName}_${lastLiquidationData._month}_${lastLiquidationData._year}.pdf`);
+    showToast('PDF generado');
+}
+
+// ---------- ADMIN: INFORME MENSUAL PDF ----------
+async function generateMonthlyPDF() {
+    const patId = getVal('reportPatient');
+    if (!patId) return showToast('Selecciona un paciente', 'error');
+    const sig = getSigData('adminSigCanvas');
+    if (!sig) return showToast('⚠️ Debes firmar antes de generar el PDF', 'warning');
+    const month = getVal('reportMonth') || '01', year = getVal('reportYear') || new Date().getFullYear();
+    const status = document.getElementById('pdfStatus');
+    status.textContent = '⏳ Generando informe...';
+    try {
+        const r = await fetch(`${API_URL}/api/reports/monthly/${patId}/${month}/${year}`); const d = await r.json();
+        if (!d.success) { status.textContent = ''; return showToast(d.message || 'Error al obtener datos', 'error'); }
+        const { jsPDF } = window.jspdf; const doc = new jsPDF();
+        const patName = d.data.patient?.full_name || 'Paciente';
+        const mesNombre = MESES_ES[month] || '';
+        try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
+        doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
+        doc.setFontSize(12); doc.setTextColor(0); doc.text("Informe Mensual Consolidado", 105, 30, null, null, "center");
+        doc.text(`Paciente: ${patName}`, 14, 45); doc.text(`Periodo: ${mesNombre} ${year}`, 14, 52);
+        const rows = (d.data.records || []).map(rec => [ (rec.record_date || rec.created_at || '').slice(0, 10), rec.record_type || 'Registro', String(rec.subjective || rec.notes || '').slice(0, 80) ]);
+        doc.autoTable({ startY: 60, head: [['Fecha', 'Tipo', 'Resumen']], body: rows, headStyles: { fillColor: [34, 197, 94] }, styles: { fontSize: 8 } });
+        let y = doc.lastAutoTable.finalY + 15;
+        if (y > 240) { doc.addPage(); y = 30; }
+        try { doc.addImage(sig, 'JPEG', 40, y, 60, 25); } catch(e) {}
+        doc.setFontSize(9); doc.setTextColor(80); doc.text('Firma del Profesional Validador', 70, y + 30, null, null, 'center');
+        doc.save(`Informe_Mensual_${patName}_${month}_${year}.pdf`);
+        status.textContent = '✅ Informe generado y firmado';
+        showToast('PDF generado');
+    } catch (e) { console.error(e); status.textContent = ''; showToast('Error de conexión', 'error'); }
+}
+
+// ---------- CHAT (ADMIN Y AUXILIAR) ----------
+function renderMessages(containerId, msgs, myId) {
+    const box = document.getElementById(containerId); if (!box) return;
+    box.innerHTML = msgs.map(m => {
+        const mine = (m.sender_id === myId || m.senderId === myId);
+        const cls = m.type === 'alert' ? 'alert' : (mine ? 'me' : 'them');
+        const hora = new Date(m.created_at || m.createdAt || Date.now()).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+        return `<div class="message-bubble ${cls}">${escapeHtml(m.content || m.message || '')}<small>${escapeHtml(m.sender_name || m.senderName || '')} · ${hora}</small></div>`;
+    }).join('');
+    box.scrollTop = box.scrollHeight;
+}
+
+async function loadAdminMessages() {
+    try {
+        const r = await fetch(`${API_URL}/api/messages?scope=admin`); const d = await r.json();
+        const msgs = d.data || [];
+        if (msgs.length !== lastMessageCount) { lastMessageCount = msgs.length; renderMessages('adminMessageList', msgs, currentUser.id); }
+    } catch (e) { console.error(e); }
+}
+
+async function sendAdminMessage() {
+    const input = document.getElementById('adminMsgInput');
+    const content = input.value.trim();
+    if (!content) return;
+    try {
+        await fetch(`${API_URL}/api/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ senderId: currentUser.id, senderName: currentUser.full_name, scope: 'admin', content }) });
+        input.value = ''; loadAdminMessages();
+    } catch (e) { console.error(e); showToast('Error enviando mensaje', 'error'); }
+}
+
+async function loadAuxMessages() {
+    try {
+        const r = await fetch(`${API_URL}/api/messages?scope=aux&professionalId=${currentUser.id}`); const d = await r.json();
+        renderMessages('auxMessageList', d.data || [], currentUser.id);
+    } catch (e) { console.error(e); }
+}
+
+async function sendAuxMessage() {
+    const input = document.getElementById('auxMsgInput');
+    const content = input.value.trim();
+    if (!content) return;
+    try {
+        await fetch(`${API_URL}/api/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ senderId: currentUser.id, senderName: currentUser.full_name, scope: 'aux', professionalId: currentUser.id, content }) });
+        input.value = ''; loadAuxMessages();
+    } catch (e) { console.error(e); showToast('Error enviando mensaje', 'error'); }
+}
+
+function toggleAuxChat() {
+    const body = document.getElementById('auxChatBody');
+    const icon = document.getElementById('chatToggleIcon');
+    body.style.display = body.style.display === 'none' ? 'block' : 'none';
+    icon.className = body.style.display === 'none' ? 'fas fa-chevron-up' : 'fas fa-chevron-down';
+    if (body.style.display !== 'none') loadAuxMessages();
+}
+
+async function reportAdverseEvent() {
+    const desc = prompt('⚠️ Describe el EVENTO ADVERSO ocurrido (será reportado a coordinación inmediatamente):');
+    if (!desc || !desc.trim()) return;
+    try {
+        await fetch(`${API_URL}/api/adverse-events`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patientId: selectedPatient?.id, professionalId: currentUser.id, description: desc.trim(), shiftId: currentShiftId }) });
+        await fetch(`${API_URL}/api/messages`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ senderId: currentUser.id, senderName: currentUser.full_name, scope: 'aux', professionalId: currentUser.id, content: `🚨 EVENTO ADVERSO: ${desc.trim()}`, type: 'alert' }) });
+        showToast('🚨 Evento adverso reportado a coordinación', 'warning');
+    } catch (e) { console.error(e); showToast('Error reportando evento', 'error'); }
+}
+
+// ---------- AUXILIAR: LISTA PACIENTES ----------
+async function loadAuxPatients() {
+    try {
+        const r = await fetch(`${API_URL}/api/patients`); const d = await r.json();
+        const active = (d.data || []).filter(p => p.is_active !== false);
+        document.getElementById('auxPatientList').innerHTML = active.length ? active.map(p => {
+            const safeName = escapeHtml(p.full_name);
+            const safeCity = escapeHtml(p.altitude_profiles?.city_name || '');
+            return `<div class="patient-card" onclick='selectPatient(${JSON.stringify(p).replace(/'/g, "&#39;")})'><strong>🧑 ${safeName}</strong><br><small>📍 ${safeCity || 'Sin ciudad'} · EPS: ${escapeHtml(p.eps || 'N/A')}</small></div>`;
+        }).join('') : '<p style="color:#94a3b8; text-align:center;">No hay pacientes activos.</p>';
+    } catch (e) { console.error(e); showToast('Error cargando pacientes', 'error'); }
+}
+
+// ---------- AUXILIAR: FLUJO DE TURNO ----------
+function toggleCustomShift() { document.getElementById('customShiftTimes').classList.toggle('hidden', getVal('shiftType') !== 'personalizado'); }
+
+async function startShift() {
+    if (!selectedPatient) return showToast('Selecciona un paciente primero', 'error');
+    const shiftType = getVal('shiftType');
+    if (shiftType === 'personalizado' && (!getVal('customStartTime') || !getVal('customEndTime'))) return showToast('Define hora de inicio y fin', 'error');
+    try {
+        const r = await fetch(`${API_URL}/api/shifts`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ patientId: selectedPatient.id, professionalId: currentUser.id, shiftType, customStartTime: getVal('customStartTime'), customEndTime: getVal('customEndTime'), receivedStatus: getVal('patientReceivedStatus'), receivedNotes: getVal('patientReceivedNotes') }) });
+        const d = await r.json();
+        if (d.success) {
+            currentShiftId = d.data?.id || null;
+            shiftStartTime = new Date();
+            lastShiftData = { start: { paciente: selectedPatient.full_name, auxiliar: currentUser.full_name, tipo: shiftType, recepcion: getVal('patientReceivedStatus'), notasRecepcion: getVal('patientReceivedNotes'), fecha: shiftStartTime.toLocaleString('es-CO') } };
+            showToast('✅ Turno iniciado');
+            document.getElementById('auxShiftStart').classList.add('hidden');
+            document.getElementById('auxClinicalForm').classList.remove('hidden');
+            ['auxSigCanvas','famSigCanvas','leaveSigCanvas'].forEach(initSigCanvas);
+            startShiftTimer();
+            renderDailyHistory();
+        } else showToast(d.message || 'Error al iniciar turno', 'error');
+    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+}
+
+// --- Formulario clínico: escalas y vitales ---
+function setVitalUI(inputId, alertId, cls, text) {
+    const inp = document.getElementById(inputId); const al = document.getElementById(alertId);
+    if (!inp || !al) return;
+    inp.className = ''; if (cls === 'normal') inp.classList.add('vital-normal'); if (cls === 'warning') inp.classList.add('vital-warning'); if (cls === 'danger') inp.classList.add('vital-danger');
+    al.className = `vital-status show ${cls}`; al.textContent = text;
+}
+
+function checkVital(type) {
+    const spo2Min = selectedPatient?.altitude_profiles?.spo2_min || CIUDADES_COLOMBIA[selectedPatient?.altitude_profiles?.city_name || 'Cúcuta']?.spo2_min || 96;
+    if (type === 'bp') {
+        const parts = getVal('bloodPressure').split('/');
+        const s = parseInt(parts[0]), di = parseInt(parts[1]);
+        if (!s || !di) { document.getElementById('bpAlert').className = 'vital-status'; return; }
+        if (s >= 90 && s <= 130 && di >= 60 && di <= 85) setVitalUI('bloodPressure', 'bpAlert', 'normal', '✅ PA Normal');
+        else if (s <= 140 && di <= 90 && s >= 85 && di >= 55) setVitalUI('bloodPressure', 'bpAlert', 'warning', '⚠️ PA al límite - vigilar');
+        else setVitalUI('bloodPressure', 'bpAlert', 'danger', '🚨 PA Fuera de rango - notificar');
+    } else if (type === 'hr') {
+        const v = Number(getVal('heartRate')); if (!v) return;
+        if (v >= 60 && v <= 100) setVitalUI('heartRate', 'hrAlert', 'normal', '✅ FC Normal');
+        else if ((v >= 50 && v < 60) || (v > 100 && v <= 120)) setVitalUI('heartRate', 'hrAlert', 'warning', '⚠️ FC alterada - vigilar');
+        else setVitalUI('heartRate', 'hrAlert', 'danger', '🚨 FC Crítica - notificar');
+    } else if (type === 'rr') {
+        const v = Number(getVal('respiratoryRate')); if (!v) return;
+        if (v >= 12 && v <= 20) setVitalUI('respiratoryRate', 'rrAlert', 'normal', '✅ FR Normal');
+        else if ((v >= 10 && v < 12) || (v > 20 && v <= 24)) setVitalUI('respiratoryRate', 'rrAlert', 'warning', '⚠️ FR alterada');
+        else setVitalUI('respiratoryRate', 'rrAlert', 'danger', '🚨 FR Crítica - notificar');
+    } else if (type === 'temp') {
+        const v = parseFloat(getVal('temperature')); if (!v) return;
+        if (v >= 35.5 && v <= 37.5) setVitalUI('temperature', 'tempAlert', 'normal', '✅ Temp Normal');
+        else if (v > 37.5 && v <= 38.5) setVitalUI('temperature', 'tempAlert', 'warning', '⚠️ Febrícula');
+        else setVitalUI('temperature', 'tempAlert', 'danger', '🚨 Temp Crítica - notificar');
+    } else if (type === 'spo2') {
+        const v = Number(getVal('spo2')); if (!v) return;
+        if (v >= spo2Min) setVitalUI('spo2', 'spo2Alert', 'normal', '✅ Oxigenación OK');
+        else if (v >= spo2Min - 2) setVitalUI('spo2', 'spo2Alert', 'warning', '⚠️ SpO2 baja - vigilar');
+        else setVitalUI('spo2', 'spo2Alert', 'danger', '🚨 Hipoxemia - notificar YA');
+    } else if (type === 'glu') {
+        const v = Number(getVal('glucose')); if (!v) return;
+        if (v >= 70 && v <= 110) setVitalUI('glucose', 'gluAlert', 'normal', '✅ Glucosa Normal');
+        else if ((v > 110 && v <= 180) || (v >= 60 && v < 70)) setVitalUI('glucose', 'gluAlert', 'warning', '⚠️ Glucosa alterada');
+        else setVitalUI('glucose', 'gluAlert', 'danger', v < 60 ? '🚨 HIP OGLUCEMIA - urgente' : '🚨 HIPERGLUCEMIA - notificar');
+    }
+}
+
+function updateEVA() {
+    const v = Number(getVal('evaScore'));
+    const textos = { 0: 'Sin dolor', 1: 'Leve', 2: 'Leve', 3: 'Leve', 4: 'Moderado', 5: 'Moderado', 6: 'Moderado', 7: 'Intenso', 8: 'Intenso', 9: 'Intenso', 10: 'Máximo posible' };
+    document.getElementById('evaValue').textContent = `${v} - ${textos[v]}`;
+}
+
+function calculateGlasgow() {
+    const e = Number(getVal('glasgowEyes')) || 0, v = Number(getVal('glasgowVerbal')) || 0, m = Number(getVal('glasgowMotor')) || 0;
+    const total = e + v + m; const box = document.getElementById('glasgowTotal');
+    let cls = 'normal', txt = 'Normal';
+    if (total <= 8) { cls = 'severe'; txt = 'Lesión grave'; } else if (total <= 12) { cls = 'moderate'; txt = 'Lesión moderada'; } else if (total <= 14) { cls = 'mild'; txt = 'Lesión leve'; }
+    box.className = `glasgow-total ${cls}`; box.innerHTML = `<h3>${total}/15</h3><p>${txt}</p>`;
+}
+
+function calculateBraden() {
+    const ids = ['bradenSensory','bradenMoisture','bradenActivity','bradenMobility','bradenNutrition','bradenFriction'];
+    const total = ids.reduce((s, id) => s + (Number(getVal(id)) || 0), 0);
+    const box = document.getElementById('bradenTotal');
+    let cls = 'risk-none', txt = 'Sin riesgo';
+    if (total <= 12) { cls = 'risk-high'; txt = 'Riesgo ALTO'; } else if (total <= 14) { cls = 'risk-moderate'; txt = 'Riesgo moderado'; } else if (total <= 17) { cls = 'risk-mild'; txt = 'Riesgo leve'; }
+    box.className = `braden-total ${cls}`; box.innerHTML = `<h3>${total}/24</h3><p>${txt}</p>`;
+}
+
+function toggleAccordion(header) { header.nextElementSibling.classList.toggle('open'); }
+function toggleSubFields(key, cb) { document.getElementById('fields-' + key).classList.toggle('show', cb.checked); }
+
+function addMeal() {
+    const div = document.createElement('div');
+    div.className = 'sub-activity meal-row';
+    div.innerHTML = '<div class="sub-activity-header"><strong>🍽️ Comida</strong><input type="time" class="meal-time" style="width:auto; margin:0;"><button class="btn-small btn-danger" onclick="this.closest(\'.meal-row\').remove()">✕</button></div>' +
+        '<div class="form-group"><label>Tipo</label><select class="meal-type"><option>Desayuno</option><option>Almuerzo</option><option>Cena</option><option>Merienda</option></select></div>' +
+        '<div class="form-group"><label>Aceptación</label><select class="meal-accept"><option>Completa</option><option>Parcial</option><option>Rechazó</option></select></div>' +
+        '<div class="form-group"><label>Detalle</label><input type="text" class="meal-detail" placeholder="Observaciones..."></div>';
+    document.getElementById('mealList').appendChild(div);
+}
+
+function addMedication() {
+    const div = document.createElement('div');
+    div.className = 'med-item med-row';
+    div.innerHTML = '<input type="text" class="med-name" placeholder="Medicamento">' +
+        '<input type="text" class="med-dose" placeholder="Dosis">' +
+        '<input type="time" class="med-time">' +
+        '<select class="med-route"><option value="oral">Oral</option><option value="iv">IV</option><option value="im">IM</option><option value="sc">Subcutánea</option><option value="topica">Tópica</option></select>' +
+        '<button class="btn-small btn-danger" onclick="this.parentElement.remove()">✕</button>';
+    document.getElementById('medList').appendChild(div);
+}
+
+function toggleLeaveDetails(cb) { document.getElementById('leaveDetails').classList.toggle('hidden', !cb.checked); }
+
+function startDictation(targetId) {
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) return showToast('Tu navegador no soporta dictado por voz', 'warning');
+    try {
+        const rec = new SR();
+        rec.lang = 'es-CO'; rec.interimResults = false;
+        rec.onresult = (e) => { const txt = e.results[0][0].transcript; const el = document.getElementById(targetId); el.value = (el.value ? el.value + ' ' : '') + txt; showToast('🎙️ Dictado agregado'); };
+        rec.onerror = () => showToast('Error en el dictado', 'error');
+        rec.start();
+        showToast('🎙️ Escuchando... habla ahora', 'success');
+    } catch (e) { showToast('No se pudo iniciar el micrófono', 'error'); }
+}
+
+// --- Guardar registro clínico ---
+function collectActivities() {
+    const sub = (cbId, label, timeId, fields) => {
+        const cb = document.getElementById(cbId);
+        if (!cb || !cb.checked) return null;
+        const d = { label, time: getVal(timeId) };
+        fields.forEach(f => d[f] = getVal(f));
+        return d;
+    };
+    return [
+        sub('actBath', 'Baño', 'actBathTime', ['bathType']),
+        sub('actOralHygiene', 'Higiene Bucal', 'actOralTime', ['oralType']),
+        sub('actBedClothes', 'Cambio Ropa de Cama', 'actBedClothesTime', ['actBedClothesObs']),
+        sub('actRoomClean', 'Aseo del Espacio', 'actRoomCleanTime', ['actRoomCleanObs']),
+        sub('actWaste', 'Eliminación de Residuos', 'actWasteTime', ['actWasteObs']),
+        sub('actCompanion', 'Acompañamiento Terapéutico', 'actCompanionTime', ['actCompanionObs']),
+        sub('actEnteralFood', 'Alimentación Enteral', 'actEnteralFoodTime', ['enteralFormula', 'enteralVol']),
+        sub('actParenteralFood', 'Nutrición Parenteral', 'actParenteralFoodTime', ['parenteralFormula', 'parenteralVol']),
+        sub('actHydration', 'Hidratación', 'actHydrationTime', ['hydrationMl']),
+        sub('actWound', 'Curación', 'actWoundTime', ['woundState']),
+        sub('actOxygen', 'Oxigenoterapia', 'actOxygenTime', ['oxygenLpm', 'oxygenDevice']),
+        sub('actPosition', 'Cambio Postural', 'actPositionTime', ['positionType']),
+        sub('actWalking', 'Deambulación', 'actWalkingTime', ['walkingDistance', 'walkingHelp'])
+    ].filter(Boolean);
+}
+
+async function saveClinicalRecord() {
+    if (!selectedPatient) return showToast('No hay paciente seleccionado', 'error');
+    const mealsData = [...document.querySelectorAll('.meal-row')].map(row => ({ time: row.querySelector('.meal-time')?.value, type: row.querySelector('.meal-type')?.value, acceptance: row.querySelector('.meal-accept')?.value, detail: row.querySelector('.meal-detail')?.value }));
+    const medsData = [...document.querySelectorAll('.med-row')].map(row => ({ name: row.querySelector('.med-name')?.value, dose: row.querySelector('.med-dose')?.value, time: row.querySelector('.med-time')?.value, route: row.querySelector('.med-route')?.value }));
+    const gEyes = Number(getVal('glasgowEyes')) || 0, gVerb = Number(getVal('glasgowVerbal')) || 0, gMot = Number(getVal('glasgowMotor')) || 0;
+    const bIds = ['bradenSensory','bradenMoisture','bradenActivity','bradenMobility','bradenNutrition','bradenFriction'];
+    const recordData = {
+        vitals: { bp: getVal('bloodPressure'), hr: getVal('heartRate'), rr: getVal('respiratoryRate'), temp: getVal('temperature'), spo2: getVal('spo2'), glucose: getVal('glucose') },
+        eva: Number(getVal('evaScore')),
+        glasgow: { eyes: gEyes, verbal: gVerb, motor: gMot, total: gEyes + gVerb + gMot },
+        braden: { total: bIds.reduce((s, id) => s + (Number(getVal(id)) || 0), 0) },
+        activities: collectActivities(),
+        meals: mealsData, medications: medsData,
+        sbar: { s: getVal('sbarSituation'), b: getVal('sbarBackground'), a: getVal('sbarAssessment'), r: getVal('sbarRecommendation') },
+        notes: getVal('clinicalNotes')
+    };
+    try {
+        const r = await fetch(`${API_URL}/api/clinical-records`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ shiftId: currentShiftId, patientId: selectedPatient.id, professionalId: currentUser.id, recordData }) });
+        const d = await r.json();
+        if (d.success) {
+            showToast('✅ Registro clínico guardado');
+            sessionRecords.push({ created_at: new Date().toISOString(), recordData });
+            renderDailyHistory();
+        } else showToast(d.message || 'Error al guardar', 'error');
+    } catch (e) {
+        console.error(e);
+        sessionRecords.push({ created_at: new Date().toISOString(), recordData });
+        renderDailyHistory();
+        showToast('Guardado localmente (sin conexión al servidor)', 'warning');
+    }
+}
+
+async function renderDailyHistory() {
+    const box = document.getElementById('dailyHistory'); if (!box || !selectedPatient) return;
+    let records = [];
+    try {
+        const r = await fetch(`${API_URL}/api/clinical-records/patient/${selectedPatient.id}`); const d = await r.json();
+        records = d.data || [];
+    } catch (e) { records = sessionRecords; }
+    const today = new Date().toISOString().slice(0, 10);
+    const daily = records.filter(x => String(x.created_at || x.createdAt || '').slice(0, 10) === today);
+    box.innerHTML = daily.length ? daily.map(rec => {
+        const rd = rec.recordData || rec.record_data || {};
+        const v = rd.vitals || {};
+        const hora = String(rec.created_at || rec.createdAt || '').slice(11, 16);
+        return `<div class="sub-activity"><strong>🕐 ${hora}</strong> — PA: ${escapeHtml(v.bp || '-')}, FC: ${escapeHtml(v.hr || '-')}, SpO2: ${escapeHtml(v.spo2 || '-')}<br><small>📋 Actividades: ${(rd.activities || []).length} · 💊 Medicamentos: ${(rd.medications || []).length} · 🍽️ Comidas: ${(rd.meals || []).length}</small>${rd.notes ? `<br><small>📝 ${escapeHtml(rd.notes)}</small>` : ''}</div>`;
+    }).join('') : '<p style="color:#94a3b8;">Sin registros hoy todavía.</p>';
+}
+
+async function closeShift() {
+    if (!getVal('familySignName') || !getVal('familySignId') || !getVal('familyRelationship')) return showToast('Completa los datos del familiar', 'error');
+    const sigAux = getSigData('auxSigCanvas'), sigFam = getSigData('famSigCanvas');
+    if (!sigAux) return showToast('Falta la firma del contratista', 'warning');
+    if (!sigFam) return showToast('Falta la firma del familiar', 'warning');
+    const leavesHome = document.getElementById('patientLeavesHome').checked;
+    if (leavesHome && !document.getElementById('leaveLiabilityAck').checked) return showToast('El familiar debe aceptar la responsabilidad del traslado', 'warning');
+    const closeData = {
+        deliveredStatus: getVal('patientDeliveredStatus'),
+        deliveredNotes: getVal('patientDeliveredNotes'),
+        pendingTasks: getVal('pendingTasks'),
+        leave: { leavesHome, transport: getVal('leaveTransport'), time: getVal('leaveTime'), returnTime: getVal('leaveReturnTime'), liabilityAck: document.getElementById('leaveLiabilityAck').checked },
+        family: { name: getVal('familySignName'), id: getVal('familySignId'), relationship: getVal('familyRelationship'), phone: getVal('familyPhone') },
+        signatures: { auxiliar: sigAux, familiar: sigFam, salida: leavesHome ? getSigData('leaveSigCanvas') : null }
+    };
+    try {
+        const r = await fetch(`${API_URL}/api/shifts/${currentShiftId}/close`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(closeData) });
+        const d = await r.json();
+        if (!d.success) return showToast(d.message || 'Error al cerrar turno', 'error');
+    } catch (e) { console.error(e); showToast('No se pudo sincronizar el cierre (revisa conexión)', 'warning'); }
+    lastShiftData.close = { ...closeData, fecha: new Date().toLocaleString('es-CO'), auxiliar: currentUser.full_name, paciente: selectedPatient.full_name };
+    lastClosedShiftId = currentShiftId;
+    currentShiftId = null;
+    showToast('✅ Turno cerrado correctamente');
+    document.getElementById('generateClosurePDFBtn').classList.remove('hidden');
+    document.getElementById('auxClinicalForm').classList.add('hidden');
+    document.getElementById('auxShiftStart').classList.add('hidden');
+    document.getElementById('auxPatientSelection').classList.remove('hidden');
+    selectedPatient = null;
+    loadAuxScheduledShifts();
+    loadAuxPatients();
+}
+
+// ---------- AUXILIAR: PDF RESUMEN DE CIERRE ----------
+function generateClosurePDF() {
+    if (!lastShiftData) return showToast('No hay datos del turno', 'error');
+    const { jsPDF } = window.jspdf; const doc = new jsPDF();
+    const s = lastShiftData.start || {}, c = lastShiftData.close || {};
+    try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
+    doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
+    doc.setFontSize(12); doc.setTextColor(0); doc.text("Resumen Diario de Turno", 105, 30, null, null, "center");
+    doc.setFontSize(10);
+    doc.text(`Paciente: ${s.paciente || c.paciente || '-'}`, 14, 45);
+    doc.text(`Auxiliar: ${s.auxiliar || c.auxiliar || '-'}`, 14, 52);
+    doc.text(`Fecha inicio: ${s.fecha || '-'}`, 14, 59);
+    doc.text(`Fecha cierre: ${c.fecha || '-'}`, 14, 66);
+    doc.text(`Tipo de turno: ${s.tipo || '-'}`, 14, 73);
+    doc.text(`Recepción: ${s.recepcion || '-'}`, 14, 80);
+    doc.text(`Entrega: ${c.deliveredStatus || '-'}`, 14, 87);
+    doc.text(`Pendientes: ${c.pendingTasks || 'Ninguno'}`, 14, 94);
+    if (c.leave?.leavesHome) {
+        doc.setTextColor(220, 38, 38);
+        doc.text(`⚠️ El paciente salió del domicilio (${c.leave.transport || '-'}) de ${c.leave.time || '?'} a ${c.leave.returnTime || '?'}. Responsabilidad asumida por el familiar.`, 14, 104, { maxWidth: 180 });
+        doc.setTextColor(0);
+    }
+    if (c.signatures?.auxiliar) { try { doc.addImage(c.signatures.auxiliar, 'JPEG', 30, 250, 55, 20); } catch(e) {} doc.setFontSize(8); doc.text('Firma Auxiliar', 57, 274, null, null, 'center'); }
+    if (c.signatures?.familiar) { try { doc.addImage(c.signatures.familiar, 'JPEG', 120, 250, 55, 20); } catch(e) {} doc.setFontSize(8); doc.text(`Firma Familiar (${c.family?.name || ''})`, 147, 274, null, null, 'center'); }
+    doc.save(`Resumen_Turno_${(c.paciente || 'paciente').replace(/\s+/g, '_')}_${Date.now()}.pdf`);
+    showToast('PDF generado');
+}
+
+// ---------- PROFESIONAL: LISTA PACIENTES / VITALES / IMC / PDF ----------
+async function loadProfPatients() {
+    try {
+        const r = await fetch(`${API_URL}/api/patients`); const d = await r.json();
+        const active = (d.data || []).filter(p => p.is_active !== false);
+        document.getElementById('profPatientList').innerHTML = active.length ? active.map(p => `<div class="patient-card" onclick="selectProfPatientById('${p.id}')"><strong>🧑 ${escapeHtml(p.full_name)}</strong><br><small>CIE-10: ${escapeHtml(p.cie10 || 'N/A')} · EPS: ${escapeHtml(p.eps || 'N/A')}</small></div>`).join('') : '<p style="color:#94a3b8; text-align:center;">No hay pacientes activos.</p>';
+    } catch (e) { console.error(e); showToast('Error cargando pacientes', 'error'); }
+}
+function selectProfPatientById(id) { const p = patientsRegistry.find(x => x.id === id) || profsRegistry && null; const pat = (typeof patientsRegistry !== 'undefined' ? patientsRegistry.find(x => x.id === id) : null); if (pat) selectProfPatient(pat); }
+
+function checkProfVital(type) {
+    if (type === 'bp') {
+        const parts = getVal('profBP').split('/');
+        const s = parseInt(parts[0]), di = parseInt(parts[1]);
+        if (!s || !di) { document.getElementById('profBPAlert').className = 'vital-status'; return; }
+        if (s >= 90 && s <= 130 && di >= 60 && di <= 85) setVitalUI('profBP', 'profBPAlert', 'normal', '✅ PA Normal');
+        else if (s <= 140 && di <= 90) setVitalUI('profBP', 'profBPAlert', 'warning', '⚠️ PA al límite');
+        else setVitalUI('profBP', 'profBPAlert', 'danger', '🚨 PA Fuera de rango');
+    } else if (type === 'hr') {
+        const v = Number(getVal('profHR')); if (!v) return;
+        if (v >= 60 && v <= 100) setVitalUI('profHR', 'profHRAlert', 'normal', '✅ FC Normal');
+        else if ((v >= 50 && v < 60) || (v > 100 && v <= 120)) setVitalUI('profHR', 'profHRAlert', 'warning', '⚠️ FC alterada');
+        else setVitalUI('profHR', 'profHRAlert', 'danger', '🚨 FC Crítica');
+    }
+}
+
+function calculateIMC() {
+    const w = parseFloat(getVal('profWeight')), h = parseFloat(getVal('profHeight'));
+    const res = document.getElementById('imcResult');
+    if (!w || !h) { document.getElementById('profIMC').value = ''; res.textContent = ''; return; }
+    const imc = (w / Math.pow(h / 100, 2)).toFixed(1);
+    document.getElementById('profIMC').value = imc;
+    let cat = 'Peso normal';
+    if (imc < 18.5) cat = '⚠️ Bajo peso'; else if (imc >= 25 && imc < 30) cat = '⚠️ Sobrepeso'; else if (imc >= 30) cat = '🚨 Obesidad';
+    res.textContent = `IMC: ${imc} — ${cat}`;
+}
+
+function generateProfPDF() {
+    if (!lastProfRecordData) return showToast('Guarda primero la nota de evolución', 'error');
+    const d = lastProfRecordData;
+    const { jsPDF } = window.jspdf; const doc = new jsPDF();
+    try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
+    doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
+    doc.setFontSize(12); doc.setTextColor(0); doc.text("Nota de Evolución Profesional", 105, 30, null, null, "center");
+    doc.setFontSize(10);
+    doc.text(`Paciente: ${d.patientName}`, 14, 45);
+    doc.text(`Profesional: ${d.profName} (${d.specialty})`, 14, 52);
+    doc.text(`Fecha: ${d.fecha}`, 14, 59);
+    if (d.imc) doc.text(`Vitales: PA ${d.bp || '-'} / FC ${d.hr || '-'} / Peso ${d.weight || '-'} kg / IMC ${d.imc}`, 14, 66);
+    doc.autoTable({ startY: 74, head: [['Sección', 'Contenido']], body: [
+        ['Subjetivo', d.subjective || '-'], ['Objetivo', d.objective || '-'], ['Análisis', d.analysis || '-'], ['Plan', d.plan || '-']
+    ], headStyles: { fillColor: [34, 197, 94] }, styles: { fontSize: 9, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 35 } } });
+    let y = doc.lastAutoTable.finalY + 15;
+    if (y > 230) { doc.addPage(); y = 30; }
+    if (d.sigProf) { try { doc.addImage(d.sigProf, 'JPEG', 30, y, 55, 20); } catch(e) {} doc.setFontSize(8); doc.text('Firma Profesional', 57, y + 24, null, null, 'center'); }
+    if (d.sigFam) { try { doc.addImage(d.sigFam, 'JPEG', 120, y, 55, 20); } catch(e) {} doc.setFontSize(8); doc.text(`Testigo: ${d.famName || ''} CC ${d.famId || ''}`, 147, y + 24, null, null, 'center'); }
+    doc.save(`Nota_Evolucion_${d.patientName.replace(/\s+/g, '_')}_${Date.now()}.pdf`);
+    showToast('PDF generado');
 }
 </script>
 </body>
