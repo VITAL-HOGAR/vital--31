@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -98,6 +98,20 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .message-bubble.alert { background: var(--danger); color: white; align-self: flex-end; border-bottom-right-radius: 2px; }
 .message-bubble small { display: block; font-size: 0.7rem; opacity: 0.8; margin-top: 4px; text-align: right; }
 .chart-wrapper { background: var(--bg-dark); padding: 15px; border-radius: 8px; margin-top: 10px; position: relative; height: 300px; }
+
+/* === PAQUETE A: Modal de confirmación reutilizable === */
+.modal-overlay-confirm { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px; }
+.modal-overlay-confirm.show { display: flex; }
+.modal-confirm-box { background: var(--card-bg); border: 1px solid var(--danger); border-radius: 16px; padding: 24px; max-width: 420px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); animation: modalIn 0.25s ease-out; }
+@keyframes modalIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.modal-confirm-box .modal-icon { width: 64px; height: 64px; margin: 0 auto 16px; background: rgba(239, 68, 68, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--danger); font-size: 1.8rem; }
+.modal-confirm-box h3 { color: var(--danger); text-align: center; cursor: default; justify-content: center; margin: 0 0 8px 0; display: block; border: none; padding: 0; }
+.modal-confirm-box p { text-align: center; color: var(--text-main); font-size: 0.95rem; margin: 0 0 20px 0; line-height: 1.5; }
+.modal-confirm-box .modal-warn { background: rgba(245, 158, 11, 0.1); border: 1px solid var(--warning); color: #fbbf24; padding: 10px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 16px; text-align: center; display: none; }
+.modal-confirm-box .modal-warn.show { display: block; }
+.modal-confirm-box .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.modal-confirm-box .modal-input-confirm { width: 100%; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text-main); font-size: 0.95rem; margin-bottom: 16px; box-sizing: border-box; text-align: center; }
+.modal-confirm-box .modal-input-confirm:focus { outline: none; border-color: var(--danger); }
 </style>
 
 <script>
@@ -566,6 +580,21 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     </div>
 </div>
 
+<!-- === PAQUETE A: Modal de confirmación reutilizable === -->
+<div id="confirmModal" class="modal-overlay-confirm" onclick="if(event.target===this) closeConfirmModal()">
+    <div class="modal-confirm-box">
+        <div class="modal-icon"><i class="fas fa-triangle-exclamation"></i></div>
+        <h3 id="confirmModalTitle">Confirmar Eliminación</h3>
+        <p id="confirmModalMessage">¿Estás seguro?</p>
+        <div id="confirmModalWarn" class="modal-warn"></div>
+        <input type="text" id="confirmModalInput" class="modal-input-confirm" placeholder="Escribe ELIMINAR para confirmar" autocomplete="off">
+        <div class="modal-actions">
+            <button class="btn-primary btn-secondary" style="margin-top:0;" onclick="closeConfirmModal()">Cancelar</button>
+            <button class="btn-primary btn-danger" id="confirmModalBtn" style="margin-top:0;">Eliminar</button>
+        </div>
+    </div>
+</div>
+
 <div id="toast" class="toast"></div>
 
 <script>
@@ -614,13 +643,17 @@ function initApp() {
 
 // ADMIN LOGIC
 function showAdminTab(tab, btn) { ['admin_prof', 'admin_pat', 'admin_edu', 'admin_reports', 'admin_finance', 'admin_agenda', 'admin_messages'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById('admin_'+tab).classList.remove('hidden'); document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); }
-async function loadProfs() { try { const r = await fetch(`${API_URL}/api/professionals`); const d = await r.json(); document.querySelector('#profTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.document_number}</td><td>${p.specialties?.name||'N/A'}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-warning" onclick="alert('Editar (próximamente)')">Editar</button> <button class="btn-small btn-archive" onclick="archiveProf('${p.id}')">Archivar</button></td></tr>`).join(''); } catch (e) { console.error(e); showToast('Error cargando profesionales', 'error'); } }
+let profsRegistry = []; // PAQUETE A: cache local para lookup en deleteProf
+async function loadProfs() { try { const r = await fetch(`${API_URL}/api/professionals`); const d = await r.json(); profsRegistry = d.data || []; document.querySelector('#profTable tbody').innerHTML = profsRegistry.map(p => { const safeName = escapeHtml(p.full_name); const safeDoc = escapeHtml(p.document_number); const safeSpec = escapeHtml(p.specialties?.name||'N/A'); return `<tr><td>${safeName}</td><td>${safeDoc}</td><td>${safeSpec}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-warning" onclick="alert('Editar (próximamente)')">Editar</button> <button class="btn-small btn-archive" onclick="archiveProf('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deleteProf('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`; }).join(''); } catch (e) { console.error(e); showToast('Error cargando profesionales', 'error'); } }
 async function archiveProf(id) { if(!confirm('¿Archivar este profesional? Desaparecerá de la lista activa.')) return; try { await fetch(`${API_URL}/api/professionals/${id}/archive`, { method: 'PATCH' }); showToast('Archivado'); loadProfs(); } catch(e) { showToast('Error al archivar', 'error'); } }
-async function loadPats() { try { const r = await fetch(`${API_URL}/api/patients`); const d = await r.json(); document.querySelector('#patTable tbody').innerHTML = d.data.map(p => `<tr><td>${p.full_name}</td><td>${p.altitude_profiles?.city_name||'N/A'}</td><td>${p.family_name||'N/A'}</td><td>${p.contact_phone||'N/A'}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-archive" onclick="archivePatient('${p.id}')">Archivar</button></td></tr>`).join(''); } catch (e) { console.error(e); } }
+let patientsRegistry = []; // PAQUETE A: cache local para lookup en deletePatient
+async function loadPats() { try { const r = await fetch(`${API_URL}/api/patients`); const d = await r.json(); patientsRegistry = d.data || []; document.querySelector('#patTable tbody').innerHTML = patientsRegistry.map(p => { const safeName = escapeHtml(p.full_name); const safeCity = escapeHtml(p.altitude_profiles?.city_name||'N/A'); const safeFam = escapeHtml(p.family_name||'N/A'); const safePhone = escapeHtml(p.contact_phone||'N/A'); return `<tr><td>${safeName}</td><td>${safeCity}</td><td>${safeFam}</td><td>${safePhone}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-archive" onclick="archivePatient('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deletePatient('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`; }).join(''); } catch (e) { console.error(e); } }
 async function archivePatient(id) { if(!confirm('¿Archivar este paciente? Desaparecerá de la lista activa.')) return; try { await fetch(`${API_URL}/api/patients/${id}/archive`, { method: 'PATCH' }); showToast('Archivado'); loadPats(); } catch(e) { showToast('Error al archivar', 'error'); } }
 
 // AUX LOGIC
-async function loadAuxScheduledShifts() { try { const r = await fetch(`${API_URL}/api/scheduled-shifts/professional/${currentUser.id}`); const d = await r.json(); const c = document.getElementById('auxScheduledList'); if (!d.data || d.data.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay turnos publicados para ti.</p>'; return; } c.innerHTML = d.data.map(s => `<div class="card" style="cursor:pointer; border-left: 4px solid var(--info); margin-bottom:10px;"><strong>${new Date(s.shift_date).toLocaleDateString('es-CO')}</strong> - ${s.patients?.full_name}<br><small>Turno: ${s.shift_type}</small><button class="btn-small btn-primary" style="margin-top:10px;" onclick='acceptShift(${JSON.stringify(s)})'>Aceptar y Atender</button></div>`).join(''); } catch (e) { console.error(e); } }
+let scheduledShiftsMap = {}; // PAQUETE A: registro por id para evitar XSS en acceptShift
+async function loadAuxScheduledShifts() { try { const r = await fetch(`${API_URL}/api/scheduled-shifts/professional/${currentUser.id}`); const d = await r.json(); const c = document.getElementById('auxScheduledList'); if (!d.data || d.data.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay turnos publicados para ti.</p>'; return; } scheduledShiftsMap = {}; c.innerHTML = d.data.map(s => { scheduledShiftsMap[s.id] = s; const safeName = escapeHtml(s.patients?.full_name||''); const safeType = escapeHtml(s.shift_type||''); const safeDate = escapeHtml(new Date(s.shift_date).toLocaleDateString('es-CO')); return `<div class="card" style="cursor:pointer; border-left: 4px solid var(--info); margin-bottom:10px;"><strong>${safeDate}</strong> - ${safeName}<br><small>Turno: ${safeType}</small><button class="btn-small btn-primary" style="margin-top:10px;" onclick="acceptShiftById('${s.id}')">Aceptar y Atender</button></div>`; }).join(''); } catch (e) { console.error(e); } }
+function acceptShiftById(shiftId) { const s = scheduledShiftsMap[shiftId]; if (!s) return showToast('Turno no encontrado', 'error'); acceptShift(s); }
 function acceptShift(s) { showToast('Turno aceptado'); selectPatient(s.patients); }
 function selectPatient(p) { selectedPatient = p; document.getElementById('patientNameStart').innerText = p.full_name; document.getElementById('auxPatientSelection').classList.add('hidden'); document.getElementById('auxShiftStart').classList.remove('hidden'); }
 function startShiftTimer() { clearInterval(shiftTimerInterval); /* Oculto para el usuario, corriendo solo en backend si se necesita */ }
@@ -680,16 +713,19 @@ async function saveProfRecord() {
 
 // FINANCE PDF BLINDADO (Nombres ocultos)
 async function calculateInvoice() { 
-    const patId = getVal('invoicePatient'); if (!patId) return; 
-    try { const r = await fetch(`${API_URL}/api/finance/invoice/${patId}/01/2026`); const d = await r.json(); if (d.success) { lastInvoiceData = d.data; renderInvoice(d.data); } } catch (e) { showToast('Error', 'error'); } 
+    const patId = getVal('invoicePatient'); if (!patId) return showToast('Selecciona un paciente', 'error'); 
+    const month = getVal('invoiceMonth') || '01'; const year = getVal('invoiceYear') || new Date().getFullYear(); // PAQUETE A: usar mes/año reales del formulario
+    try { const r = await fetch(`${API_URL}/api/finance/invoice/${patId}/${month}/${year}`); const d = await r.json(); if (d.success) { lastInvoiceData = { ...d.data, _month: month, _year: year }; renderInvoice(lastInvoiceData); } else { showToast(d.message || 'Error al generar', 'error'); } } catch (e) { showToast('Error de conexión', 'error'); console.error(e); } 
 }
 function renderInvoice(data) { 
     const container = document.getElementById('invoiceResult'); container.classList.remove('hidden'); 
+    const mesNombre = MESES_ES[data._month] || ''; // PAQUETE A: período real dinámico
     // Ocultamos la columna de auxiliares reemplazándola por "Equipo Vital Hogar"
-    let detailsHtml = data.details.map(d => `<tr><td>${d.date}</td><td>${d.service}</td><td>Equipo Vital Hogar</td><td>${formatCurrency(d.amount)}</td></tr>`).join(''); 
-    container.innerHTML = `<h4 style="color: var(--primary);">Cuenta de Cobro Generada</h4><table><thead><tr><th>Fecha</th><th>Servicio Prestado</th><th>Personal Asignado</th><th>Valor</th></tr></thead><tbody>${detailsHtml}</tbody></table><div style="margin-top: 15px; text-align: right;"><h3 style="color: var(--primary);">Total a Pagar: ${formatCurrency(data.totalAmount)}</h3><button class="btn-primary btn-warning" style="margin-top: 10px; width: auto; display: inline-block;" onclick="generateInvoicePDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button></div>`; 
+    let detailsHtml = data.details.map(d => `<tr><td>${escapeHtml(d.date)}</td><td>${escapeHtml(d.service)}</td><td>Equipo Vital Hogar</td><td>${formatCurrency(d.amount)}</td></tr>`).join(''); 
+    container.innerHTML = `<h4 style="color: var(--primary);">Cuenta de Cobro Generada</h4><p style="color:#94a3b8; font-size:0.9rem; margin:5px 0 15px;">Período: ${mesNombre} ${data._year}</p><table><thead><tr><th>Fecha</th><th>Servicio Prestado</th><th>Personal Asignado</th><th>Valor</th></tr></thead><tbody>${detailsHtml}</tbody></table><div style="margin-top: 15px; text-align: right;"><h3 style="color: var(--primary);">Total a Pagar: ${formatCurrency(data.totalAmount)}</h3><button class="btn-primary btn-warning" style="margin-top: 10px; width: auto; display: inline-block;" onclick="generateInvoicePDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button></div>`; 
 }
-function generateInvoicePDF() { if (!lastInvoiceData) return; const { jsPDF } = window.jspdf; const doc = new jsPDF(); const patName = document.getElementById('invoicePatient').selectedOptions[0].text; try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {} doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center"); doc.setFontSize(12); doc.setTextColor(0); doc.text("Cuenta de Cobro", 105, 30, null, null, "center"); doc.text(`Paciente: ${patName}`, 14, 45); doc.text(`Período: Enero 2026`, 14, 52); const tableData = lastInvoiceData.details.map(d => [d.date, d.service, "Equipo Vital Hogar", formatCurrency(d.amount)]); doc.autoTable({ startY: 60, head: [['Fecha', 'Servicio Prestado', 'Personal Asignado', 'Valor']], body: tableData, headStyles: { fillColor: [34, 197, 94] } }); let finalY = doc.lastAutoTable.finalY + 10; doc.setFontSize(14); doc.setTextColor(34, 197, 94); doc.text(`Total: ${formatCurrency(lastInvoiceData.totalAmount)}`, 14, finalY); doc.save(`Cuenta_Cobro_${patName}.pdf`); showToast('PDF generado'); }
+function generateInvoicePDF() { if (!lastInvoiceData) return; const { jsPDF } = window.jspdf; const doc = new jsPDF(); const patName = document.getElementById('invoicePatient').selectedOptions[0].text; const mesNombre = MESES_ES[lastInvoiceData._month] || ''; const periodoTexto = `${mesNombre} ${lastInvoiceData._year}`; // PAQUETE A: período real dinámico
+    try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {} doc.setFontSize(18); doc.setTextColor(34, 197, 94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center"); doc.setFontSize(12); doc.setTextColor(0); doc.text("Cuenta de Cobro", 105, 30, null, null, "center"); doc.text(`Paciente: ${patName}`, 14, 45); doc.text(`Periodo: ${periodoTexto}`, 14, 52); const tableData = lastInvoiceData.details.map(d => [d.date, d.service, "Equipo Vital Hogar", formatCurrency(d.amount)]); doc.autoTable({ startY: 60, head: [['Fecha', 'Servicio Prestado', 'Personal Asignado', 'Valor']], body: tableData, headStyles: { fillColor: [34, 197, 94] } }); let finalY = doc.lastAutoTable.finalY + 10; doc.setFontSize(14); doc.setTextColor(34, 197, 94); doc.text(`Total: ${formatCurrency(lastInvoiceData.totalAmount)}`, 14, finalY); doc.save(`Cuenta_Cobro_${patName}_${lastInvoiceData._month}_${lastInvoiceData._year}.pdf`); showToast('PDF generado'); }
 
 // Signature Canvas Helper
 function initSigCanvas(id) { const c = document.getElementById(id); if (!c) return; let w = c.offsetWidth > 0 ? c.offsetWidth : 400; c.width = w; c.height = 150; const ctx = c.getContext('2d'); ctx.fillStyle = '#ffffff'; ctx.fillRect(0, 0, c.width, c.height); ctx.strokeStyle = '#000000'; ctx.lineWidth = 2; ctx.lineCap = 'round'; let drawing = false; const getPos = (e) => { const r = c.getBoundingClientRect(); const x = (e.touches && e.touches.length > 0) ? e.touches[0].clientX - r.left : e.clientX - r.left; const y = (e.touches && e.touches.length > 0) ? e.touches[0].clientY - r.top : e.clientY - r.top; return { x, y }; }; const start = (e) => { e.preventDefault(); drawing = true; const p = getPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }; const move = (e) => { if (!drawing) return; e.preventDefault(); const p = getPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); }; const end = () => { drawing = false; }; c.onmousedown = start; c.onmousemove = move; c.onmouseup = end; c.onmouseleave = end; c.ontouchstart = start; c.ontouchmove = move; c.ontouchend = end; }
@@ -699,7 +735,99 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('loginBtn').addEventListener('click', login);
     const p = document.getElementById('patCity'); if (p) { Object.keys(CIUDADES_COLOMBIA).forEach(c => { p.innerHTML += `<option value="${c}">${c}</option>`; }); }
     if (localStorage.getItem('vital_user')) initApp();
+    // PAQUETE A: bind del botón del modal de confirmación
+    const confirmBtn = document.getElementById('confirmModalBtn');
+    if (confirmBtn) confirmBtn.addEventListener('click', () => {
+        if (typeof _confirmModalCallback === 'function') { const cb = _confirmModalCallback; closeConfirmModal(); cb(); }
+    });
+    const confirmInput = document.getElementById('confirmModalInput');
+    if (confirmInput) confirmInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !document.getElementById('confirmModalBtn').disabled) document.getElementById('confirmModalBtn').click(); });
 });
+
+// === PAQUETE A: Helpers y funciones nuevas (aditivo, no rompe nada existente) ===
+const MESES_ES = { '01':'Enero','02':'Febrero','03':'Marzo','04':'Abril','05':'Mayo','06':'Junio','07':'Julio','08':'Agosto','09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre' };
+
+function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+let _confirmModalCallback = null;
+
+function showConfirmModal(opts) {
+    document.getElementById('confirmModalTitle').textContent = opts.title || 'Confirmar';
+    document.getElementById('confirmModalMessage').textContent = opts.message || '¿Estás seguro?';
+    const warnEl = document.getElementById('confirmModalWarn');
+    if (opts.warning) { warnEl.textContent = opts.warning; warnEl.classList.add('show'); } 
+    else { warnEl.classList.remove('show'); }
+    const inputEl = document.getElementById('confirmModalInput');
+    const btn = document.getElementById('confirmModalBtn');
+    if (opts.requireText) {
+        inputEl.style.display = 'block'; inputEl.value = '';
+        inputEl.setAttribute('placeholder', `Escribe ${opts.requireText} para confirmar`);
+        btn.disabled = true; btn.style.opacity = '0.5';
+        inputEl.oninput = () => {
+            const ok = inputEl.value.trim().toUpperCase() === opts.requireText.toUpperCase();
+            btn.disabled = !ok; btn.style.opacity = ok ? '1' : '0.5';
+        };
+    } else {
+        inputEl.style.display = 'none';
+        btn.disabled = false; btn.style.opacity = '1';
+    }
+    _confirmModalCallback = opts.onConfirm;
+    document.getElementById('confirmModal').classList.add('show');
+    setTimeout(() => { if (inputEl.style.display !== 'none') inputEl.focus(); }, 100);
+}
+
+function closeConfirmModal() {
+    document.getElementById('confirmModal').classList.remove('show');
+    _confirmModalCallback = null;
+}
+
+async function deleteProf(id) {
+    const prof = profsRegistry.find(p => p.id === id);
+    if (!prof) return showToast('Profesional no encontrado', 'error');
+    const nombre = prof.full_name || 'este profesional';
+    showConfirmModal({
+        title: 'Eliminar Profesional',
+        message: `Vas a eliminar permanentemente a "${nombre}". Esta acción no se puede deshacer.`,
+        warning: 'Se eliminarán también sus registros clínicos asociados. Si solo quieres ocultarlo de la lista activa, usa "Archivar".',
+        requireText: 'ELIMINAR',
+        onConfirm: async () => {
+            try {
+                const r = await fetch(`${API_URL}/api/professionals/${id}`, { method: 'DELETE' });
+                const d = await r.json();
+                if (d.success) { showToast('Profesional eliminado'); loadProfs(); }
+                else { showToast(d.message || 'Error al eliminar', 'error'); }
+            } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+        }
+    });
+}
+
+async function deletePatient(id) {
+    const pat = patientsRegistry.find(p => p.id === id);
+    if (!pat) return showToast('Paciente no encontrado', 'error');
+    const nombre = pat.full_name || 'este paciente';
+    showConfirmModal({
+        title: 'Eliminar Paciente',
+        message: `Vas a eliminar permanentemente a "${nombre}". Esta acción no se puede deshacer.`,
+        warning: 'Se eliminarán también turnos, registros clínicos y documentos asociados. Si solo quieres ocultarlo de la lista activa, usa "Archivar".',
+        requireText: 'ELIMINAR',
+        onConfirm: async () => {
+            try {
+                const r = await fetch(`${API_URL}/api/patients/${id}`, { method: 'DELETE' });
+                const d = await r.json();
+                if (d.success) { showToast('Paciente eliminado'); loadPats(); }
+                else { showToast(d.message || 'Error al eliminar', 'error'); }
+            } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+        }
+    });
+}
 </script>
 </body>
 </html>
