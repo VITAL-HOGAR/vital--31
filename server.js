@@ -271,7 +271,7 @@ app.post('/api/shifts/close', async (req, res) => {
 
 app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
     try {
-        const { data: shift, error: shiftError } = await supabase.from('shifts').select('*, patients(*, altitude_profiles(city_name))').eq('id', req.params.shiftId).single();
+        const { data: shift, error: shiftError } = await supabase.from('shifts').select('*, patients(*, altitude_profiles(city_name)), professionals(full_name, document_number, professional_card)').eq('id', req.params.shiftId).single();
         if (shiftError) throw shiftError;
         const { data: records, error: recordsError } = await supabase.from('clinical_records').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: true });
         if (recordsError) throw recordsError;
@@ -280,6 +280,25 @@ app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
         const { data: adverseEvents, error: advError } = await supabase.from('adverse_events').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: true });
         if (advError) throw advError;
         res.json({ success: true, data: { shift, records: records || [], signatures: signatures || [], adverseEvents: adverseEvents || [] } });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// ==========================================
+// 8. SOPORTES PARA FACTURACIÓN (NUEVO)
+// ==========================================
+app.get('/api/shifts/closed', async (req, res) => {
+    try {
+        const { data, error } = await supabase.from('shifts').select('*, patients(full_name, document_number), professionals(full_name, document_number, professional_card)').eq('is_closed', true).order('start_time', { ascending: false }).limit(200);
+        if (error) throw error;
+        res.json({ success: true, data: data || [] });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.get('/api/professional-records/list', async (req, res) => {
+    try {
+        const { data, error } = await supabase.from('professional_records').select('*, patients(full_name, document_number), professionals(full_name, document_number, professional_card)').order('created_at', { ascending: false }).limit(200);
+        if (error) throw error;
+        res.json({ success: true, data: data || [] });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
@@ -294,7 +313,7 @@ app.post('/api/adverse-events', async (req, res) => {
 });
 
 // ==========================================
-// 8. INFORMES CONSOLIDADOS
+// 9. INFORMES CONSOLIDADOS
 // ==========================================
 app.get('/api/reports/pending', async (req, res) => {
     try { const { data, error } = await supabase.from('patients').select('id, full_name, family_name').eq('is_active', true).order('full_name'); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
@@ -320,7 +339,7 @@ app.post('/api/professional-records', async (req, res) => {
 });
 
 // ==========================================
-// 9. MÓDULO FINANCIERO
+// 10. MÓDULO FINANCIERO
 // ==========================================
 app.get('/api/finance/parameters', async (req, res) => { try { const { data, error } = await supabase.from('financial_parameters').select('*').eq('is_active', true).single(); if (error) throw error; res.json({ success: true, data: data || {} }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
 app.patch('/api/finance/parameters/:id', async (req, res) => { try { const { smmlv, subsidy_transport, night_surcharge_percentage, holiday_surcharge_percentage, night_start_hour, night_end_hour, year } = req.body; const { error } = await supabase.from('financial_parameters').update({ smmlv, subsidy_transport, night_surcharge_percentage, holiday_surcharge_percentage, night_start_hour, night_end_hour, year }).eq('id', req.params.id); if (error) throw error; res.json({ success: true, message: 'Parámetros de ley actualizados' }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
@@ -363,7 +382,7 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
 });
 
 // ==========================================
-// 10. AGENDA Y MENSAJERÍA
+// 11. AGENDA Y MENSAJERÍA
 // ==========================================
 app.get('/api/scheduled-shifts', async (req, res) => { try { const { data, error } = await supabase.from('scheduled_shifts').select('*, patients(full_name), professionals(full_name)').order('shift_date', { ascending: true }); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
 app.get('/api/scheduled-shifts/professional/:profId', async (req, res) => { try { const { data, error } = await supabase.from('scheduled_shifts').select('*, patients(*, altitude_profiles(city_name))').eq('professional_id', req.params.profId).eq('status', 'Programado').order('shift_date', { ascending: true }); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
