@@ -1,4 +1,4 @@
-const CACHE_NAME = 'vital-hogar-v3';
+const CACHE_NAME = 'vital-hogar-v4';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -10,7 +10,6 @@ const STATIC_ASSETS = [
   'https://i.imgur.com/01YZxey.jpeg'
 ];
 
-// INSTALL: precachear lo esencial (uno por uno, para que si un CDN falla, no rompa todo)
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
@@ -21,32 +20,22 @@ self.addEventListener('install', event => {
   );
 });
 
-// ACTIVATE: borrar cachés viejos automáticamente
 self.addEventListener('activate', event => {
   event.waitUntil(
     caches.keys().then(keys => {
-      return Promise.all(
-        keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key))
-      );
+      return Promise.all(keys.filter(key => key !== CACHE_NAME).map(key => caches.delete(key)));
     }).then(() => self.clients.claim())
   );
 });
 
-// FETCH: RED PRIMERO, caché solo como respaldo sin internet
 self.addEventListener('fetch', event => {
   const url = event.request.url;
-
-  // NUNCA cachear la API: pacientes, turnos, chat... siempre frescos de Supabase
-  if (url.includes('/api/')) {
-    event.respondWith(fetch(event.request));
-    return;
-  }
-
-  // HTML y estáticos: intenta red primero, si falla usa caché
+  if (!url.startsWith('http')) return; // Ignora chrome-extension:, data:, etc.
+  if (url.includes('/api/')) { event.respondWith(fetch(event.request)); return; }
   event.respondWith(
     fetch(event.request)
       .then(response => {
-        if (response && response.status === 200) {
+        if (response && response.status === 200 && response.type === 'basic') {
           const clone = response.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(event.request, clone));
         }
