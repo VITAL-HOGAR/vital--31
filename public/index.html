@@ -73,17 +73,14 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .accordion { background: var(--bg-dark); border-radius: 8px; margin-bottom: 10px; overflow: hidden; }
 .accordion-header { background: var(--border); padding: 15px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; font-weight: bold; }
 .accordion-content { padding: 0; max-height: 0; overflow: hidden; transition: max-height 0.3s ease, padding 0.3s ease; }
-.accordion-content.open { padding: 15px; max-height: 5000px; }
+.accordion-content.open { padding: 15px; max-height: 8000px; }
 .sub-activity { background: var(--card-bg); padding: 12px; border-radius: 6px; margin-bottom: 10px; border-left: 3px solid var(--info); }
 .sub-activity-header { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; flex-wrap: wrap; }
-.sub-activity-header input[type="checkbox"] { width: auto; margin: 0; }
-.sub-activity-fields { display: none; margin-top: 10px; padding: 10px; background: var(--bg-dark); border-radius: 6px; }
-.sub-activity-fields.show { display: block; }
-.med-item { background: var(--bg-dark); padding: 10px; border-radius: 6px; margin-bottom: 8px; display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr auto; gap: 8px; align-items: center; }
+.rep-row .form-group { margin-bottom: 8px; }
+.med-item { background: var(--bg-dark); padding: 10px; border-radius: 6px; margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.med-item input, .med-item select { flex: 1; min-width: 120px; background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px; padding: 8px; color: var(--text-main); font-size: 0.9rem; box-sizing: border-box; }
 .signature-canvas { background: white; border: 2px dashed var(--border); border-radius: 8px; width: 100%; height: 150px; cursor: crosshair; touch-action: none; }
 .mic-btn { background: var(--info); width: 40px; height: 40px; padding: 0; margin: 0; display: flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; border: none; cursor: pointer; color: white; }
-.mic-btn.recording { background: var(--danger); animation: pulse 1.5s infinite; }
-@keyframes pulse { 0% { transform: scale(1); } 50% { transform: scale(1.1); } 100% { transform: scale(1); } }
 .legal-warning { background: var(--bg-dark); border: 2px solid var(--warning); padding: 15px; border-radius: 8px; margin: 15px 0; }
 .legal-warning h4 { color: var(--warning); margin: 0 0 10px 0; border: none; }
 .eva-slider { width: 100%; margin: 10px 0; }
@@ -111,6 +108,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .modal-confirm-box .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .modal-confirm-box .modal-input-confirm { width: 100%; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text-main); font-size: 0.95rem; margin-bottom: 16px; box-sizing: border-box; text-align: center; }
 .modal-confirm-box .modal-input-confirm:focus { outline: none; border-color: var(--danger); }
+.add-row-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 </style>
 
 <script>
@@ -309,22 +307,19 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 
         <div id="admin_agenda" class="hidden">
             <div class="card">
-                <h3 style="cursor:default;">📅 Publicar Nuevo Turno</h3>
+                <h3 style="cursor:default;">📅 Publicar Nuevo Turno / Visita</h3>
                 <div class="grid">
-                    <div class="form-group"><label>Fecha del Turno</label><input type="date" id="schedDate"></div>
+                    <div class="form-group"><label>Fecha</label><input type="date" id="schedDate"></div>
                     <div class="form-group"><label>Paciente</label><select id="schedPatient"><option value="">Seleccionar...</option></select></div>
-                    <div class="form-group"><label>Auxiliar / Profesional</label><select id="schedProf"><option value="">Seleccionar...</option></select></div>
-                    <div class="form-group"><label>Tipo de Turno</label>
-                        <select id="schedType">
-                            <option value="6h_diurno">☀️ 6h Diurno</option><option value="8h_diurno">☀️ 8h Diurno</option><option value="12h_diurno">☀️ 12h Diurno</option>
-                            <option value="6h_nocturno">🌙 6h Nocturno</option><option value="8h_nocturno">🌙 8h Nocturno</option><option value="12h_nocturno">🌙 12h Nocturno</option>
-                            <option value="24h">🔄 24h</option>
-                        </select>
+                    <div class="form-group"><label>Auxiliar / Profesional</label><select id="schedProf" onchange="updateSchedShiftType()"><option value="">Seleccionar...</option></select></div>
+                    <div class="form-group"><label>Tipo (según el personal elegido)</label>
+                        <select id="schedType"></select>
                     </div>
                 </div>
-                <button class="btn-primary" onclick="createScheduledShift()"><i class="fas fa-calendar-plus"></i> Publicar Turno</button>
+                <p style="font-size:0.8rem; color:#94a3b8;">💡 Si eliges un especialista (no auxiliar), se agenda automáticamente como <strong>Visita Domiciliaria</strong>: la duración real se registra en su nota de evolución. Los turnos de 6h-24h son para auxiliares de enfermería.</p>
+                <button class="btn-primary" onclick="createScheduledShift()"><i class="fas fa-calendar-plus"></i> Publicar</button>
             </div>
-            <div class="card"><h3 style="cursor:default;">Turnos Publicados</h3><table id="schedTable"><thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th><th>Turno</th><th>Estado</th></tr></thead><tbody></tbody></table></div>
+            <div class="card"><h3 style="cursor:default;">Turnos y Visitas Publicados</h3><table id="schedTable"><thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th><th>Tipo</th><th>Estado</th></tr></thead><tbody></tbody></table></div>
         </div>
 
         <div id="admin_messages" class="hidden">
@@ -422,57 +417,80 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 </div>
                 <div id="bradenTotal" class="braden-total risk-none"><h3>24/24</h3><p>Sin riesgo</p></div>
 
-                <h4>📋 Actividades Realizadas</h4>
+                <h4>📋 Actividades y Cuidados (agrega cada vez que ocurran)</h4>
                 <div class="accordion">
                     <div class="accordion-header" onclick="toggleAccordion(this)"><span>🧼 Higiene y Confort</span><i class="fas fa-chevron-down"></i></div>
                     <div class="accordion-content">
-                        <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actBath" onchange="toggleSubFields('bath', this)"><label for="actBath"><strong>🛁 Baño</strong></label><input type="time" id="actBathTime" style="width:auto; margin:0;"></div><div class="sub-activity-fields" id="fields-bath"><div class="form-group"><label>Tipo</label><select id="bathType"><option value="en cama">En cama</option><option value="en ducha">En ducha</option><option value="en silla">En silla</option><option value="parcial">Parcial</option></select></div></div></div>
-                        <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actOralHygiene" onchange="toggleSubFields('oral', this)"><label for="actOralHygiene"><strong>🦷 Higiene Bucal</strong></label><input type="time" id="actOralTime" style="width:auto; margin:0;"></div><div class="sub-activity-fields" id="fields-oral"><div class="form-group"><label>Tipo</label><select id="oralType"><option value="propia">Propia</option><option value="asistida">Asistida</option></select></div></div></div>
+                        <div id="repHygiene"></div>
+                        <div class="add-row-buttons">
+                            <button class="btn-small btn-info" onclick="addRepRow('bano')">+ 🛁 Agregar Baño</button>
+                            <button class="btn-small btn-info" onclick="addRepRow('bucal')">+ 🦷 Agregar Higiene Bucal</button>
+                        </div>
                     </div>
                 </div>
                 <div class="accordion">
                     <div class="accordion-header" onclick="toggleAccordion(this)"><span>🧹 Aseo y Entorno</span><i class="fas fa-chevron-down"></i></div>
                     <div class="accordion-content">
-                        <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actBedClothes" onchange="toggleSubFields('bed', this)"><label for="actBedClothes"><strong>🛏️ Cambio de Ropa de Cama</strong></label><input type="time" id="actBedClothesTime" style="width:auto; margin:0;"></div><div class="sub-activity-fields" id="fields-bed"><div class="form-group"><label>Detalle</label><input type="text" id="actBedClothesObs" placeholder="Ej: Sábanas y fundas"></div></div></div>
-                        <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actRoomClean" onchange="toggleSubFields('room', this)"><label for="actRoomClean"><strong>🧹 Aseo y Orden del Espacio</strong></label><input type="time" id="actRoomCleanTime" style="width:auto; margin:0;"></div><div class="sub-activity-fields" id="fields-room"><div class="form-group"><label>Detalle</label><input type="text" id="actRoomCleanObs" placeholder="Ej: Limpieza de área y baño"></div></div></div>
-                        <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actWaste" onchange="toggleSubFields('waste', this)"><label for="actWaste"><strong>🗑️ Eliminación de Residuos</strong></label><input type="time" id="actWasteTime" style="width:auto; margin:0;"></div><div class="sub-activity-fields" id="fields-waste"><div class="form-group"><label>Detalle</label><input type="text" id="actWasteObs" placeholder="Ej: Patogénicos y comunes"></div></div></div>
-                        <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actCompanion" onchange="toggleSubFields('comp', this)"><label for="actCompanion"><strong>🛋️ Acompañamiento Terapéutico</strong></label><input type="time" id="actCompanionTime" style="width:auto; margin:0;"></div><div class="sub-activity-fields" id="fields-comp"><div class="form-group"><label>Detalle</label><input type="text" id="actCompanionObs" placeholder="Ej: Diálogo y apoyo emocional"></div></div></div>
+                        <div id="repAseo"></div>
+                        <div class="add-row-buttons">
+                            <button class="btn-small btn-info" onclick="addRepRow('cama')">+ 🛏️ Cambio de Cama</button>
+                            <button class="btn-small btn-info" onclick="addRepRow('aseo_espacio')">+ 🧹 Aseo del Espacio</button>
+                            <button class="btn-small btn-info" onclick="addRepRow('residuos')">+ 🗑️ Residuos</button>
+                            <button class="btn-small btn-info" onclick="addRepRow('acompanamiento')">+ 🛋️ Acompañamiento</button>
+                        </div>
                     </div>
                 </div>
                 <div class="accordion">
-                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>🍽️ Alimentación</span><i class="fas fa-chevron-down"></i></div>
+                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>🍽️ Alimentación e Hidratación</span><i class="fas fa-chevron-down"></i></div>
                     <div class="accordion-content">
-                        <div id="mealList"></div><button class="btn-small btn-info" onclick="addMeal()"><i class="fas fa-plus"></i> Agregar Comida</button>
-                        <div style="margin-top: 15px; border-top: 1px solid var(--border); padding-top: 10px;">
-                            <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actEnteralFood" onchange="toggleSubFields('enteral', this)"><label for="actEnteralFood"><strong>🥤 Alimentación Enteral (Sonda)</strong></label><input type="time" id="actEnteralFoodTime" style="width:auto; margin:0;"></div><div class="sub-activity-fields" id="fields-enteral"><div class="form-group"><label>Fórmula</label><input type="text" id="enteralFormula" placeholder="Ej: Nutricomp"></div><div class="form-group"><label>Volumen (mL)</label><input type="number" id="enteralVol"></div></div></div>
-                            <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actParenteralFood" onchange="toggleSubFields('parenteral', this)"><label for="actParenteralFood"><strong>💉 Nutrición Parenteral</strong></label><input type="time" id="actParenteralFoodTime" style="width:auto; margin:0;"></div><div class="sub-activity-fields" id="fields-parenteral"><div class="form-group"><label>Fórmula</label><input type="text" id="parenteralFormula" placeholder="Ej: NPT"></div><div class="form-group"><label>Volumen (mL)</label><input type="number" id="parenteralVol"></div></div></div>
-                            <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actHydration" onchange="toggleSubFields('hydration', this)"><label for="actHydration"><strong>💧 Hidratación</strong></label><input type="time" id="actHydrationTime" style="width:auto; margin:0;"></div><div class="sub-activity-fields" id="fields-hydration"><div class="form-group"><label>mL</label><input type="number" id="hydrationMl"></div></div></div>
+                        <div id="mealList"></div>
+                        <div class="add-row-buttons"><button class="btn-small btn-info" onclick="addMeal()">+ 🍽️ Agregar Comida</button></div>
+                        <hr style="border-color: var(--border); margin: 12px 0;">
+                        <div id="repNutrition"></div>
+                        <div class="add-row-buttons">
+                            <button class="btn-small btn-info" onclick="addRepRow('enteral')">+ 🥤 Alimentación Enteral</button>
+                            <button class="btn-small btn-info" onclick="addRepRow('parenteral')">+ 💉 Nutrición Parenteral</button>
+                            <button class="btn-small btn-info" onclick="addRepRow('hidratacion')">+ 💧 Hidratación</button>
                         </div>
                     </div>
                 </div>
                 <div class="accordion">
                     <div class="accordion-header" onclick="toggleAccordion(this)"><span>💊 Medicamentos</span><i class="fas fa-chevron-down"></i></div>
-                    <div class="accordion-content"><div id="medList"></div><button class="btn-small btn-info" onclick="addMedication()"><i class="fas fa-plus"></i> Agregar</button></div>
+                    <div class="accordion-content">
+                        <div id="medList"></div>
+                        <div class="add-row-buttons"><button class="btn-small btn-info" onclick="addMedication()">+ 💊 Agregar Medicamento</button></div>
+                    </div>
                 </div>
                 <div class="accordion">
-                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>🩺 Cuidados Clínicos</span><i class="fas fa-chevron-down"></i></div>
+                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>🩺 Cuidados Clínicos y Procedimientos</span><i class="fas fa-chevron-down"></i></div>
                     <div class="accordion-content">
-                        <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actWound" onchange="toggleSubFields('wound', this)"><label for="actWound"><strong>🩹 Curación</strong></label><input type="time" id="actWoundTime" style="width:auto; margin:0;"></div><div class="sub-activity-fields" id="fields-wound"><div class="form-group"><label>Estado</label><select id="woundState"><option value="limpia">Limpia</option><option value="exudado">Con exudado</option><option value="infectada">Infectada</option></select></div></div></div>
-                        <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actOxygen" onchange="toggleSubFields('oxygen', this)"><label for="actOxygen"><strong>💨 Oxigenoterapia</strong></label><input type="time" id="actOxygenTime" style="width:auto; margin:0;"></div><div class="sub-activity-fields" id="fields-oxygen"><div class="form-group"><label>L/min</label><input type="number" id="oxygenLpm" step="0.5"></div><div class="form-group"><label>Dispositivo</label><select id="oxygenDevice"><option value="canula">Cánula nasal</option><option value="mascarilla">Mascarilla</option></select></div></div></div>
+                        <div id="repClinical"></div>
+                        <div class="add-row-buttons">
+                            <button class="btn-small btn-info" onclick="addRepRow('curacion')">+ 🩹 Curación</button>
+                            <button class="btn-small btn-info" onclick="addRepRow('nebulizacion')">+ 🌫️ Nebulización</button>
+                            <button class="btn-small btn-info" onclick="addRepRow('glucemia')">+ 🩸 Glucemia Capilar</button>
+                            <button class="btn-small btn-info" onclick="addRepRow('foley')">+ 🚽 Control de Foley</button>
+                            <button class="btn-small btn-info" onclick="addRepRow('panal')">+ 👶 Cambio de Pañal</button>
+                            <button class="btn-small btn-info" onclick="addRepRow('aspiracion')">+ 🌬️ Aspiración</button>
+                            <button class="btn-small btn-info" onclick="addRepRow('oxigeno')">+ 💨 Oxigenoterapia</button>
+                        </div>
                     </div>
                 </div>
                 <div class="accordion">
                     <div class="accordion-header" onclick="toggleAccordion(this)"><span>🚶 Movilización</span><i class="fas fa-chevron-down"></i></div>
                     <div class="accordion-content">
-                        <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actPosition" onchange="toggleSubFields('position', this)"><label for="actPosition"><strong>🔄 Cambio Postural</strong></label><input type="time" id="actPositionTime" style="width:auto; margin:0;"></div><div class="sub-activity-fields" id="fields-position"><div class="form-group"><label>Posición</label><select id="positionType"><option value="supino">Supino</option><option value="prono">Prono</option><option value="lateral_derecho">Lateral Derecho</option><option value="lateral_izquierdo">Lateral Izquierdo</option><option value="fowler">Fowler</option><option value="semi_fowler">Semi-Fowler</option></select></div></div></div>
-                        <div class="sub-activity"><div class="sub-activity-header"><input type="checkbox" id="actWalking" onchange="toggleSubFields('walking', this)"><label for="actWalking"><strong>🚶 Deambulación</strong></label><input type="time" id="actWalkingTime" style="width:auto; margin:0;"></div><div class="sub-activity-fields" id="fields-walking"><div class="form-group"><label>Metros</label><input type="number" id="walkingDistance"></div><div class="form-group"><label>Ayuda</label><select id="walkingHelp"><option value="no">No</option><option value="si">Sí</option></select></div></div></div>
+                        <div id="repMobility"></div>
+                        <div class="add-row-buttons">
+                            <button class="btn-small btn-info" onclick="addRepRow('postura')">+ 🔄 Cambio Postural</button>
+                            <button class="btn-small btn-info" onclick="addRepRow('deambulacion')">+ 🚶 Deambulación</button>
+                        </div>
                     </div>
                 </div>
                 <h4>🔄 SBAR (Novedades)</h4>
-                <div class="form-group"><label>S - Situación</label><textarea id="sbarSituation" rows="2" placeholder="¿Qué está pasando ahora?"></textarea></div>
-                <div class="form-group"><label>B - Antecedentes</label><textarea id="sbarBackground" rows="2" placeholder="Contexto clínico"></textarea></div>
-                <div class="form-group"><label>A - Evaluación</label><textarea id="sbarAssessment" rows="2" placeholder="Mi valoración"></textarea></div>
-                <div class="form-group"><label>R - Recomendación</label><textarea id="sbarRecommendation" rows="2" placeholder="Qué sugiero hacer"></textarea></div>
+                <div class="form-group"><label>S - Situación</label><div style="display:flex; gap:5px;"><textarea id="sbarSituation" rows="2" placeholder="¿Qué está pasando ahora?"></textarea><button class="mic-btn" onclick="startDictation('sbarSituation')"><i class="fas fa-microphone"></i></button></div></div>
+                <div class="form-group"><label>B - Antecedentes</label><div style="display:flex; gap:5px;"><textarea id="sbarBackground" rows="2" placeholder="Contexto clínico"></textarea><button class="mic-btn" onclick="startDictation('sbarBackground')"><i class="fas fa-microphone"></i></button></div></div>
+                <div class="form-group"><label>A - Evaluación</label><div style="display:flex; gap:5px;"><textarea id="sbarAssessment" rows="2" placeholder="Mi valoración"></textarea><button class="mic-btn" onclick="startDictation('sbarAssessment')"><i class="fas fa-microphone"></i></button></div></div>
+                <div class="form-group"><label>R - Recomendación</label><div style="display:flex; gap:5px;"><textarea id="sbarRecommendation" rows="2" placeholder="Qué sugiero hacer"></textarea><button class="mic-btn" onclick="startDictation('sbarRecommendation')"><i class="fas fa-microphone"></i></button></div></div>
                 <h4>📝 Notas Adicionales</h4>
                 <div class="form-group"><div style="display:flex; gap:5px;"><textarea id="clinicalNotes" rows="3" placeholder="Observaciones..."></textarea><button class="mic-btn" onclick="startDictation('clinicalNotes')"><i class="fas fa-microphone"></i></button></div></div>
                 <button class="btn-primary" onclick="saveClinicalRecord()"><i class="fas fa-save"></i> Guardar Registro</button>
@@ -480,6 +498,11 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             <div class="card"><h3 style="cursor:default;">Historial del Día</h3><div id="dailyHistory"></div></div>
             <div class="card">
                 <h3 style="cursor:default;">🔒 Cierre de Turno</h3>
+                <div id="consentProceduresBox" class="legal-warning hidden" style="border-color: var(--info);">
+                    <h4 style="color: var(--info);">📋 CONSENTIMIENTO DE PROCEDIMIENTOS (Ley 23/1981 · Res. 3100/2019)</h4>
+                    <p style="font-size:0.85rem;">Este turno incluyó procedimientos clínicos y/o administración de medicamentos. Regístralos arriba antes de cerrar.</p>
+                    <input type="checkbox" id="procedureConsentAck" style="width:auto; margin-right:10px;"><label for="procedureConsentAck" style="display:inline; font-size:0.85rem;">Confirmo que se informó al paciente/cuidador los procedimientos realizados, sus riesgos y beneficios, y se obtuvo su consentimiento.</label>
+                </div>
                 <div class="form-group"><label>Estado de entrega</label><select id="patientDeliveredStatus"><option value="estable">🟢 Estable</option><option value="con_novedades">🟡 Con Novedades</option><option value="critico">🔴 Crítico</option></select></div>
                 <div class="form-group"><label>Descripción de entrega</label><textarea id="patientDeliveredNotes" rows="2"></textarea></div>
                 <div class="form-group"><label>Pendientes</label><input type="text" id="pendingTasks" placeholder="Tareas pendientes"></div>
@@ -496,18 +519,36 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 <div class="grid">
                     <div class="form-group"><label>Nombre Familiar *</label><input type="text" id="familySignName"></div>
                     <div class="form-group"><label>Cédula Familiar *</label><input type="text" id="familySignId"></div>
-                    <div class="form-group"><label>Parentesco *</label><select id="familyRelationship"><option value="">Seleccionar...</option><option value="Hijo/a">Hijo/a</option><option value="Esposo/a">Esposo/a</option><option value="Padre/Madre">Padre/Madre</option></select></div>
+                    <div class="form-group"><label>Parentesco *</label>
+                        <select id="familyRelationship" onchange="toggleOtherRelationship()">
+                            <option value="">Seleccionar...</option>
+                            <option value="Hijo/a">Hijo/a</option>
+                            <option value="Esposo/a">Esposo/a - Cónyuge</option>
+                            <option value="Padre/Madre">Padre/Madre</option>
+                            <option value="Hermano/a">Hermano/a</option>
+                            <option value="Tío/a">Tío/a</option>
+                            <option value="Primo/a">Primo/a</option>
+                            <option value="Nieto/a">Nieto/a</option>
+                            <option value="Sobrino/a">Sobrino/a</option>
+                            <option value="Cuñado/a">Cuñado/a</option>
+                            <option value="Cuidador contratado">Cuidador contratado</option>
+                            <option value="Apoderado">Apoderado/Representante legal</option>
+                            <option value="Otro">Otro (especificar)</option>
+                        </select>
+                    </div>
                     <div class="form-group"><label>Celular Familiar</label><input type="tel" id="familyPhone"></div>
                 </div>
+                <div class="form-group hidden" id="familyRelOtherBox"><label>Especifique el parentesco *</label><input type="text" id="familyRelationshipOther" placeholder="Ej: Nuera, amigo de la familia..."></div>
                 <h4>✍️ Firma Contratista (Auxiliar)</h4><canvas id="auxSigCanvas" class="signature-canvas"></canvas><button class="btn-small btn-secondary" onclick="clearSig('auxSigCanvas')">Borrar</button>
                 <h4>✍️ Firma Familiar (Cierre)</h4><canvas id="famSigCanvas" class="signature-canvas"></canvas><button class="btn-small btn-secondary" onclick="clearSig('famSigCanvas')">Borrar</button>
                 <button class="btn-primary btn-info" onclick="closeShift()"><i class="fas fa-check-circle"></i> Cerrar Turno</button>
-                <button id="generateClosurePDFBtn" class="btn-primary btn-warning hidden" onclick="generateClosurePDF()"><i class="fas fa-file-pdf"></i> Descargar Resumen Diario</button>
+                <button id="generateClosurePDFBtn" class="btn-primary btn-warning hidden" onclick="generateClosurePDF()"><i class="fas fa-file-pdf"></i> Descargar Resumen Clínico del Turno (Evidencia)</button>
             </div>
         </div>
     </div>
 
     <div id="profPanel" class="hidden">
+        <div class="card"><h3 style="cursor:default;">📅 Visitas Domiciliarias Programadas para Ti</h3><div id="profScheduledList"></div></div>
         <div id="profPatientSelection" class="card"><h3 style="cursor:default;">Selecciona un Paciente para Valoración</h3><div id="profPatientList"></div></div>
         <div id="profClinicalForm" class="hidden">
             <div class="card">
@@ -680,13 +721,24 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                     </div>
                 </div>
 
+                <div class="legal-warning" style="border-color: var(--warning);">
+                    <h4>📋 CONSENTIMIENTO INFORMADO</h4>
+                    <div id="profConsentLaw" style="font-size:0.8rem; color:#94a3b8; margin-bottom:8px;"></div>
+                    <div class="form-group"><label>Intervención / Procedimiento realizado (descripción informada)</label><textarea id="profConsentProcedure" rows="2" placeholder="Describa la intervención aplicada para el registro del consentimiento"></textarea></div>
+                    <div style="margin-top:8px;"><input type="checkbox" id="profConsentAck" style="width:auto; margin-right:10px;"><label for="profConsentAck" style="display:inline; font-size:0.85rem;">Confirmo que informé al paciente/cuidador la intervención, sus riesgos, beneficios y alternativas, y otorgó su consentimiento informado.</label></div>
+                </div>
+
                 <div class="legal-warning" style="border-color: var(--info);">
                     <h4>✍️ Firmas de Validación</h4>
                     <div class="grid">
                         <div class="form-group"><label>Firma Profesional</label><canvas id="profSigCanvas" class="signature-canvas"></canvas><button class="btn-small btn-secondary" onclick="clearSig('profSigCanvas')">Borrar</button></div>
                         <div class="form-group"><label>Firma Familiar (Testigo)</label><canvas id="famProfSigCanvas" class="signature-canvas"></canvas><button class="btn-small btn-secondary" onclick="clearSig('famProfSigCanvas')">Borrar</button></div>
                     </div>
-                    <div class="grid"><div class="form-group"><label>Nombre Familiar *</label><input type="text" id="profFamName"></div><div class="form-group"><label>Cédula Familiar *</label><input type="text" id="profFamId"></div></div>
+                    <div class="grid">
+                        <div class="form-group"><label>Nombre Familiar *</label><input type="text" id="profFamName"></div>
+                        <div class="form-group"><label>Cédula Familiar *</label><input type="text" id="profFamId"></div>
+                        <div class="form-group"><label>Parentesco del Testigo (opcional)</label><input type="text" id="profFamRel" placeholder="Ej: Hijo/a, cuidador contratado..."></div>
+                    </div>
                 </div>
                 <button class="btn-primary btn-info" onclick="saveProfRecord()"><i class="fas fa-save"></i> Guardar Nota de Evolución</button>
                 <button id="generateProfPDFBtn" class="btn-primary btn-warning hidden" onclick="generateProfPDF()"><i class="fas fa-file-pdf"></i> Descargar Informe Profesional PDF</button>
@@ -715,7 +767,6 @@ const API_URL = '';
 const LOGO_URL = 'https://i.imgur.com/01YZxey.jpeg';
 const MESES_ES = { '01':'Enero','02':'Febrero','03':'Marzo','04':'Abril','05':'Mayo','06':'Junio','07':'Julio','08':'Agosto','09':'Septiembre','10':'Octubre','11':'Noviembre','12':'Diciembre' };
 
-// ====== 50 CIUDADES DE COLOMBIA CON ALTITUD Y SpO2 MÍNIMA NORMAL ======
 const CIUDADES_COLOMBIA = {
     'Cartagena': { altitud: 2, spo2_min: 96 }, 'San Andrés': { altitud: 2, spo2_min: 96 },
     'Barranquilla': { altitud: 8, spo2_min: 96 }, 'Riohacha': { altitud: 8, spo2_min: 96 },
@@ -745,18 +796,42 @@ const CIUDADES_COLOMBIA = {
     'Tunja': { altitud: 2820, spo2_min: 92 }, 'Ipiales': { altitud: 2900, spo2_min: 92 }
 };
 
-// Códigos CUPS de visita domiciliaria (⚠️ 890108 psicología confirmado; verifica los demás contra el manual CUPS vigente)
 const CUPS_VISITA_DOMICILIARIA = {
     'MEDICINA': '890105', 'ENFERMERIA_JEFE': '890106',
     'PSICOLOGIA': '890108', 'FISIOTERAPIA': '890109', 'TERAPIA_OCUPACIONAL': '890110',
     'TERAPIA_RESPIRATORIA': '890111', 'FONOAUDIOLOGIA': '890112', 'NUTRICION': '890113'
 };
 
+const SHIFT_OPTIONS_HTML = '<option value="6h_diurno">☀️ 6h Diurno</option><option value="8h_diurno">☀️ 8h Diurno</option><option value="12h_diurno">☀️ 12h Diurno</option><option value="6h_nocturno">🌙 6h Nocturno</option><option value="8h_nocturno">🌙 8h Nocturno</option><option value="12h_nocturno">🌙 12h Nocturno</option><option value="24h">🔄 24h</option>';
+
+const REP_CONFIGS = {
+    'bano': { icon:'🛁', label:'Baño', fields:[{name:'tipo', type:'select', label:'Tipo', options:['En cama','En ducha','En silla','Parcial']}] },
+    'bucal': { icon:'🦷', label:'Higiene Bucal', fields:[{name:'tipo', type:'select', label:'Tipo', options:['Propia','Asistida']}] },
+    'cama': { icon:'🛏️', label:'Cambio de Ropa de Cama', fields:[{name:'detalle', type:'text', label:'Detalle', ph:'Ej: Sábanas y fundas'}] },
+    'aseo_espacio': { icon:'🧹', label:'Aseo y Orden del Espacio', fields:[{name:'detalle', type:'text', label:'Detalle', ph:'Ej: Limpieza de área y baño'}] },
+    'residuos': { icon:'🗑️', label:'Eliminación de Residuos', fields:[{name:'detalle', type:'text', label:'Detalle', ph:'Ej: Patogénicos y comunes'}] },
+    'acompanamiento': { icon:'🛋️', label:'Acompañamiento Terapéutico', fields:[{name:'detalle', type:'text', label:'Detalle', ph:'Ej: Diálogo y apoyo emocional'}] },
+    'enteral': { icon:'🥤', label:'Alimentación Enteral (Sonda)', fields:[{name:'formula', type:'text', label:'Fórmula', ph:'Ej: Nutricomp'},{name:'volumen', type:'number', label:'Volumen (mL)'}] },
+    'parenteral': { icon:'💉', label:'Nutrición Parenteral', fields:[{name:'formula', type:'text', label:'Fórmula', ph:'Ej: NPT'},{name:'volumen', type:'number', label:'Volumen (mL)'}] },
+    'hidratacion': { icon:'💧', label:'Hidratación', fields:[{name:'ml', type:'number', label:'mL'}] },
+    'curacion': { icon:'🩹', label:'Curación', invasive:true, fields:[{name:'estado', type:'select', label:'Estado de la herida', options:['Limpia','Con exudado','Infectada']},{name:'zona', type:'text', label:'Zona del cuerpo', ph:'Ej: Sacro, talón'},{name:'observacion', type:'text', label:'Observación'}] },
+    'nebulizacion': { icon:'🌫️', label:'Nebulización', invasive:true, fields:[{name:'medicamento', type:'text', label:'Medicamento'},{name:'duracion', type:'text', label:'Duración', ph:'Ej: 15 min'}] },
+    'glucemia': { icon:'🩸', label:'Glucemia Capilar', invasive:true, fields:[{name:'valor', type:'number', label:'mg/dL'},{name:'observacion', type:'text', label:'Observación'}] },
+    'foley': { icon:'🚽', label:'Control de Sonda Foley', invasive:true, fields:[{name:'volumen', type:'number', label:'Orina (mL)'},{name:'caracteristicas', type:'text', label:'Características', ph:'Color, aspecto'}] },
+    'panal': { icon:'👶', label:'Cambio de Pañal', fields:[{name:'piel', type:'text', label:'Estado de la piel', ph:'Íntegra, enrojecida...'}] },
+    'aspiracion': { icon:'🌬️', label:'Aspiración de Secreciones', invasive:true, fields:[{name:'tipo', type:'text', label:'Tipo', ph:'Nasal, oral, traqueal'},{name:'observacion', type:'text', label:'Observación'}] },
+    'oxigeno': { icon:'💨', label:'Oxigenoterapia', invasive:true, fields:[{name:'lpm', type:'number', label:'L/min'},{name:'dispositivo', type:'select', label:'Dispositivo', options:['Cánula nasal','Mascarilla']}] },
+    'postura': { icon:'🔄', label:'Cambio Postural', fields:[{name:'posicion', type:'select', label:'Posición', options:['Supino','Prono','Lateral Derecho','Lateral Izquierdo','Fowler','Semi-Fowler']},{name:'piel', type:'text', label:'Piel observada', ph:'Íntegra, enrojecimiento...'}] },
+    'deambulacion': { icon:'🚶', label:'Deambulación', fields:[{name:'metros', type:'number', label:'Metros'},{name:'ayuda', type:'select', label:'Ayuda', options:['No','Sí - 1 persona','Sí - 2 personas','Andador','Bastón','Silla de ruedas']},{name:'respuesta', type:'text', label:'Respuesta del paciente'}] }
+};
+const REP_CONTAINERS = { bano:'repHygiene', bucal:'repHygiene', cama:'repAseo', aseo_espacio:'repAseo', residuos:'repAseo', acompanamiento:'repAseo', enteral:'repNutrition', parenteral:'repNutrition', hidratacion:'repNutrition', curacion:'repClinical', nebulizacion:'repClinical', glucemia:'repClinical', foley:'repClinical', panal:'repClinical', aspiracion:'repClinical', oxigeno:'repClinical', postura:'repMobility', deambulacion:'repMobility' };
+
 let currentUser = null, selectedPatient = null, currentShiftId = null;
 let shiftTimerInterval = null, shiftStartTime = null;
 let lastShiftData = null, lastInvoiceData = null, lastLiquidationData = null, lastProfRecordData = null;
 let profsRegistry = [], patientsRegistry = [], finParamsId = null, tariffId = null;
 let sigHasInk = {};
+let sessionRecords = [], sessionAdverseEvents = [], scheduledShiftsMap = {};
 
 // ============ HELPERS ============
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
@@ -788,13 +863,15 @@ function initApp() {
     if (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE') {
         document.getElementById('adminPanel').classList.remove('hidden');
         loadProfs(); loadPats(); loadEduList(); loadScheduledShiftsAdmin(); loadFinanceData(); updateStats();
+        updateSchedShiftType();
         refreshChat('adminMessageList'); setInterval(() => { if (!document.getElementById('admin_messages').classList.contains('hidden')) refreshChat('adminMessageList'); }, 7000);
     } else if (currentUser.specialty_name === 'AUXILIAR_ENFERMERIA') {
         document.getElementById('auxPanel').classList.remove('hidden');
         loadAuxPatients(); loadAuxScheduledShifts(); refreshChat('auxMessageList');
         setInterval(() => { const body = document.getElementById('auxChatBody'); if (body && body.offsetParent) refreshChat('auxMessageList'); }, 7000);
     } else {
-        document.getElementById('profPanel').classList.remove('hidden'); loadProfPatients();
+        document.getElementById('profPanel').classList.remove('hidden');
+        loadProfPatients(); loadProfScheduledShifts();
     }
 }
 
@@ -804,7 +881,7 @@ function showAdminTab(tab, btn) { ['admin_prof','admin_pat','admin_edu','admin_r
 async function loadProfs() {
     try { const r = await fetch(`${API_URL}/api/professionals`); const d = await r.json(); profsRegistry = d.data || [];
         document.querySelector('#profTable tbody').innerHTML = profsRegistry.map(p => `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.document_number)}</td><td>${escapeHtml(p.specialties?.name||'N/A')}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-warning" onclick="editProf('${p.id}')">Editar</button> <button class="btn-small btn-archive" onclick="archiveProf('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deleteProf('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`).join('');
-        fillSelects(); updateStats();
+        fillSelects(); updateStats(); updateSchedShiftType();
     } catch (e) { console.error(e); showToast('Error cargando profesionales', 'error'); }
 }
 async function archiveProf(id) { if(!confirm('¿Archivar este profesional? Desaparecerá de la lista activa.')) return; try { await fetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: false }) }); showToast('Archivado'); loadProfs(); } catch(e) { showToast('Error al archivar', 'error'); } }
@@ -910,13 +987,25 @@ async function loadEduList() {
 }
 
 // ============ ADMIN: AGENDA ============
+function updateSchedShiftType() {
+    const profId = getVal('schedProf');
+    const prof = profsRegistry.find(p => p.id === profId);
+    const sel = document.getElementById('schedType');
+    if (!sel) return;
+    if (!prof || prof.specialties?.name === 'AUXILIAR_ENFERMERIA' || prof.specialties?.name === 'ADMINISTRACION') {
+        sel.disabled = false; sel.innerHTML = SHIFT_OPTIONS_HTML;
+    } else {
+        sel.disabled = true;
+        sel.innerHTML = '<option value="Visita Domiciliaria">🏥 Visita Domiciliaria (duración en la nota)</option>';
+    }
+}
 async function createScheduledShift() {
     const date = getVal('schedDate'), patId = getVal('schedPatient'), profId = getVal('schedProf');
     if (!date || !patId || !profId) return showToast('Completa: fecha, paciente y profesional', 'error');
     try {
         const r = await fetch(`${API_URL}/api/scheduled-shifts`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ shiftDate: date, patientId: patId, professionalId: profId, shiftType: getVal('schedType') }) });
         const d = await r.json();
-        if (d.success) { showToast('✅ Turno publicado'); loadScheduledShiftsAdmin(); } else showToast(d.message || 'Error', 'error');
+        if (d.success) { showToast('✅ Publicado'); loadScheduledShiftsAdmin(); } else showToast(d.message || 'Error', 'error');
     } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
 }
 async function loadScheduledShiftsAdmin() {
@@ -1075,14 +1164,16 @@ function toggleAuxChat() {
 async function reportAdverseEvent() {
     const desc = prompt('⚠️ Describe el EVENTO ADVERSO (se reportará a coordinación):');
     if (!desc || !desc.trim()) return;
+    const hora = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
     try {
         const r = await fetch(`${API_URL}/api/adverse-events`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ patientId: selectedPatient?.id, professionalId: currentUser.id, shiftId: currentShiftId, eventType: 'Otro', description: desc.trim() }) });
         const d = await r.json();
         if (d.success) {
             await fetch(`${API_URL}/api/messages`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ senderId: currentUser.id, senderName: currentUser.full_name, message: `🚨 EVENTO ADVERSO: ${desc.trim()}`, isAlert: true }) });
+            sessionAdverseEvents.push({ hora, descripcion: desc.trim() });
             showToast('🚨 Evento adverso reportado', 'warning'); refreshChat('auxMessageList');
         } else showToast(d.message || 'Error', 'error');
-    } catch (e) { console.error(e); showToast('Error reportando evento', 'error'); }
+    } catch (e) { console.error(e); sessionAdverseEvents.push({ hora, descripcion: desc.trim() }); showToast('Evento registrado localmente (sin conexión)', 'warning'); }
 }
 
 // ============ AUXILIAR: PACIENTES Y TURNOS ============
@@ -1093,7 +1184,6 @@ async function loadAuxPatients() {
         document.getElementById('auxPatientList').innerHTML = active.length ? active.map(p => `<div class="patient-card" onclick='selectPatient(${JSON.stringify({ id: p.id, full_name: p.full_name, altitude_profiles: p.altitude_profiles }).replace(/'/g, "&#39;")})'><strong>🧑 ${escapeHtml(p.full_name)}</strong><br><small>📍 ${escapeHtml(p.altitude_profiles?.city_name || 'Sin ciudad')} · EPS: ${escapeHtml(p.eps_name || 'N/A')}</small></div>`).join('') : '<p style="color:#94a3b8; text-align:center;">No hay pacientes activos.</p>';
     } catch (e) { console.error(e); showToast('Error cargando pacientes', 'error'); }
 }
-let scheduledShiftsMap = {};
 async function loadAuxScheduledShifts() {
     try {
         const r = await fetch(`${API_URL}/api/scheduled-shifts/professional/${currentUser.id}`); const d = await r.json();
@@ -1130,6 +1220,7 @@ async function startShift() {
         const d = await r.json();
         if (d.success) {
             currentShiftId = d.data.id; shiftStartTime = new Date();
+            sessionRecords = []; sessionAdverseEvents = [];
             lastShiftData = { start: { paciente: selectedPatient.full_name, auxiliar: currentUser.full_name, tipo: shiftType, recepcion: getVal('patientReceivedStatus'), fecha: shiftStartTime.toLocaleString('es-CO') } };
             showToast('✅ Turno iniciado');
             document.getElementById('auxShiftStart').classList.add('hidden');
@@ -1202,8 +1293,29 @@ function calculateBraden() {
     box.className = `braden-total ${cls}`; box.innerHTML = `<h3>${total}/24</h3><p>${txt}</p>`;
 }
 function toggleAccordion(header) { header.nextElementSibling.classList.toggle('open'); }
-function toggleSubFields(key, cb) { document.getElementById('fields-' + key).classList.toggle('show', cb.checked); }
 function toggleLeaveDetails(cb) { document.getElementById('leaveDetails').classList.toggle('hidden', !cb.checked); }
+function toggleOtherRelationship() { document.getElementById('familyRelOtherBox').classList.toggle('hidden', getVal('familyRelationship') !== 'Otro'); }
+
+// --- Actividades repetibles dinámicas ---
+function addRepRow(type) {
+    const cfg = REP_CONFIGS[type]; if (!cfg) return;
+    const div = document.createElement('div');
+    div.className = 'sub-activity rep-row';
+    div.dataset.label = cfg.label;
+    div.dataset.type = type;
+    if (cfg.invasive) div.dataset.invasive = 'true';
+    let inner = `<div class="sub-activity-header"><strong>${cfg.icon} ${cfg.label}</strong><input type="time" class="rep-time" style="width:auto; margin:0;"><button class="btn-small btn-danger" onclick="removeRepRow(this)">✕</button></div>`;
+    cfg.fields.forEach(f => {
+        const fa = `data-field="${f.name}"`;
+        if (f.type === 'select') inner += `<div class="form-group"><label>${f.label}</label><select ${fa}>${f.options.map(o => `<option value="${o}">${o}</option>`).join('')}</select></div>`;
+        else if (f.type === 'number') inner += `<div class="form-group"><label>${f.label}</label><input type="number" ${fa}></div>`;
+        else inner += `<div class="form-group"><label>${f.label}</label><input type="text" ${fa} placeholder="${f.ph || ''}"></div>`;
+    });
+    div.innerHTML = inner;
+    document.getElementById(REP_CONTAINERS[type]).appendChild(div);
+    updateConsentBoxVisibility();
+}
+function removeRepRow(btn) { btn.closest('.rep-row').remove(); updateConsentBoxVisibility(); }
 function addMeal() {
     const div = document.createElement('div');
     div.className = 'sub-activity meal-row';
@@ -1213,8 +1325,21 @@ function addMeal() {
 function addMedication() {
     const div = document.createElement('div');
     div.className = 'med-item med-row';
-    div.innerHTML = '<input type="text" class="med-name" placeholder="Medicamento"><input type="text" class="med-dose" placeholder="Dosis"><input type="time" class="med-time"><select class="med-route"><option value="oral">Oral</option><option value="iv">IV</option><option value="im">IM</option><option value="sc">Subcutánea</option><option value="topica">Tópica</option></select><button class="btn-small btn-danger" onclick="this.parentElement.remove()">✕</button>';
+    div.innerHTML = '<input type="text" class="med-name" placeholder="Medicamento">' +
+        '<input type="text" class="med-dose" placeholder="Dosis">' +
+        '<input type="text" class="med-prescriber" placeholder="Prescrito por (Médico)">' +
+        '<input type="time" class="med-time">' +
+        '<select class="med-route"><option value="Oral">Oral</option><option value="IV">IV Intravenosa</option><option value="IM">IM Intramuscular</option><option value="Subcutánea">Subcutánea</option><option value="Sublingual">Sublingual</option><option value="Tópica">Tópica</option><option value="Inhalatoria">Inhalatoria / Nebulización</option><option value="Oftálmica">Oftálmica (gotas)</option><option value="Ótica">Ótica</option><option value="Nasal">Nasal</option><option value="Rectal">Rectal</option><option value="Transdérmica">Transdérmica (parche)</option><option value="Sonda enteral">Vía sonda enteral</option></select>' +
+        '<button class="btn-small btn-danger" onclick="removeMedRow(this)">✕</button>';
     document.getElementById('medList').appendChild(div);
+    updateConsentBoxVisibility();
+}
+function removeMedRow(btn) { btn.closest('.med-row').remove(); updateConsentBoxVisibility(); }
+function updateConsentBoxVisibility() {
+    const box = document.getElementById('consentProceduresBox'); if (!box) return;
+    const hubo = document.querySelectorAll('.rep-row[data-invasive="true"]').length > 0 || document.querySelectorAll('.med-row').length > 0;
+    box.classList.toggle('hidden', !hubo);
+    if (!hubo) document.getElementById('procedureConsentAck').checked = false;
 }
 function startDictation(targetId) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1227,35 +1352,19 @@ function startDictation(targetId) {
     } catch (e) { showToast('No se pudo iniciar el micrófono', 'error'); }
 }
 
-// --- Guardar registro clínico ---
+// --- Recolección de datos del turno ---
 function collectActivities() {
-    const sub = (cbId, label, timeId, fields) => {
-        const cb = document.getElementById(cbId);
-        if (!cb || !cb.checked) return null;
-        const d = { label, time: getVal(timeId) };
-        fields.forEach(f => d[f] = getVal(f));
-        return d;
-    };
-    return [
-        sub('actBath','Baño','actBathTime',['bathType']),
-        sub('actOralHygiene','Higiene Bucal','actOralTime',['oralType']),
-        sub('actBedClothes','Cambio Ropa de Cama','actBedClothesTime',['actBedClothesObs']),
-        sub('actRoomClean','Aseo del Espacio','actRoomCleanTime',['actRoomCleanObs']),
-        sub('actWaste','Eliminación de Residuos','actWasteTime',['actWasteObs']),
-        sub('actCompanion','Acompañamiento Terapéutico','actCompanionTime',['actCompanionObs']),
-        sub('actEnteralFood','Alimentación Enteral','actEnteralFoodTime',['enteralFormula','enteralVol']),
-        sub('actParenteralFood','Nutrición Parenteral','actParenteralFoodTime',['parenteralFormula','parenteralVol']),
-        sub('actHydration','Hidratación','actHydrationTime',['hydrationMl']),
-        sub('actWound','Curación','actWoundTime',['woundState']),
-        sub('actOxygen','Oxigenoterapia','actOxygenTime',['oxygenLpm','oxygenDevice']),
-        sub('actPosition','Cambio Postural','actPositionTime',['positionType']),
-        sub('actWalking','Deambulación','actWalkingTime',['walkingDistance','walkingHelp'])
-    ].filter(Boolean);
+    const acts = [...document.querySelectorAll('.rep-row')].map(row => {
+        const act = { actividad: row.dataset.label, hora: row.querySelector('.rep-time')?.value || '' };
+        row.querySelectorAll('[data-field]').forEach(f => { act[f.dataset.field] = f.value; });
+        return act;
+    });
+    const meals = [...document.querySelectorAll('.meal-row')].map(row => ({ hora: row.querySelector('.meal-time')?.value, tipo: row.querySelector('.meal-type')?.value, aceptacion: row.querySelector('.meal-accept')?.value, detalle: row.querySelector('.meal-detail')?.value }));
+    const meds = [...document.querySelectorAll('.med-row')].map(row => ({ medicamento: row.querySelector('.med-name')?.value, dosis: row.querySelector('.med-dose')?.value, prescritoPor: row.querySelector('.med-prescriber')?.value, hora: row.querySelector('.med-time')?.value, via: row.querySelector('.med-route')?.value }));
+    return { actividades: acts, comidas: meals, medicamentos: meds };
 }
 async function saveClinicalRecord() {
     if (!selectedPatient) return showToast('No hay paciente seleccionado', 'error');
-    const mealsData = [...document.querySelectorAll('.meal-row')].map(row => ({ time: row.querySelector('.meal-time')?.value, type: row.querySelector('.meal-type')?.value, acceptance: row.querySelector('.meal-accept')?.value, detail: row.querySelector('.meal-detail')?.value }));
-    const medsData = [...document.querySelectorAll('.med-row')].map(row => ({ name: row.querySelector('.med-name')?.value, dose: row.querySelector('.med-dose')?.value, time: row.querySelector('.med-time')?.value, route: row.querySelector('.med-route')?.value }));
     const gE = Number(getVal('glasgowEyes')) || null, gV = Number(getVal('glasgowVerbal')) || null, gM = Number(getVal('glasgowMotor')) || null;
     const bIds = ['bradenSensory','bradenMoisture','bradenActivity','bradenMobility','bradenNutrition','bradenFriction'];
     const payload = {
@@ -1265,7 +1374,7 @@ async function saveClinicalRecord() {
         spo2: Number(getVal('spo2')) || null, glucose: Number(getVal('glucose')) || null,
         evaScore: Number(getVal('evaScore')) || 0, glasgowEyes: gE, glasgowVerbal: gV, glasgowMotor: gM,
         bradenScore: bIds.reduce((s, id) => s + (Number(getVal(id)) || 0), 0) || null,
-        activitiesCompleted: { actividades: collectActivities(), comidas: mealsData, medicamentos: medsData },
+        activitiesCompleted: collectActivities(),
         sbarSituation: getVal('sbarSituation') || null, sbarBackground: getVal('sbarBackground') || null,
         sbarAssessment: getVal('sbarAssessment') || null, sbarRecommendation: getVal('sbarRecommendation') || null,
         notes: getVal('clinicalNotes') || null
@@ -1273,7 +1382,7 @@ async function saveClinicalRecord() {
     try {
         const r = await fetch(`${API_URL}/api/clinical-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const d = await r.json();
-        if (d.success) { showToast('✅ Registro clínico guardado'); renderDailyHistory(); }
+        if (d.success) { showToast('✅ Registro clínico guardado'); sessionRecords.push({ hora: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }), vitals: { bp: payload.bloodPressure, hr: payload.heartRate, rr: payload.respiratoryRate, temp: payload.temperature, spo2: payload.spo2, glu: payload.glucose }, eva: payload.evaScore, glasgow: (gE||0)+(gV||0)+(gM||0), braden: payload.bradenScore }); renderDailyHistory(); }
         else showToast(d.message || 'Error al guardar', 'error');
     } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
 }
@@ -1284,18 +1393,29 @@ async function renderDailyHistory() {
         const records = d.data?.records || [];
         box.innerHTML = records.length ? records.map(rec => {
             const hora = String(rec.created_at || '').slice(11, 16);
-            return `<div class="sub-activity"><strong>🕐 ${hora}</strong> ${rec.professionals?.full_name ? '— ' + escapeHtml(rec.professionals.full_name) : ''}<br>PA: ${escapeHtml(rec.blood_pressure||'-')} · FC: ${escapeHtml(rec.heart_rate||'-')} · SpO2: ${escapeHtml(rec.spo2||'-')} · EVA: ${escapeHtml(rec.eva_score??'-')}<br><small>Glasgow: ${(rec.glasgow_eyes||0)+(rec.glasgow_verbal||0)+(rec.glasgow_motor||0)}/15 · Braden: ${escapeHtml(rec.braden_score||'-')}</small>${rec.notes ? `<br><small>📝 ${escapeHtml(rec.notes)}</small>` : ''}</div>`;
+            const ac = rec.activities_completed || {};
+            return `<div class="sub-activity"><strong>🕐 ${hora}</strong> ${rec.professionals?.full_name ? '— ' + escapeHtml(rec.professionals.full_name) : ''}<br>PA: ${escapeHtml(rec.blood_pressure||'-')} · FC: ${escapeHtml(rec.heart_rate||'-')} · SpO2: ${escapeHtml(rec.spo2||'-')} · EVA: ${escapeHtml(rec.eva_score??'-')}<br><small>Glasgow: ${(rec.glasgow_eyes||0)+(rec.glasgow_verbal||0)+(rec.glasgow_motor||0)}/15 · Braden: ${escapeHtml(rec.braden_score||'-')} · 🧰 ${(ac.actividades||[]).length} cuidados · 💊 ${(ac.medicamentos||[]).length} medicamentos · 🍽️ ${(ac.comidas||[]).length} comidas</small>${rec.notes ? `<br><small>📝 ${escapeHtml(rec.notes)}</small>` : ''}</div>`;
         }).join('') : '<p style="color:#94a3b8;">Sin registros hoy todavía.</p>';
     } catch (e) { box.innerHTML = '<p style="color:#94a3b8;">No se pudo cargar el historial.</p>'; }
 }
 
 async function closeShift() {
-    if (!getVal('familySignName') || !getVal('familySignId') || !getVal('familyRelationship')) return showToast('Completa los datos del familiar', 'error');
+    if (!getVal('familySignName') || !getVal('familySignId')) return showToast('Completa los datos del familiar', 'error');
+    let rel = getVal('familyRelationship');
+    if (rel === 'Otro') { const o = getVal('familyRelationshipOther').trim(); if (!o) return showToast('Especifique el parentesco', 'error'); rel = `Otro: ${o}`; }
+    if (!rel) return showToast('Selecciona el parentesco del familiar', 'error');
     const sigAux = getSigData('auxSigCanvas'), sigFam = getSigData('famSigCanvas');
     if (!sigAux) return showToast('Falta tu firma (contratista)', 'warning');
     if (!sigFam) return showToast('Falta la firma del familiar', 'warning');
     const leavesHome = document.getElementById('patientLeavesHome').checked;
     if (leavesHome && !document.getElementById('leaveLiabilityAck').checked) return showToast('El familiar debe aceptar la responsabilidad del traslado', 'warning');
+    const huboProcedimientos = document.querySelectorAll('.rep-row[data-invasive="true"]').length > 0 || document.querySelectorAll('.med-row').length > 0;
+    if (huboProcedimientos && !document.getElementById('procedureConsentAck').checked) return showToast('⚠️ Este turno tuvo procedimientos/medicamentos: marca el CONSENTIMIENTO DE PROCEDIMIENTOS', 'warning');
+    const closureSnapshot = {
+        actividades: collectActivities(),
+        sbar: { s: getVal('sbarSituation'), b: getVal('sbarBackground'), a: getVal('sbarAssessment'), r: getVal('sbarRecommendation') },
+        notas: getVal('clinicalNotes')
+    };
     const payload = {
         shiftId: currentShiftId,
         patientDeliveredStatus: getVal('patientDeliveredStatus'),
@@ -1303,9 +1423,10 @@ async function closeShift() {
         pendingTasks: getVal('pendingTasks') || null,
         auxiliarySignature: sigAux, auxiliaryName: currentUser.full_name, auxiliaryIdNumber: currentUser.document_number || 'N/D',
         familySignature: sigFam, familyName: getVal('familySignName'), familyIdNumber: getVal('familySignId'),
-        familyRelationship: getVal('familyRelationship'), familyPhone: getVal('familyPhone') || null,
+        familyRelationship: rel, familyPhone: getVal('familyPhone') || null,
         patientLeavesHome: leavesHome,
-        leaveData: leavesHome ? { transport: getVal('leaveTransport'), time: getVal('leaveTime'), returnTime: getVal('leaveReturnTime'), liabilityAck: true, signature: getSigData('leaveSigCanvas') } : null
+        leaveData: leavesHome ? { transport: getVal('leaveTransport'), time: getVal('leaveTime'), returnTime: getVal('leaveReturnTime'), liabilityAck: true, signature: getSigData('leaveSigCanvas') } : null,
+        consentProcedures: huboProcedimientos ? { informado: true, aceptado: true } : null
     };
     try {
         const r = await fetch(`${API_URL}/api/shifts/close`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -1313,6 +1434,7 @@ async function closeShift() {
         if (!d.success) return showToast(d.message || 'Error al cerrar turno', 'error');
     } catch (e) { console.error(e); return showToast('No se pudo sincronizar el cierre', 'warning'); }
     lastShiftData.close = { ...payload, fecha: new Date().toLocaleString('es-CO'), paciente: selectedPatient.full_name };
+    lastShiftData.snapshot = closureSnapshot;
     currentShiftId = null;
     showToast('✅ Turno cerrado correctamente');
     document.getElementById('generateClosurePDFBtn').classList.remove('hidden');
@@ -1325,28 +1447,74 @@ async function closeShift() {
 function generateClosurePDF() {
     if (!lastShiftData) return showToast('No hay datos del turno', 'error');
     const { jsPDF } = window.jspdf; const doc = new jsPDF();
-    const s = lastShiftData.start || {}, c = lastShiftData.close || {};
+    const s = lastShiftData.start || {}, c = lastShiftData.close || {}, sn = lastShiftData.snapshot || {};
     try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
-    doc.setFontSize(18); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
-    doc.setFontSize(12); doc.setTextColor(0); doc.text("Resumen Diario de Turno", 105, 30, null, null, "center");
-    doc.setFontSize(10);
-    doc.text(`Paciente: ${s.paciente || c.paciente || '-'}`, 14, 45);
-    doc.text(`Auxiliar: ${s.auxiliar || '-'}`, 14, 52);
-    doc.text(`Inicio: ${s.fecha || '-'}`, 14, 59);
-    doc.text(`Cierre: ${c.fecha || '-'}`, 14, 66);
-    doc.text(`Tipo: ${s.tipo || '-'} | Recepción: ${s.recepcion || '-'} | Entrega: ${c.patientDeliveredStatus || '-'}`, 14, 73);
-    doc.text(`Pendientes: ${c.pendingTasks || 'Ninguno'}`, 14, 80);
+    doc.setFontSize(16); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 18, null, null, "center");
+    doc.setFontSize(11); doc.setTextColor(0); doc.text("RESUMEN CLÍNICO DEL TURNO — Evidencia del Servicio Prestado", 105, 27, null, null, "center");
+    doc.setFontSize(9);
+    doc.text(`Paciente: ${s.paciente || c.paciente || '-'}`, 14, 38);
+    doc.text(`Auxiliar: ${s.auxiliar || '-'}`, 14, 44);
+    doc.text(`Turno: ${s.tipo || '-'} | Inicio: ${s.fecha || '-'} | Cierre: ${c.fecha || '-'}`, 14, 50);
+    doc.text(`Recepción: ${s.recepcion || '-'} | Entrega: ${c.patientDeliveredStatus || '-'}`, 14, 56);
+    let y = 62;
+    if (sessionRecords.length > 0) {
+        doc.autoTable({ startY: y, head: [['Hora','PA','FC','FR','Temp','SpO2','Glu','EVA','Glasg','Braden']], body: sessionRecords.map(r => [r.hora, r.vitals.bp||'-', r.vitals.hr||'-', r.vitals.rr||'-', r.vitals.temp||'-', r.vitals.spo2||'-', r.vitals.glu||'-', r.eva, r.glasgow, r.braden||'-']), headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
+        y = doc.lastAutoTable.finalY + 6;
+    }
+    const acts = (sn.actividades?.actividades) || [];
+    if (acts.length) {
+        doc.autoTable({ startY: y, head: [['Actividad / Cuidado','Hora','Detalles']], body: acts.map(a => [a.actividad||'', a.hora||'-', Object.entries(a).filter(([k,v]) => !['actividad','hora'].includes(k) && v).map(([k,v]) => `${k}: ${v}`).join(' | ') || '-']), headStyles: { fillColor: [59,130,246] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
+        y = doc.lastAutoTable.finalY + 6;
+    }
+    const meds = (sn.actividades?.medicamentos) || [];
+    if (meds.length) {
+        doc.autoTable({ startY: y, head: [['Medicamento','Dosis','Vía','Hora','Prescrito por']], body: meds.map(m => [m.medicamento||'-', m.dosis||'-', m.via||'-', m.hora||'-', m.prescritoPor||'-']), headStyles: { fillColor: [245,158,11] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
+        y = doc.lastAutoTable.finalY + 6;
+    }
+    const meals = (sn.actividades?.comidas) || [];
+    if (meals.length) {
+        doc.autoTable({ startY: y, head: [['Comida','Hora','Aceptación','Detalle']], body: meals.map(m => [m.tipo||'-', m.hora||'-', m.aceptacion||'-', m.detalle||'-']), headStyles: { fillColor: [139,92,246] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
+        y = doc.lastAutoTable.finalY + 6;
+    }
+    const sb = sn.sbar || {};
+    if (sb.s || sb.b || sb.a || sb.r) {
+        doc.autoTable({ startY: y, head: [['SBAR']], body: [['S - Situación', sb.s||'-'], ['B - Antecedentes', sb.b||'-'], ['A - Evaluación', sb.a||'-'], ['R - Recomendación', sb.r||'-']], headStyles: { fillColor: [239,68,68] }, styles: { fontSize: 8, cellWidth: 'wrap' }, margin: { left: 14, right: 14 } });
+        y = doc.lastAutoTable.finalY + 6;
+    }
+    if (sn.notas) {
+        if (y > 250) { doc.addPage(); y = 30; }
+        doc.setFontSize(9); doc.text(`Notas: ${sn.notas}`, 14, y, { maxWidth: 182 }); y += 12;
+    }
+    if (sessionAdverseEvents.length > 0) {
+        doc.autoTable({ startY: y, head: [['🚨 Eventos Adversos']], body: sessionAdverseEvents.map(ev => [`${ev.hora} — ${ev.descripcion}`]), headStyles: { fillColor: [220,38,38] }, styles: { fontSize: 8, cellWidth: 'wrap' }, margin: { left: 14, right: 14 } });
+        y = doc.lastAutoTable.finalY + 6;
+    }
+    if (y > 245) { doc.addPage(); y = 30; }
+    doc.setFontSize(9);
+    if (c.consentProcedures) { doc.setTextColor(34,197,94); doc.text('✓ CONSENTIMIENTO DE PROCEDIMIENTOS: Informado y otorgado por el paciente/cuidador (firmas abajo).', 14, y, { maxWidth: 182 }); y += 10; }
+    doc.setTextColor(0);
+    doc.text(`Pendientes: ${c.pendingTasks || 'Ninguno'}`, 14, y); y += 8;
     if (c.patientLeavesHome) {
         doc.setTextColor(220,38,38);
-        doc.text(`⚠️ El paciente salió del domicilio (${c.leaveData?.transport || '-'}) de ${c.leaveData?.time || '?'} a ${c.leaveData?.returnTime || '?'}.`, 14, 92, { maxWidth: 180 });
-        doc.setTextColor(0);
+        doc.text(`⚠️ El paciente salió del domicilio (${c.leaveData?.transport || '-'}) de ${c.leaveData?.time || '?'} a ${c.leaveData?.returnTime || '?'}. Responsabilidad asumida por el familiar.`, 14, y, { maxWidth: 182 });
+        doc.setTextColor(0); y += 12;
     }
-    if (c.auxiliarySignature) { try { doc.addImage(c.auxiliarySignature, 'JPEG', 30, 250, 55, 20); } catch(e) {} doc.setFontSize(8); doc.text('Firma Auxiliar', 57, 274, null, null, 'center'); }
-    if (c.familySignature) { try { doc.addImage(c.familySignature, 'JPEG', 120, 250, 55, 20); } catch(e) {} doc.setFontSize(8); doc.text(`Firma Familiar (${c.familyName || ''})`, 147, 274, null, null, 'center'); }
-    doc.save(`Resumen_Turno_${(c.paciente || 'paciente').replace(/\s+/g,'_')}_${Date.now()}.pdf`); showToast('PDF generado');
+    y = Math.max(y + 10, 240);
+    if (y > 255) { doc.addPage(); y = 40; }
+    if (c.auxiliarySignature) { try { doc.addImage(c.auxiliarySignature, 'JPEG', 30, y, 55, 20); } catch(e) {} doc.setFontSize(8); doc.text('Firma Auxiliar', 57, y + 24, null, null, 'center'); }
+    if (c.familySignature) { try { doc.addImage(c.familySignature, 'JPEG', 120, y, 55, 20); } catch(e) {} doc.setFontSize(8); doc.text(`Firma Familiar (${c.familyName || ''} — ${c.familyRelationship || ''})`, 147, y + 24, null, null, 'center'); }
+    doc.save(`Resumen_Clinico_Turno_${(c.paciente || 'paciente').replace(/\s+/g,'_')}_${Date.now()}.pdf`); showToast('PDF generado');
 }
 
-// ============ PROFESIONAL: PACIENTES ============
+// ============ PROFESIONAL ============
+async function loadProfScheduledShifts() {
+    try {
+        const r = await fetch(`${API_URL}/api/scheduled-shifts`); const d = await r.json();
+        const mine = (d.data || []).filter(x => x.professional_id === currentUser.id && x.shift_type === 'Visita Domiciliaria' && x.status === 'Programado');
+        const el = document.getElementById('profScheduledList'); if (!el) return;
+        el.innerHTML = mine.length ? mine.map(x => `<div class="sub-activity">📅 <strong>${escapeHtml(new Date(x.shift_date).toLocaleDateString('es-CO'))}</strong> — ${escapeHtml(x.patients?.full_name||'')} (${escapeHtml(x.shift_type)})</div>`).join('') : '<p style="color:#94a3b8;">No tienes visitas programadas.</p>';
+    } catch (e) { console.error(e); }
+}
 async function loadProfPatients() {
     try {
         const r = await fetch(`${API_URL}/api/patients`); const d = await r.json();
@@ -1364,33 +1532,27 @@ function selectProfPatient(p) {
     initSigCanvas('profSigCanvas'); initSigCanvas('famProfSigCanvas');
     renderDynamicProfForm(currentUser.specialty_name);
 }
-
-// ============ PROFESIONAL: FORMULARIOS POR ESPECIALIDAD ============
 function renderDynamicProfForm(specialty) {
     ['profVitalsSection','profSOAPSection','profVisitData','profPsychFields','profPhysioFields','profNutriFields','profFonoFields','profTOFields','profTRFields','profTSFields'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
     document.getElementById('profVisitData').classList.remove('hidden');
+    const lawText = {
+        PSICOLOGIA: 'Base legal: Ley 1090 de 2006, Art. 24 — Se informaron las técnicas a utilizar, la confidencialidad y sus límites legales (riesgo para la vida, abuso, orden judicial).',
+        MEDICINA: 'Base legal: Ley 23 de 1981 y Resolución 8430 de 1993 — Consentimiento para procedimientos, incluidos los invasivos.',
+        ENFERMERIA_JEFE: 'Base legal: Ley 266 de 1996 y Resolución 8430 de 1993 — Consentimiento para procedimientos e intervenciones de enfermería.'
+    };
+    document.getElementById('profConsentLaw').textContent = lawText[specialty] || 'Base legal: Resolución 3100 de 2019 — Derecho del paciente a la información y a la autonomía para aceptar o rechazar la atención.';
     if (specialty === 'MEDICINA' || specialty === 'ENFERMERIA_JEFE') {
         document.getElementById('profVitalsSection').classList.remove('hidden');
         document.getElementById('profSOAPSection').classList.remove('hidden');
-    } else if (specialty === 'PSICOLOGIA') {
-        document.getElementById('profPsychFields').classList.remove('hidden');
-    } else if (specialty === 'FISIOTERAPIA') {
-        document.getElementById('profPhysioFields').classList.remove('hidden');
-    } else if (specialty === 'NUTRICION') {
-        document.getElementById('profVitalsSection').classList.remove('hidden');
-        document.getElementById('profNutriFields').classList.remove('hidden');
-    } else if (specialty === 'FONOAUDIOLOGIA') {
-        document.getElementById('profFonoFields').classList.remove('hidden');
-    } else if (specialty === 'TERAPIA_OCUPACIONAL') {
-        document.getElementById('profTOFields').classList.remove('hidden');
-    } else if (specialty === 'TERAPIA_RESPIRATORIA') {
-        document.getElementById('profTRFields').classList.remove('hidden');
-    } else if (specialty === 'TRABAJO_SOCIAL') {
-        document.getElementById('profTSFields').classList.remove('hidden');
-    }
+    } else if (specialty === 'PSICOLOGIA') document.getElementById('profPsychFields').classList.remove('hidden');
+    else if (specialty === 'FISIOTERAPIA') document.getElementById('profPhysioFields').classList.remove('hidden');
+    else if (specialty === 'NUTRICION') { document.getElementById('profVitalsSection').classList.remove('hidden'); document.getElementById('profNutriFields').classList.remove('hidden'); }
+    else if (specialty === 'FONOAUDIOLOGIA') document.getElementById('profFonoFields').classList.remove('hidden');
+    else if (specialty === 'TERAPIA_OCUPACIONAL') document.getElementById('profTOFields').classList.remove('hidden');
+    else if (specialty === 'TERAPIA_RESPIRATORIA') document.getElementById('profTRFields').classList.remove('hidden');
+    else if (specialty === 'TRABAJO_SOCIAL') document.getElementById('profTSFields').classList.remove('hidden');
     calculateVisitDuration();
 }
-
 function calculateVisitDuration() {
     const s = getVal('visitStart'), e = getVal('visitEnd');
     const out = document.getElementById('visitDuration');
@@ -1400,7 +1562,6 @@ function calculateVisitDuration() {
     if (mins < 0) mins += 1440;
     out.value = `${mins} min`;
 }
-
 function checkProfVital(type) {
     if (type === 'bp') {
         const parts = getVal('profBP').split('/'); const s = parseInt(parts[0]), di = parseInt(parts[1]);
@@ -1425,17 +1586,17 @@ function calculateIMC() {
     if (imc < 18.5) cat = '⚠️ Bajo peso'; else if (imc >= 25 && imc < 30) cat = '⚠️ Sobrepeso'; else if (imc >= 30) cat = '🚨 Obesidad';
     res.textContent = `IMC: ${imc} — ${cat}`;
 }
-
 async function saveProfRecord() {
     if (!selectedPatient) return showToast('No hay paciente seleccionado', 'error');
     if (!getVal('visitStart') || !getVal('visitEnd')) return showToast('Registra hora de inicio y fin de la visita', 'error');
     if (!getVal('visitReason')) return showToast('Registra el motivo de la visita', 'error');
+    if (!getVal('profConsentProcedure').trim()) return showToast('Describe la intervención para el CONSENTIMIENTO INFORMADO', 'error');
+    if (!document.getElementById('profConsentAck').checked) return showToast('Debe confirmar el consentimiento informado', 'warning');
     if (!getVal('profFamName') || !getVal('profFamId')) return showToast('Datos del familiar testigo incompletos', 'error');
     const sp = currentUser.specialty_name;
     const cups = CUPS_VISITA_DOMICILIARIA[sp] || '';
     let S = '', O = '', A = '', P = '';
     const secciones = [];
-
     if (sp === 'PSICOLOGIA') {
         S = getVal('psyS');
         O = `Estado mental: ${getVal('psyO_Mental')} | Dinámica familiar: ${getVal('psyO_Familia')} | Entorno del hogar: ${getVal('psyO_Entorno')}`;
@@ -1482,15 +1643,16 @@ async function saveProfRecord() {
         S = getVal('profSubjective'); O = getVal('profObjective'); A = getVal('profAnalysis'); P = getVal('profPlan');
         secciones.push(['S — Subjetivo', S], ['O — Objetivo', O], ['A — Análisis', A], ['P — Plan', P]);
     }
-
+    secciones.push(['Consentimiento — Intervención informada', getVal('profConsentProcedure')], ['Consentimiento — Aceptación', 'El paciente/cuidador fue informado de riesgos, beneficios y alternativas, y otorgó su consentimiento.']);
+    const famRel = getVal('profFamRel').trim();
     const payload = {
         patientId: selectedPatient.id, professionalId: currentUser.id,
         recordType: cups ? `Visita Domiciliaria (CUPS ${cups})` : `Nota de Evolución - ${sp}`,
         weight: parseFloat(getVal('profWeight')) || null, height: parseFloat(getVal('profHeight')) || null, imc: getVal('profIMC') || null,
-        vitalSigns: { bp: getVal('profBP'), hr: getVal('profHR'), visitaInicio: getVal('visitStart'), visitaFin: getVal('visitEnd'), duracion: getVal('visitDuration'), motivo: getVal('visitReason') },
+        vitalSigns: { bp: getVal('profBP'), hr: getVal('profHR'), visitaInicio: getVal('visitStart'), visitaFin: getVal('visitEnd'), duracion: getVal('visitDuration'), motivo: getVal('visitReason'), consentimiento: { procedimiento: getVal('profConsentProcedure'), aceptado: true } },
         subjective: S, objective: O, analysis: A, plan: P,
         professionalSignature: getSigData('profSigCanvas'), familySignature: getSigData('famProfSigCanvas'),
-        familyName: getVal('profFamName'), familyId: getVal('profFamId')
+        familyName: famRel ? `${getVal('profFamName')} (${famRel})` : getVal('profFamName'), familyId: getVal('profFamId')
     };
     lastProfRecordData = { ...payload, patientName: selectedPatient.full_name, profName: currentUser.full_name, specialty: sp, tarjeta: currentUser.professional_card || '', cups, fecha: new Date().toLocaleString('es-CO'), secciones };
     try {
@@ -1500,7 +1662,6 @@ async function saveProfRecord() {
         else showToast(d.message || 'Error', 'error');
     } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
 }
-
 function generateProfPDF() {
     if (!lastProfRecordData) return showToast('Guarda primero la nota', 'error');
     const d = lastProfRecordData;
