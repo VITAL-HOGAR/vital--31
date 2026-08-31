@@ -269,7 +269,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
         <div id="admin_finance" class="hidden">
             <div class="card">
                 <h3 style="cursor:default;">⚙️ Parámetros de Ley Vigentes</h3>
-                <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:10px;">Configura los valores legales actuales para el cálculo de honorarios de contratistas.</p>
+                <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:10px;">Configura los valores legales de los honorarios de contratistas.</p>
                 <div class="grid">
                     <div class="form-group"><label>Año Vigente</label><input type="number" id="finYear" value="2026"></div>
                     <div class="form-group"><label>Salario Mínimo (SMMLV)</label><input type="number" id="finSmmlv"></div>
@@ -874,6 +874,7 @@ let profsRegistry = [], patientsRegistry = [], finParamsId = null, tariffId = nu
 let sigHasInk = {};
 let sessionRecords = [], sessionAdverseEvents = [], scheduledShiftsMap = {};
 let validatedSupports = new Set();
+let _supportNotes = [];
 
 // ============ HELPERS ============
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
@@ -994,18 +995,18 @@ async function loadSupports() {
         document.querySelector('#supportShiftsTable tbody').innerHTML = shifts.length ? shifts.map(s => {
             const key = 'shift-' + s.id;
             const estado = validatedSupports.has(key) ? '✅ Validado' : '⏳ Pendiente';
-            return `<tr><td>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}</td><td>${escapeHtml(s.professionals?.full_name||s.patients?.full_name&&'N/A' || 'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> <button class="btn-small btn-primary" onclick="validateSupport('${key}', this)">Validar</button></td></tr>`;
+            return `<tr><td>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> <button class="btn-small btn-primary" onclick="validateSupport('${key}', this)">Validar</button></td></tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay turnos cerrados</td></tr>';
         const r2 = await fetch(`${API_URL}/api/professional-records/list`); const d2 = await r2.json();
-        const notes = d2.data || [];
-        document.querySelector('#supportNotesTable tbody').innerHTML = notes.length ? notes.map(n => {
+        _supportNotes = d2.data || [];
+        document.querySelector('#supportNotesTable tbody').innerHTML = _supportNotes.length ? _supportNotes.map(n => {
             const key = 'note-' + n.id;
             const estado = validatedSupports.has(key) ? '✅ Validado' : '⏳ Pendiente';
             return `<tr><td>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(n.patients?.full_name||'N/A')}</td><td>${escapeHtml(n.professionals?.full_name||'N/A')}</td><td style="font-size:0.8rem;">${escapeHtml(n.record_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> <button class="btn-small btn-primary" onclick="validateSupport('${key}', this)">Validar</button></td></tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay notas de evolución</td></tr>';
-    } catch (e) { console.error(e); showToast('Error cargando soportes (¿rutas del server agregadas?)', 'error'); }
+    } catch (e) { console.error(e); showToast('Error cargando soportes (verifica las rutas nuevas en el server)', 'error'); }
 }
-function validateSupport(key, btn) { validatedSupports.add(key); const row = btn.closest('tr'); row.querySelector('td:nth-child(5)').textContent = '✅ Validado'; showToast('Soporte validado ✅'); }
+function validateSupport(key, btn) { validatedSupports.add(key); const row = btn.closest('tr'); if (row) row.querySelector('td:nth-child(5)').textContent = '✅ Validado'; showToast('Soporte validado ✅'); }
 
 async function downloadSupportShiftPDF(shiftId) {
     try {
@@ -1019,17 +1020,16 @@ async function downloadSupportShiftPDF(shiftId) {
         doc.setFontSize(11); doc.setTextColor(0); doc.text("RESUMEN CLÍNICO DEL TURNO — Evidencia del Servicio", 105, 27, null, null, "center");
         doc.setFontSize(9);
         doc.text(`Paciente: ${shift.patients?.full_name || '-'} — CC ${shift.patients?.document_number || '-'}`, 14, 38);
-        doc.text(`Auxiliar: ${sig?.auxiliary_name || shift.professionals?.full_name || '-'} — CC ${sig?.auxiliary_id_number || shift.professionals?.document_number || '-'} — ReTHUS: ${shift.professionals?.professional_card || '(pendiente)'}`, 14, 44);
-        doc.text(`Turno: ${shift.shift_type || '-'}`, 14, 50);
-        doc.text(`Inicio: ${new Date(shift.start_time).toLocaleString('es-CO')} | Cierre: ${shift.end_time ? new Date(shift.end_time).toLocaleString('es-CO') : '-'}`, 14, 56);
+        doc.text(`Auxiliar: ${sig?.auxiliary_name || shift.professionals?.full_name || '-'} — CC ${sig?.auxiliary_id_number || shift.professionals?.document_number || '-'}`, 14, 44);
+        doc.text(`Registro ReTHUS: ${shift.professionals?.professional_card || '(pendiente)'}`, 14, 50);
+        doc.text(`Turno: ${shift.shift_type || '-'} | Inicio: ${new Date(shift.start_time).toLocaleString('es-CO')} | Cierre: ${shift.end_time ? new Date(shift.end_time).toLocaleString('es-CO') : '-'}`, 14, 56);
         doc.text(`Recepción: ${shift.patient_received_status || '-'} | Entrega: ${shift.patient_delivered_status || '-'} | Pendientes: ${shift.pending_tasks || 'Ninguno'}`, 14, 62);
         let y = 68;
         if (records && records.length) {
             doc.autoTable({ startY: y, head: [['Hora','PA','FC','FR','Temp','SpO2','Glu','EVA','Glasg','Braden']], body: records.map(rc => [String(rc.created_at||'').slice(11,16), rc.blood_pressure||'-', rc.heart_rate||'-', rc.respiratory_rate||'-', rc.temperature||'-', rc.spo2||'-', rc.glucose||'-', rc.eva_score??'-', (rc.glasgow_eyes||0)+(rc.glasgow_verbal||0)+(rc.glasgow_motor||0), rc.braden_score||'-']), headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
             y = doc.lastAutoTable.finalY + 6;
         }
-        if (y > 230) { doc.addPage(); y = 30; }
-        drawLegalSignatures(doc, y, { auxName: sig?.auxiliary_name || '-', auxDoc: sig?.auxiliary_id_number || '-', auxCard: shift.professionals?.professional_card || '-', auxSig: sig?.auxiliary_signature || null, famName: sig?.family_name || '-', famDoc: sig?.family_id_number || '-', famRel: sig?.family_relationship || '-', famSig: sig?.family_signature || null });
+        drawLegalSignatures(doc, y, { auxName: sig?.auxiliary_name || shift.professionals?.full_name || '-', auxDoc: sig?.auxiliary_id_number || shift.professionals?.document_number || '-', auxCard: shift.professionals?.professional_card || '-', auxSig: sig?.auxiliary_signature || null, famName: sig?.family_name || '-', famDoc: sig?.family_id_number || '-', famRel: sig?.family_relationship || '-', famSig: sig?.family_signature || null });
         doc.save(`Soporte_Turno_${(shift.patients?.full_name||'paciente').replace(/\s+/g,'_')}_${shiftId.slice(0,8)}.pdf`);
         showToast('PDF generado desde la base de datos');
     } catch (e) { console.error(e); showToast('Error generando PDF', 'error'); }
@@ -1055,7 +1055,7 @@ function drawLegalSignatures(doc, y, d) {
 
 function downloadSupportNotePDF(noteId) {
     try {
-        const rec = window._supportNotes && window._supportNotes.find(n => n.id === noteId);
+        const rec = _supportNotes.find(n => n.id === noteId);
         if (!rec) return showToast('Nota no encontrada', 'error');
         const { jsPDF } = window.jspdf; const doc = new jsPDF();
         try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
@@ -1069,8 +1069,8 @@ function downloadSupportNotePDF(noteId) {
         const vs = rec.vital_signs || {};
         doc.text(`Motivo: ${vs.motivo || '-'} | Duración: ${vs.duracion || '-'} (${vs.visitaInicio || '?'} a ${vs.visitaFin || '?'})`, 14, 62);
         if (rec.imc) doc.text(`PA ${vs.bp || '-'} · FC ${vs.hr || '-'} · Peso ${rec.weight || '-'} kg · IMC ${rec.imc}`, 14, 68);
-        const vsb = rec.vital_signs?.consentimiento ? [['Consentimiento — Intervención informada', rec.vital_signs.consentimiento.procedimiento || '-'], ['Consentimiento — Aceptación', 'El paciente/cuidador fue informado y otorgó su consentimiento.']] : [];
-        const body = [['S — Subjetivo', rec.subjective || '-'], ['O — Objetivo', rec.objective || '-'], ['A — Análisis', rec.analysis || '-'], ['P — Plan', rec.plan || '-'], ...vsb];
+        const consRows = vs.consentimiento ? [['Consentimiento — Intervención informada', vs.consentimiento.procedimiento || '-'], ['Consentimiento — Aceptación', 'El paciente/cuidador fue informado de riesgos, beneficios y alternativas, y otorgó su consentimiento.']] : [];
+        const body = [['S — Subjetivo', rec.subjective || '-'], ['O — Objetivo', rec.objective || '-'], ['A — Análisis', rec.analysis || '-'], ['P — Plan', rec.plan || '-'], ...consRows];
         doc.autoTable({ startY: 74, head: [['Sección','Contenido']], body, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 55 } } });
         let y = doc.lastAutoTable.finalY + 12;
         drawLegalSignatures(doc, y, { auxName: rec.professionals?.full_name || '-', auxDoc: rec.professionals?.document_number || '-', auxCard: rec.professionals?.professional_card || '-', auxSig: rec.professional_signature || null, famName: rec.family_name || '-', famDoc: rec.family_id || '-', famRel: 'Testigo', famSig: rec.family_signature || null });
@@ -1421,13 +1421,15 @@ function calculateGlasgow() {
     if (total <= 8) { cls = 'severe'; txt = 'Lesión grave'; } else if (total <= 12) { cls = 'moderate'; txt = 'Lesión moderada'; } else if (total <= 14) { cls = 'mild'; txt = 'Lesión leve'; }
     box.className = `glasgow-total ${cls}`; box.innerHTML = `<h3>${total}/15</h3><p>${txt}</p>`;
 }
-function calculateBraden() {
+function calculateBradenTotal() {
     const ids = ['bradenSensory','bradenMoisture','bradenActivity','bradenMobility','bradenNutrition','bradenFriction'];
-    const total = ids.reduce((s, id) => s + (Number(getVal(id)) || 0), 0), box = document.getElementById('bradenTotal');
+    return ids.reduce((s, id) => s + (Number(getVal(id)) || 0), 0);
+}
+function calculateBraden() {
+    const total = calculateBradenTotal(), box = document.getElementById('bradenTotal');
     let cls = 'risk-none', txt = 'Sin riesgo';
     if (total <= 12) { cls = 'risk-high'; txt = 'Riesgo ALTO'; } else if (total <= 14) { cls = 'risk-moderate'; txt = 'Riesgo moderado'; } else if (total <= 17) { cls = 'risk-mild'; txt = 'Riesgo leve'; }
     box.className = `braden-total ${cls}`; box.innerHTML = `<h3>${total}/24</h3><p>${txt}</p>`;
-    return total;
 }
 function toggleAccordion(header) { header.nextElementSibling.classList.toggle('open'); }
 function toggleLeaveDetails(cb) { document.getElementById('leaveDetails').classList.toggle('hidden', !cb.checked); }
@@ -1535,11 +1537,10 @@ function closeShift() {
     if (rel === 'Otro') { const o = getVal('familyRelationshipOther').trim(); if (!o) return showToast('Especifique el parentesco', 'error'); rel = `Otro: ${o}`; }
     if (!rel) return showToast('Selecciona el parentesco del familiar', 'error');
     const sigAux = getSigData('auxSigCanvas'), sigFam = getSigData('famSigCanvas');
-    if (!sigAux) return showToast('⚖️ Falta TU firma. La firma del familiar debe ser HOY — no es posible cerrar sin ella.', 'warning');
+    if (!sigAux) return showToast('⚖️ Falta TU firma. La firma debe ser HOY — no es posible cerrar sin ella.', 'warning');
     if (!sigFam) return showToast('⚖️ Falta la firma del familiar HOY. Una firma posterior al cuidado pierde validez legal — no es posible cerrar sin ella.', 'warning');
     const leavesHome = document.getElementById('patientLeavesHome').checked;
     if (leavesHome && !document.getElementById('leaveLiabilityAck').checked) return showToast('El familiar debe aceptar la responsabilidad del traslado', 'warning');
-    const leavesHome = document.getElementById('patientLeavesHome').checked;
     _pendingCloseData = { rel, sigAux, sigFam, leavesHome };
     openCloseReview();
 }
@@ -1547,17 +1548,16 @@ function openCloseReview() {
     const acts = collectActivities();
     const horas = shiftStartTime ? (Date.now() - shiftStartTime.getTime()) / 3600000 : 0;
     const cambiosPostura = acts.actividades.filter(a => a.actividad === 'Cambio Postural').length;
-    const deambulaciones = acts.actividades.filter(a => a.actividad === 'Deambulacion').length;
-    const procedimientos = acts.actividades.length;
+    const deambulaciones = acts.actividades.filter(a => a.actividad === 'Deambulación').length;
     const sinPrescriptor = acts.medicamentos.filter(m => !m.prescritoPor || !m.prescritoPor.trim()).length;
     const braden = calculateBradenTotal();
     const alerts = [];
     if (horas >= 4 && sessionRecords.length === 0) alerts.push({ cls:'red', txt:`🔴 No registraste NINGÚN control de signos vitales en ${Math.round(horas)} horas de turno.` });
-    else if (horas >= 8 && sessionRecords.length <= 1) alerts.push({ cls:'orange', txt:`🟠 Solo ${sessionRecords.length} control de vitales en ${Math.round(horas)} horas. Verifica si falta algún control.` });
+    else if (horas >= 8 && sessionRecords.length <= 1) alerts.push({ cls:'orange', txt:`🟠 Solo ${sessionRecords.length} control(es) de vitales en ${Math.round(horas)} horas. Verifica si falta algún control.` });
     if (braden <= 14 && cambiosPostura < Math.floor(horas / 2)) alerts.push({ cls:'orange', txt:`🟠 Braden ${braden}/24 (riesgo de úlceras): el protocolo exige cambios posturales cada 2 horas y solo registraste ${cambiosPostura} en ${Math.round(horas)} horas.` });
     if (sinPrescriptor > 0) alerts.push({ cls:'yellow', txt:`🟡 ${sinPrescriptor} medicamento(s) sin indicar quién los prescribió (campo "Prescrito por").` });
     if (sessionAdverseEvents.length > 0) alerts.push({ cls:'yellow', txt:`⚠️ Reportaste ${sessionAdverseEvents.length} evento(s) adverso(s) en este turno. Verifica que estén descritos en las notas.` });
-    document.getElementById('reviewSummary').innerHTML = `<strong>📋 En este turno registraste:</strong><br>${sessionRecords.length} control(es) de signos vitales · ${cambiosPostura} cambio(s) postural(es) · ${deambulaciones} deambulación(es) · ${acts.medicamentos.length} medicamento(s) · ${acts.comidas.length} comida(s) · ${procedimientos} cuidado(s) de higiene/entorno${sessionAdverseEvents.length ? ` · ${sessionAdverseEvents.length} evento(s) adverso(s)` : ''}`;
+    document.getElementById('reviewSummary').innerHTML = `<strong>📋 En este turno registraste:</strong><br>${sessionRecords.length} control(es) de signos vitales · ${cambiosPostura} cambio(s) postural(es) · ${deambulaciones} deambulación(es) · ${acts.medicamentos.length} medicamento(s) · ${acts.comidas.length} comida(s) · ${acts.actividades.length} cuidado(s) en total${sessionAdverseEvents.length ? ` · ${sessionAdverseEvents.length} evento(s) adverso(s)` : ''}`;
     const alertsBox = document.getElementById('reviewAlerts');
     if (alerts.length) {
         alertsBox.innerHTML = alerts.map(a => `<div class="review-alert ${a.cls}">${a.txt}</div>`).join('');
@@ -1571,13 +1571,10 @@ function openCloseReview() {
     window._closeAlerts = alerts.map(a => a.txt);
     document.getElementById('reviewModal').classList.add('show');
 }
-function calculateBradenTotal() {
-    const ids = ['bradenSensory','bradenMoisture','bradenActivity','bradenMobility','bradenNutrition','bradenFriction'];
-    return ids.reduce((s, id) => s + (Number(getVal(id)) || 0), 0);
-}
 function closeReviewModal() { document.getElementById('reviewModal').classList.remove('show'); }
 async function confirmCloseShift() {
     closeReviewModal();
+    if (!_pendingCloseData) return;
     const { rel, sigAux, sigFam, leavesHome } = _pendingCloseData;
     const acts = collectActivities();
     const closureSnapshot = {
@@ -1610,8 +1607,7 @@ async function confirmCloseShift() {
     document.getElementById('auxShiftStart').classList.add('hidden');
     document.getElementById('auxPatientSelection').classList.add('hidden');
     document.getElementById('auxShiftClosed').classList.remove('hidden');
-    const acts2 = closureSnapshot.actividades;
-    document.getElementById('closedSummary').innerHTML = `👤 <strong>${lastShiftData.start.paciente}</strong><br>⏱️ Turno ${lastShiftData.start.tipo} · ${sessionRecords.length} controles de vitales · ${acts2.actividades.length} cuidados · ${acts2.medicamentos.length} medicamentos · ${acts2.comidas.length} comidas`;
+    document.getElementById('closedSummary').innerHTML = `👤 <strong>${lastShiftData.start.paciente}</strong><br>⏱️ Turno ${lastShiftData.start.tipo} · ${sessionRecords.length} controles de vitales · ${acts.actividades.length} cuidados · ${acts.medicamentos.length} medicamentos · ${acts.comidas.length} comidas`;
     document.getElementById('closedWarnings').textContent = (payload.warningsIgnored) ? `⚠️ Este cierre quedó registrado con ${payload.warningsIgnored.length} advertencia(s) ignorada(s).` : '';
 }
 function backToAuxHome() {
@@ -1629,7 +1625,7 @@ function generateClosurePDF() {
     doc.setFontSize(11); doc.setTextColor(0); doc.text("RESUMEN CLÍNICO DEL TURNO — Evidencia del Servicio Prestado", 105, 27, null, null, "center");
     doc.setFontSize(9);
     doc.text(`Paciente: ${s.paciente || c.paciente || '-'}${s.pacienteDoc ? ' — CC ' + s.pacienteDoc : ''}`, 14, 38);
-    doc.text(`Auxiliar de Enfermería: ${s.auxiliar || '-'} — CC ${s.auxiliarDoc || '-'}`, 14, 44);
+    doc.text(`Auxiliar de Enfermería: ${s.auxiliar || c.auxiliaryName || '-'} — CC ${s.auxiliarDoc || c.auxiliaryIdNumber || '-'}`, 14, 44);
     doc.text(`Registro ReTHUS: ${s.auxiliarCard || '(pendiente de registrar)'}`, 14, 50);
     doc.text(`Turno: ${s.tipo || '-'} | Inicio: ${s.fecha || '-'} | Cierre: ${c.fecha || '-'}`, 14, 56);
     doc.text(`Recepción: ${s.recepcion || '-'} | Entrega: ${c.patientDeliveredStatus || '-'}`, 14, 62);
