@@ -48,6 +48,8 @@ h4 { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-top: 20
 .tab.active { background: var(--primary); color: white; border-color: var(--primary); }
 .login-container { max-width: 420px; margin: 40px auto; }
 .password-toggle { position: absolute; right: 14px; bottom: 11px; background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 1.2rem; padding: 0; }
+.forgot-link { display: block; text-align: center; margin-top: 12px; color: var(--info); text-decoration: none; font-size: 0.85rem; cursor: pointer; }
+.forgot-link:hover { text-decoration: underline; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px; }
 table { width: 100%; border-collapse: collapse; margin-top: 10px; background: var(--bg-dark); border-radius: 8px; overflow: hidden; }
 th, td { padding: 10px; border-bottom: 1px solid var(--border); text-align: left; font-size: 0.9rem; }
@@ -98,7 +100,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .patient-card:hover { border-color: var(--primary); transform: translateY(-2px); }
 .modal-overlay-confirm { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 20px; }
 .modal-overlay-confirm.show { display: flex; }
-.modal-confirm-box { background: var(--card-bg); border: 1px solid var(--danger); border-radius: 16px; padding: 24px; max-width: 420px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); animation: modalIn 0.25s ease-out; }
+.modal-confirm-box { background: var(--card-bg); border: 1px solid var(--danger); border-radius: 16px; padding: 24px; max-width: 420px; width: 100%; box-shadow: 0 10px 40px rgba(0,0,0,0.5); animation: modalIn 0.25s ease-out; max-height: 90vh; overflow-y: auto; }
 @keyframes modalIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
 .modal-confirm-box .modal-icon { width: 64px; height: 64px; margin: 0 auto 16px; background: rgba(239, 68, 68, 0.15); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--danger); font-size: 1.8rem; }
 .modal-confirm-box h3 { color: var(--danger); text-align: center; cursor: default; justify-content: center; margin: 0 0 8px 0; display: block; border: none; padding: 0; }
@@ -108,6 +110,12 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .modal-confirm-box .modal-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .modal-confirm-box .modal-input-confirm { width: 100%; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 10px 14px; color: var(--text-main); font-size: 0.95rem; margin-bottom: 16px; box-sizing: border-box; text-align: center; }
 .modal-confirm-box .modal-input-confirm:focus { outline: none; border-color: var(--danger); }
+.review-alert { padding: 10px; border-radius: 8px; margin-bottom: 8px; font-size: 0.85rem; text-align: left; }
+.review-alert.red { background: rgba(239,68,68,0.15); border: 1px solid var(--danger); }
+.review-alert.orange { background: rgba(249,115,22,0.12); border: 1px solid #f97316; }
+.review-alert.yellow { background: rgba(245,158,11,0.1); border: 1px solid var(--warning); }
+.closed-success { text-align: center; padding: 20px; }
+.closed-success .big-icon { font-size: 4rem; margin-bottom: 10px; }
 .add-row-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 </style>
 
@@ -144,6 +152,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 <div class="form-group"><label>🔒 Contraseña</label><input type="password" id="loginPassword" placeholder="Ingrese su contraseña" autocomplete="new-password"><button type="button" class="password-toggle" id="togglePassword" onclick="togglePass('loginPassword', this)">👁️</button></div>
 <div id="loginError" style="color:var(--danger); font-size:0.85rem; margin-bottom:10px; text-align:center;"></div>
 <button class="btn-primary" id="loginBtn">Ingresar</button>
+<a href="#" class="forgot-link" onclick="forgotPassword(); return false;">¿Olvidaste tu contraseña?</a>
 </div>
 </div>
 
@@ -161,6 +170,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
         <div class="tabs" id="adminTabs">
             <div class="tab active" onclick="showAdminTab('prof', this)">👥 Profesionales</div>
             <div class="tab" onclick="showAdminTab('pat', this)">🏥 Pacientes</div>
+            <div class="tab" onclick="showAdminTab('supports', this)">🧾 Soportes</div>
             <div class="tab" onclick="showAdminTab('edu', this)">🎓 Educación</div>
             <div class="tab" onclick="showAdminTab('reports', this)">📄 Informes</div>
             <div class="tab" onclick="showAdminTab('finance', this)">💰 Finanzas</div>
@@ -209,6 +219,19 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 <button class="btn-primary" onclick="createPat()"><i class="fas fa-save"></i> Guardar Paciente</button>
             </div>
             <div class="card"><table id="patTable"><thead><tr><th>Nombre</th><th>Ciudad</th><th>Familiar</th><th>Celular</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table></div>
+        </div>
+
+        <div id="admin_supports" class="hidden">
+            <div class="card">
+                <h3 style="cursor:default;">🧾 Turnos Cerrados (Auxiliares) — Soportes para Facturación</h3>
+                <button class="btn-small btn-info" onclick="loadSupports()"><i class="fas fa-sync"></i> Actualizar</button>
+                <table id="supportShiftsTable"><thead><tr><th>Fecha</th><th>Paciente</th><th>Auxiliar</th><th>Turno</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+            </div>
+            <div class="card">
+                <h3 style="cursor:default;">🧾 Notas de Evolución (Profesionales) — Soportes para Facturación</h3>
+                <table id="supportNotesTable"><thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th><th>Tipo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+            </div>
+            <p style="font-size:0.8rem; color:#94a3b8;">💡 Descarga los soportes (PDF con firmas desde la base de datos), valídalos y con ellos arma la Cuenta de Cobro en Finanzas. La persistencia del estado "Validado" llega en Fase 2.</p>
         </div>
 
         <div id="admin_edu" class="hidden">
@@ -498,11 +521,6 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             <div class="card"><h3 style="cursor:default;">Historial del Día</h3><div id="dailyHistory"></div></div>
             <div class="card">
                 <h3 style="cursor:default;">🔒 Cierre de Turno</h3>
-                <div id="consentProceduresBox" class="legal-warning hidden" style="border-color: var(--info);">
-                    <h4 style="color: var(--info);">📋 CONSENTIMIENTO DE PROCEDIMIENTOS (Ley 23/1981 · Res. 3100/2019)</h4>
-                    <p style="font-size:0.85rem;">Este turno incluyó procedimientos clínicos y/o administración de medicamentos. Regístralos arriba antes de cerrar.</p>
-                    <input type="checkbox" id="procedureConsentAck" style="width:auto; margin-right:10px;"><label for="procedureConsentAck" style="display:inline; font-size:0.85rem;">Confirmo que se informó al paciente/cuidador los procedimientos realizados, sus riesgos y beneficios, y se obtuvo su consentimiento.</label>
-                </div>
                 <div class="form-group"><label>Estado de entrega</label><select id="patientDeliveredStatus"><option value="estable">🟢 Estable</option><option value="con_novedades">🟡 Con Novedades</option><option value="critico">🔴 Crítico</option></select></div>
                 <div class="form-group"><label>Descripción de entrega</label><textarea id="patientDeliveredNotes" rows="2"></textarea></div>
                 <div class="form-group"><label>Pendientes</label><input type="text" id="pendingTasks" placeholder="Tareas pendientes"></div>
@@ -542,7 +560,16 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 <h4>✍️ Firma Contratista (Auxiliar)</h4><canvas id="auxSigCanvas" class="signature-canvas"></canvas><button class="btn-small btn-secondary" onclick="clearSig('auxSigCanvas')">Borrar</button>
                 <h4>✍️ Firma Familiar (Cierre)</h4><canvas id="famSigCanvas" class="signature-canvas"></canvas><button class="btn-small btn-secondary" onclick="clearSig('famSigCanvas')">Borrar</button>
                 <button class="btn-primary btn-info" onclick="closeShift()"><i class="fas fa-check-circle"></i> Cerrar Turno</button>
-                <button id="generateClosurePDFBtn" class="btn-primary btn-warning hidden" onclick="generateClosurePDF()"><i class="fas fa-file-pdf"></i> Descargar Resumen Clínico del Turno (Evidencia)</button>
+            </div>
+        </div>
+        <div id="auxShiftClosed" class="card hidden">
+            <div class="closed-success">
+                <div class="big-icon">✅</div>
+                <h3 style="justify-content:center; cursor:default;">Turno Cerrado Correctamente</h3>
+                <p id="closedSummary" style="color:#94a3b8; font-size:0.9rem;"></p>
+                <p id="closedWarnings" style="color:var(--warning); font-size:0.85rem;"></p>
+                <button class="btn-primary btn-warning" onclick="generateClosurePDF()"><i class="fas fa-file-pdf"></i> 📄 Descargar Resumen Clínico del Turno (Evidencia con Firmas)</button>
+                <button class="btn-primary btn-secondary" onclick="backToAuxHome()">Volver al Inicio</button>
             </div>
         </div>
     </div>
@@ -747,6 +774,20 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     </div>
 </div>
 
+<div id="reviewModal" class="modal-overlay-confirm" onclick="if(event.target===this) event.stopPropagation()">
+    <div class="modal-confirm-box" style="border-color: var(--warning);">
+        <div class="modal-icon" style="background: rgba(245,158,11,0.15); color: var(--warning);"><i class="fas fa-clipboard-check"></i></div>
+        <h3 id="reviewTitle" style="color: var(--warning);">🔒 Revisión de Cierre de Turno</h3>
+        <div id="reviewSummary" style="background: var(--bg-dark); padding: 12px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 12px; text-align: left;"></div>
+        <div id="reviewAlerts"></div>
+        <p style="font-size:0.75rem; color:#94a3b8; text-align:center;">⚖️ La firma del familiar debe ser HOY. Un registro posterior al cuidado pierde validez legal. Las advertencias que ignores quedarán registradas con fecha y hora.</p>
+        <div class="modal-actions">
+            <button class="btn-primary btn-secondary" style="margin-top:0;" onclick="closeReviewModal()">← Volver y completar</button>
+            <button class="btn-primary" id="reviewConfirmBtn" style="margin-top:0;">Confirmar Cierre</button>
+        </div>
+    </div>
+</div>
+
 <div id="confirmModal" class="modal-overlay-confirm" onclick="if(event.target===this) closeConfirmModal()">
     <div class="modal-confirm-box">
         <div class="modal-icon"><i class="fas fa-triangle-exclamation"></i></div>
@@ -832,6 +873,7 @@ let lastShiftData = null, lastInvoiceData = null, lastLiquidationData = null, la
 let profsRegistry = [], patientsRegistry = [], finParamsId = null, tariffId = null;
 let sigHasInk = {};
 let sessionRecords = [], sessionAdverseEvents = [], scheduledShiftsMap = {};
+let validatedSupports = new Set();
 
 // ============ HELPERS ============
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
@@ -839,6 +881,7 @@ function getVal(id) { const el = document.getElementById(id); return el ? el.val
 function formatCurrency(v) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v || 0); }
 function togglePass(id, btn) { const i = document.getElementById(id); i.type = i.type === 'password' ? 'text' : 'password'; btn.textContent = i.type === 'password' ? '👁️' : '🙈'; }
 function escapeHtml(str) { if (str === null || str === undefined) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function forgotPassword() { alert('😴 Tranquilo, pasa hasta en las mejores familias.\n\nComunícate con el administrador de Vital Hogar para que te asigne una nueva contraseña. Mientras tanto, aquí va un café virtual ☕'); }
 
 // ============ LOGIN ============
 async function login() {
@@ -862,7 +905,7 @@ function initApp() {
     document.getElementById('userName').textContent = currentUser.full_name; document.getElementById('userRoleDisplay').textContent = currentUser.specialty_name;
     if (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE') {
         document.getElementById('adminPanel').classList.remove('hidden');
-        loadProfs(); loadPats(); loadEduList(); loadScheduledShiftsAdmin(); loadFinanceData(); updateStats();
+        loadProfs(); loadPats(); loadEduList(); loadScheduledShiftsAdmin(); loadFinanceData(); loadSupports(); updateStats();
         updateSchedShiftType();
         refreshChat('adminMessageList'); setInterval(() => { if (!document.getElementById('admin_messages').classList.contains('hidden')) refreshChat('adminMessageList'); }, 7000);
     } else if (currentUser.specialty_name === 'AUXILIAR_ENFERMERIA') {
@@ -876,7 +919,7 @@ function initApp() {
 }
 
 // ============ ADMIN: NAVEGACIÓN Y TABLAS ============
-function showAdminTab(tab, btn) { ['admin_prof','admin_pat','admin_edu','admin_reports','admin_finance','admin_agenda','admin_messages'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById('admin_'+tab).classList.remove('hidden'); document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); }
+function showAdminTab(tab, btn) { ['admin_prof','admin_pat','admin_supports','admin_edu','admin_reports','admin_finance','admin_agenda','admin_messages'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById('admin_'+tab).classList.remove('hidden'); document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); if (tab === 'supports') loadSupports(); }
 
 async function loadProfs() {
     try { const r = await fetch(`${API_URL}/api/professionals`); const d = await r.json(); profsRegistry = d.data || [];
@@ -941,6 +984,99 @@ function initAdminChart(values) {
     if (!ctx || !window.Chart) return;
     if (window._adminChart) window._adminChart.destroy();
     window._adminChart = new Chart(ctx, { type: 'bar', data: { labels: ['Pacientes', 'Profesionales', 'Informes'], datasets: [{ data: values, backgroundColor: ['#22c55e','#3b82f6','#f59e0b'], borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, x: { ticks: { color: '#94a3b8' }, grid: { display: false } } } } });
+}
+
+// ============ ADMIN: SOPORTES PARA FACTURACIÓN ============
+async function loadSupports() {
+    try {
+        const r1 = await fetch(`${API_URL}/api/shifts/closed`); const d1 = await r1.json();
+        const shifts = d1.data || [];
+        document.querySelector('#supportShiftsTable tbody').innerHTML = shifts.length ? shifts.map(s => {
+            const key = 'shift-' + s.id;
+            const estado = validatedSupports.has(key) ? '✅ Validado' : '⏳ Pendiente';
+            return `<tr><td>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}</td><td>${escapeHtml(s.professionals?.full_name||s.patients?.full_name&&'N/A' || 'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> <button class="btn-small btn-primary" onclick="validateSupport('${key}', this)">Validar</button></td></tr>`;
+        }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay turnos cerrados</td></tr>';
+        const r2 = await fetch(`${API_URL}/api/professional-records/list`); const d2 = await r2.json();
+        const notes = d2.data || [];
+        document.querySelector('#supportNotesTable tbody').innerHTML = notes.length ? notes.map(n => {
+            const key = 'note-' + n.id;
+            const estado = validatedSupports.has(key) ? '✅ Validado' : '⏳ Pendiente';
+            return `<tr><td>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(n.patients?.full_name||'N/A')}</td><td>${escapeHtml(n.professionals?.full_name||'N/A')}</td><td style="font-size:0.8rem;">${escapeHtml(n.record_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> <button class="btn-small btn-primary" onclick="validateSupport('${key}', this)">Validar</button></td></tr>`;
+        }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay notas de evolución</td></tr>';
+    } catch (e) { console.error(e); showToast('Error cargando soportes (¿rutas del server agregadas?)', 'error'); }
+}
+function validateSupport(key, btn) { validatedSupports.add(key); const row = btn.closest('tr'); row.querySelector('td:nth-child(5)').textContent = '✅ Validado'; showToast('Soporte validado ✅'); }
+
+async function downloadSupportShiftPDF(shiftId) {
+    try {
+        const r = await fetch(`${API_URL}/api/shifts/${shiftId}/closure-data`); const d = await r.json();
+        if (!d.success) return showToast(d.message || 'Error', 'error');
+        const { shift, records, signatures } = d.data;
+        const sig = signatures && signatures[0] ? signatures[0] : null;
+        const { jsPDF } = window.jspdf; const doc = new jsPDF();
+        try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
+        doc.setFontSize(16); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 18, null, null, "center");
+        doc.setFontSize(11); doc.setTextColor(0); doc.text("RESUMEN CLÍNICO DEL TURNO — Evidencia del Servicio", 105, 27, null, null, "center");
+        doc.setFontSize(9);
+        doc.text(`Paciente: ${shift.patients?.full_name || '-'} — CC ${shift.patients?.document_number || '-'}`, 14, 38);
+        doc.text(`Auxiliar: ${sig?.auxiliary_name || shift.professionals?.full_name || '-'} — CC ${sig?.auxiliary_id_number || shift.professionals?.document_number || '-'} — ReTHUS: ${shift.professionals?.professional_card || '(pendiente)'}`, 14, 44);
+        doc.text(`Turno: ${shift.shift_type || '-'}`, 14, 50);
+        doc.text(`Inicio: ${new Date(shift.start_time).toLocaleString('es-CO')} | Cierre: ${shift.end_time ? new Date(shift.end_time).toLocaleString('es-CO') : '-'}`, 14, 56);
+        doc.text(`Recepción: ${shift.patient_received_status || '-'} | Entrega: ${shift.patient_delivered_status || '-'} | Pendientes: ${shift.pending_tasks || 'Ninguno'}`, 14, 62);
+        let y = 68;
+        if (records && records.length) {
+            doc.autoTable({ startY: y, head: [['Hora','PA','FC','FR','Temp','SpO2','Glu','EVA','Glasg','Braden']], body: records.map(rc => [String(rc.created_at||'').slice(11,16), rc.blood_pressure||'-', rc.heart_rate||'-', rc.respiratory_rate||'-', rc.temperature||'-', rc.spo2||'-', rc.glucose||'-', rc.eva_score??'-', (rc.glasgow_eyes||0)+(rc.glasgow_verbal||0)+(rc.glasgow_motor||0), rc.braden_score||'-']), headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
+            y = doc.lastAutoTable.finalY + 6;
+        }
+        if (y > 230) { doc.addPage(); y = 30; }
+        drawLegalSignatures(doc, y, { auxName: sig?.auxiliary_name || '-', auxDoc: sig?.auxiliary_id_number || '-', auxCard: shift.professionals?.professional_card || '-', auxSig: sig?.auxiliary_signature || null, famName: sig?.family_name || '-', famDoc: sig?.family_id_number || '-', famRel: sig?.family_relationship || '-', famSig: sig?.family_signature || null });
+        doc.save(`Soporte_Turno_${(shift.patients?.full_name||'paciente').replace(/\s+/g,'_')}_${shiftId.slice(0,8)}.pdf`);
+        showToast('PDF generado desde la base de datos');
+    } catch (e) { console.error(e); showToast('Error generando PDF', 'error'); }
+}
+
+function drawLegalSignatures(doc, y, d) {
+    if (y > 235) { doc.addPage(); y = 40; }
+    doc.setFontSize(8); doc.setTextColor(80);
+    doc.text('Declaración de conformidad: El familiar/cuidador suscrito declara haber recibido los servicios y cuidados descritos en este documento durante el turno indicado, y se declara conforme con ellos.', 14, y, { maxWidth: 182 }); y += 16;
+    if (d.auxSig) { try { doc.addImage(d.auxSig, 'JPEG', 30, y - 12, 55, 16); } catch(e) {} }
+    doc.setDrawColor(0); doc.line(30, y + 6, 85, y + 6);
+    doc.text('Firma Auxiliar de Enfermería', 57.5, y + 11, null, null, 'center');
+    doc.text(`${d.auxName} — CC ${d.auxDoc}`, 57.5, y + 15, null, null, 'center');
+    doc.text(`ReTHUS: ${d.auxCard || '(pendiente)'}`, 57.5, y + 19, null, null, 'center');
+    if (d.famSig) { try { doc.addImage(d.famSig, 'JPEG', 120, y - 12, 55, 16); } catch(e) {} }
+    doc.line(120, y + 6, 175, y + 6);
+    doc.text('Firma Familiar / Cuidador', 147.5, y + 11, null, null, 'center');
+    doc.text(`${d.famName} — CC ${d.famDoc}`, 147.5, y + 15, null, null, 'center');
+    doc.text(`Parentesco: ${d.famRel || '-'}`, 147.5, y + 19, null, null, 'center');
+    doc.setFontSize(7); doc.setTextColor(120);
+    doc.text(`Documento generado electrónicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Registro clínico oficial. Tratamiento de datos personales conforme a la Ley 1581 de 2012.`, 105, y + 27, null, null, 'center');
+}
+
+function downloadSupportNotePDF(noteId) {
+    try {
+        const rec = window._supportNotes && window._supportNotes.find(n => n.id === noteId);
+        if (!rec) return showToast('Nota no encontrada', 'error');
+        const { jsPDF } = window.jspdf; const doc = new jsPDF();
+        try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
+        doc.setFontSize(16); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 18, null, null, "center");
+        doc.setFontSize(11); doc.setTextColor(0); doc.text(rec.record_type || 'Nota de Evolución Profesional', 105, 27, null, null, "center");
+        doc.setFontSize(9);
+        doc.text(`Paciente: ${rec.patients?.full_name || '-'} — CC ${rec.patients?.document_number || '-'}`, 14, 38);
+        doc.text(`Profesional: ${rec.professionals?.full_name || '-'} — CC ${rec.professionals?.document_number || '-'}`, 14, 44);
+        doc.text(`Tarjeta Profesional: ${rec.professionals?.professional_card || '(pendiente)'}`, 14, 50);
+        doc.text(`Fecha: ${new Date(rec.created_at).toLocaleString('es-CO')}`, 14, 56);
+        const vs = rec.vital_signs || {};
+        doc.text(`Motivo: ${vs.motivo || '-'} | Duración: ${vs.duracion || '-'} (${vs.visitaInicio || '?'} a ${vs.visitaFin || '?'})`, 14, 62);
+        if (rec.imc) doc.text(`PA ${vs.bp || '-'} · FC ${vs.hr || '-'} · Peso ${rec.weight || '-'} kg · IMC ${rec.imc}`, 14, 68);
+        const vsb = rec.vital_signs?.consentimiento ? [['Consentimiento — Intervención informada', rec.vital_signs.consentimiento.procedimiento || '-'], ['Consentimiento — Aceptación', 'El paciente/cuidador fue informado y otorgó su consentimiento.']] : [];
+        const body = [['S — Subjetivo', rec.subjective || '-'], ['O — Objetivo', rec.objective || '-'], ['A — Análisis', rec.analysis || '-'], ['P — Plan', rec.plan || '-'], ...vsb];
+        doc.autoTable({ startY: 74, head: [['Sección','Contenido']], body, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 55 } } });
+        let y = doc.lastAutoTable.finalY + 12;
+        drawLegalSignatures(doc, y, { auxName: rec.professionals?.full_name || '-', auxDoc: rec.professionals?.document_number || '-', auxCard: rec.professionals?.professional_card || '-', auxSig: rec.professional_signature || null, famName: rec.family_name || '-', famDoc: rec.family_id || '-', famRel: 'Testigo', famSig: rec.family_signature || null });
+        doc.save(`Soporte_Nota_${(rec.patients?.full_name||'paciente').replace(/\s+/g,'_')}_${noteId.slice(0,8)}.pdf`);
+        showToast('PDF generado desde la base de datos');
+    } catch (e) { console.error(e); showToast('Error generando PDF', 'error'); }
 }
 
 // ============ ADMIN: CREAR ============
@@ -1181,7 +1317,7 @@ async function loadAuxPatients() {
     try {
         const r = await fetch(`${API_URL}/api/patients`); const d = await r.json();
         const active = (d.data || []).filter(p => p.is_active !== false);
-        document.getElementById('auxPatientList').innerHTML = active.length ? active.map(p => `<div class="patient-card" onclick='selectPatient(${JSON.stringify({ id: p.id, full_name: p.full_name, altitude_profiles: p.altitude_profiles }).replace(/'/g, "&#39;")})'><strong>🧑 ${escapeHtml(p.full_name)}</strong><br><small>📍 ${escapeHtml(p.altitude_profiles?.city_name || 'Sin ciudad')} · EPS: ${escapeHtml(p.eps_name || 'N/A')}</small></div>`).join('') : '<p style="color:#94a3b8; text-align:center;">No hay pacientes activos.</p>';
+        document.getElementById('auxPatientList').innerHTML = active.length ? active.map(p => `<div class="patient-card" onclick='selectPatient(${JSON.stringify({ id: p.id, full_name: p.full_name, document_number: p.document_number, altitude_profiles: p.altitude_profiles }).replace(/'/g, "&#39;")})'><strong>🧑 ${escapeHtml(p.full_name)}</strong><br><small>📍 ${escapeHtml(p.altitude_profiles?.city_name || 'Sin ciudad')} · EPS: ${escapeHtml(p.eps_name || 'N/A')}</small></div>`).join('') : '<p style="color:#94a3b8; text-align:center;">No hay pacientes activos.</p>';
     } catch (e) { console.error(e); showToast('Error cargando pacientes', 'error'); }
 }
 async function loadAuxScheduledShifts() {
@@ -1221,7 +1357,7 @@ async function startShift() {
         if (d.success) {
             currentShiftId = d.data.id; shiftStartTime = new Date();
             sessionRecords = []; sessionAdverseEvents = [];
-            lastShiftData = { start: { paciente: selectedPatient.full_name, auxiliar: currentUser.full_name, tipo: shiftType, recepcion: getVal('patientReceivedStatus'), fecha: shiftStartTime.toLocaleString('es-CO') } };
+            lastShiftData = { start: { paciente: selectedPatient.full_name, pacienteDoc: selectedPatient.document_number || '', auxiliar: currentUser.full_name, auxiliarDoc: currentUser.document_number || '', auxiliarCard: currentUser.professional_card || '', tipo: shiftType, recepcion: getVal('patientReceivedStatus'), fecha: shiftStartTime.toLocaleString('es-CO') } };
             showToast('✅ Turno iniciado');
             document.getElementById('auxShiftStart').classList.add('hidden');
             document.getElementById('auxClinicalForm').classList.remove('hidden');
@@ -1291,6 +1427,7 @@ function calculateBraden() {
     let cls = 'risk-none', txt = 'Sin riesgo';
     if (total <= 12) { cls = 'risk-high'; txt = 'Riesgo ALTO'; } else if (total <= 14) { cls = 'risk-moderate'; txt = 'Riesgo moderado'; } else if (total <= 17) { cls = 'risk-mild'; txt = 'Riesgo leve'; }
     box.className = `braden-total ${cls}`; box.innerHTML = `<h3>${total}/24</h3><p>${txt}</p>`;
+    return total;
 }
 function toggleAccordion(header) { header.nextElementSibling.classList.toggle('open'); }
 function toggleLeaveDetails(cb) { document.getElementById('leaveDetails').classList.toggle('hidden', !cb.checked); }
@@ -1313,9 +1450,8 @@ function addRepRow(type) {
     });
     div.innerHTML = inner;
     document.getElementById(REP_CONTAINERS[type]).appendChild(div);
-    updateConsentBoxVisibility();
 }
-function removeRepRow(btn) { btn.closest('.rep-row').remove(); updateConsentBoxVisibility(); }
+function removeRepRow(btn) { btn.closest('.rep-row').remove(); }
 function addMeal() {
     const div = document.createElement('div');
     div.className = 'sub-activity meal-row';
@@ -1330,16 +1466,8 @@ function addMedication() {
         '<input type="text" class="med-prescriber" placeholder="Prescrito por (Médico)">' +
         '<input type="time" class="med-time">' +
         '<select class="med-route"><option value="Oral">Oral</option><option value="IV">IV Intravenosa</option><option value="IM">IM Intramuscular</option><option value="Subcutánea">Subcutánea</option><option value="Sublingual">Sublingual</option><option value="Tópica">Tópica</option><option value="Inhalatoria">Inhalatoria / Nebulización</option><option value="Oftálmica">Oftálmica (gotas)</option><option value="Ótica">Ótica</option><option value="Nasal">Nasal</option><option value="Rectal">Rectal</option><option value="Transdérmica">Transdérmica (parche)</option><option value="Sonda enteral">Vía sonda enteral</option></select>' +
-        '<button class="btn-small btn-danger" onclick="removeMedRow(this)">✕</button>';
+        '<button class="btn-small btn-danger" onclick="this.closest(\'.med-row\').remove()">✕</button>';
     document.getElementById('medList').appendChild(div);
-    updateConsentBoxVisibility();
-}
-function removeMedRow(btn) { btn.closest('.med-row').remove(); updateConsentBoxVisibility(); }
-function updateConsentBoxVisibility() {
-    const box = document.getElementById('consentProceduresBox'); if (!box) return;
-    const hubo = document.querySelectorAll('.rep-row[data-invasive="true"]').length > 0 || document.querySelectorAll('.med-row').length > 0;
-    box.classList.toggle('hidden', !hubo);
-    if (!hubo) document.getElementById('procedureConsentAck').checked = false;
 }
 function startDictation(targetId) {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -1399,20 +1527,61 @@ async function renderDailyHistory() {
     } catch (e) { box.innerHTML = '<p style="color:#94a3b8;">No se pudo cargar el historial.</p>'; }
 }
 
-async function closeShift() {
+// --- 🔒 REVISIÓN DE CIERRE INTELIGENTE ---
+let _pendingCloseData = null;
+function closeShift() {
     if (!getVal('familySignName') || !getVal('familySignId')) return showToast('Completa los datos del familiar', 'error');
     let rel = getVal('familyRelationship');
     if (rel === 'Otro') { const o = getVal('familyRelationshipOther').trim(); if (!o) return showToast('Especifique el parentesco', 'error'); rel = `Otro: ${o}`; }
     if (!rel) return showToast('Selecciona el parentesco del familiar', 'error');
     const sigAux = getSigData('auxSigCanvas'), sigFam = getSigData('famSigCanvas');
-    if (!sigAux) return showToast('Falta tu firma (contratista)', 'warning');
-    if (!sigFam) return showToast('Falta la firma del familiar', 'warning');
+    if (!sigAux) return showToast('⚖️ Falta TU firma. La firma del familiar debe ser HOY — no es posible cerrar sin ella.', 'warning');
+    if (!sigFam) return showToast('⚖️ Falta la firma del familiar HOY. Una firma posterior al cuidado pierde validez legal — no es posible cerrar sin ella.', 'warning');
     const leavesHome = document.getElementById('patientLeavesHome').checked;
     if (leavesHome && !document.getElementById('leaveLiabilityAck').checked) return showToast('El familiar debe aceptar la responsabilidad del traslado', 'warning');
-    const huboProcedimientos = document.querySelectorAll('.rep-row[data-invasive="true"]').length > 0 || document.querySelectorAll('.med-row').length > 0;
-    if (huboProcedimientos && !document.getElementById('procedureConsentAck').checked) return showToast('⚠️ Este turno tuvo procedimientos/medicamentos: marca el CONSENTIMIENTO DE PROCEDIMIENTOS', 'warning');
+    const leavesHome = document.getElementById('patientLeavesHome').checked;
+    _pendingCloseData = { rel, sigAux, sigFam, leavesHome };
+    openCloseReview();
+}
+function openCloseReview() {
+    const acts = collectActivities();
+    const horas = shiftStartTime ? (Date.now() - shiftStartTime.getTime()) / 3600000 : 0;
+    const cambiosPostura = acts.actividades.filter(a => a.actividad === 'Cambio Postural').length;
+    const deambulaciones = acts.actividades.filter(a => a.actividad === 'Deambulacion').length;
+    const procedimientos = acts.actividades.length;
+    const sinPrescriptor = acts.medicamentos.filter(m => !m.prescritoPor || !m.prescritoPor.trim()).length;
+    const braden = calculateBradenTotal();
+    const alerts = [];
+    if (horas >= 4 && sessionRecords.length === 0) alerts.push({ cls:'red', txt:`🔴 No registraste NINGÚN control de signos vitales en ${Math.round(horas)} horas de turno.` });
+    else if (horas >= 8 && sessionRecords.length <= 1) alerts.push({ cls:'orange', txt:`🟠 Solo ${sessionRecords.length} control de vitales en ${Math.round(horas)} horas. Verifica si falta algún control.` });
+    if (braden <= 14 && cambiosPostura < Math.floor(horas / 2)) alerts.push({ cls:'orange', txt:`🟠 Braden ${braden}/24 (riesgo de úlceras): el protocolo exige cambios posturales cada 2 horas y solo registraste ${cambiosPostura} en ${Math.round(horas)} horas.` });
+    if (sinPrescriptor > 0) alerts.push({ cls:'yellow', txt:`🟡 ${sinPrescriptor} medicamento(s) sin indicar quién los prescribió (campo "Prescrito por").` });
+    if (sessionAdverseEvents.length > 0) alerts.push({ cls:'yellow', txt:`⚠️ Reportaste ${sessionAdverseEvents.length} evento(s) adverso(s) en este turno. Verifica que estén descritos en las notas.` });
+    document.getElementById('reviewSummary').innerHTML = `<strong>📋 En este turno registraste:</strong><br>${sessionRecords.length} control(es) de signos vitales · ${cambiosPostura} cambio(s) postural(es) · ${deambulaciones} deambulación(es) · ${acts.medicamentos.length} medicamento(s) · ${acts.comidas.length} comida(s) · ${procedimientos} cuidado(s) de higiene/entorno${sessionAdverseEvents.length ? ` · ${sessionAdverseEvents.length} evento(s) adverso(s)` : ''}`;
+    const alertsBox = document.getElementById('reviewAlerts');
+    if (alerts.length) {
+        alertsBox.innerHTML = alerts.map(a => `<div class="review-alert ${a.cls}">${a.txt}</div>`).join('');
+        const btn = document.getElementById('reviewConfirmBtn');
+        btn.textContent = '⚠️ Cerrar de todas formas'; btn.className = 'btn-primary btn-danger';
+    } else {
+        alertsBox.innerHTML = '<div class="review-alert" style="background:rgba(34,197,94,0.1); border:1px solid var(--primary);">✅ Todo completo: sin advertencias de registro.</div>';
+        const btn = document.getElementById('reviewConfirmBtn');
+        btn.textContent = '✅ Confirmar Cierre'; btn.className = 'btn-primary';
+    }
+    window._closeAlerts = alerts.map(a => a.txt);
+    document.getElementById('reviewModal').classList.add('show');
+}
+function calculateBradenTotal() {
+    const ids = ['bradenSensory','bradenMoisture','bradenActivity','bradenMobility','bradenNutrition','bradenFriction'];
+    return ids.reduce((s, id) => s + (Number(getVal(id)) || 0), 0);
+}
+function closeReviewModal() { document.getElementById('reviewModal').classList.remove('show'); }
+async function confirmCloseShift() {
+    closeReviewModal();
+    const { rel, sigAux, sigFam, leavesHome } = _pendingCloseData;
+    const acts = collectActivities();
     const closureSnapshot = {
-        actividades: collectActivities(),
+        actividades: acts,
         sbar: { s: getVal('sbarSituation'), b: getVal('sbarBackground'), a: getVal('sbarAssessment'), r: getVal('sbarRecommendation') },
         notas: getVal('clinicalNotes')
     };
@@ -1426,7 +1595,7 @@ async function closeShift() {
         familyRelationship: rel, familyPhone: getVal('familyPhone') || null,
         patientLeavesHome: leavesHome,
         leaveData: leavesHome ? { transport: getVal('leaveTransport'), time: getVal('leaveTime'), returnTime: getVal('leaveReturnTime'), liabilityAck: true, signature: getSigData('leaveSigCanvas') } : null,
-        consentProcedures: huboProcedimientos ? { informado: true, aceptado: true } : null
+        warningsIgnored: (window._closeAlerts && window._closeAlerts.length) ? window._closeAlerts : null
     };
     try {
         const r = await fetch(`${API_URL}/api/shifts/close`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
@@ -1437,9 +1606,16 @@ async function closeShift() {
     lastShiftData.snapshot = closureSnapshot;
     currentShiftId = null;
     showToast('✅ Turno cerrado correctamente');
-    document.getElementById('generateClosurePDFBtn').classList.remove('hidden');
     document.getElementById('auxClinicalForm').classList.add('hidden');
     document.getElementById('auxShiftStart').classList.add('hidden');
+    document.getElementById('auxPatientSelection').classList.add('hidden');
+    document.getElementById('auxShiftClosed').classList.remove('hidden');
+    const acts2 = closureSnapshot.actividades;
+    document.getElementById('closedSummary').innerHTML = `👤 <strong>${lastShiftData.start.paciente}</strong><br>⏱️ Turno ${lastShiftData.start.tipo} · ${sessionRecords.length} controles de vitales · ${acts2.actividades.length} cuidados · ${acts2.medicamentos.length} medicamentos · ${acts2.comidas.length} comidas`;
+    document.getElementById('closedWarnings').textContent = (payload.warningsIgnored) ? `⚠️ Este cierre quedó registrado con ${payload.warningsIgnored.length} advertencia(s) ignorada(s).` : '';
+}
+function backToAuxHome() {
+    document.getElementById('auxShiftClosed').classList.add('hidden');
     document.getElementById('auxPatientSelection').classList.remove('hidden');
     selectedPatient = null;
     loadAuxScheduledShifts(); loadAuxPatients();
@@ -1452,11 +1628,12 @@ function generateClosurePDF() {
     doc.setFontSize(16); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 18, null, null, "center");
     doc.setFontSize(11); doc.setTextColor(0); doc.text("RESUMEN CLÍNICO DEL TURNO — Evidencia del Servicio Prestado", 105, 27, null, null, "center");
     doc.setFontSize(9);
-    doc.text(`Paciente: ${s.paciente || c.paciente || '-'}`, 14, 38);
-    doc.text(`Auxiliar: ${s.auxiliar || '-'}`, 14, 44);
-    doc.text(`Turno: ${s.tipo || '-'} | Inicio: ${s.fecha || '-'} | Cierre: ${c.fecha || '-'}`, 14, 50);
-    doc.text(`Recepción: ${s.recepcion || '-'} | Entrega: ${c.patientDeliveredStatus || '-'}`, 14, 56);
-    let y = 62;
+    doc.text(`Paciente: ${s.paciente || c.paciente || '-'}${s.pacienteDoc ? ' — CC ' + s.pacienteDoc : ''}`, 14, 38);
+    doc.text(`Auxiliar de Enfermería: ${s.auxiliar || '-'} — CC ${s.auxiliarDoc || '-'}`, 14, 44);
+    doc.text(`Registro ReTHUS: ${s.auxiliarCard || '(pendiente de registrar)'}`, 14, 50);
+    doc.text(`Turno: ${s.tipo || '-'} | Inicio: ${s.fecha || '-'} | Cierre: ${c.fecha || '-'}`, 14, 56);
+    doc.text(`Recepción: ${s.recepcion || '-'} | Entrega: ${c.patientDeliveredStatus || '-'}`, 14, 62);
+    let y = 68;
     if (sessionRecords.length > 0) {
         doc.autoTable({ startY: y, head: [['Hora','PA','FC','FR','Temp','SpO2','Glu','EVA','Glasg','Braden']], body: sessionRecords.map(r => [r.hora, r.vitals.bp||'-', r.vitals.hr||'-', r.vitals.rr||'-', r.vitals.temp||'-', r.vitals.spo2||'-', r.vitals.glu||'-', r.eva, r.glasgow, r.braden||'-']), headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
         y = doc.lastAutoTable.finalY + 6;
@@ -1481,28 +1658,23 @@ function generateClosurePDF() {
         doc.autoTable({ startY: y, head: [['SBAR']], body: [['S - Situación', sb.s||'-'], ['B - Antecedentes', sb.b||'-'], ['A - Evaluación', sb.a||'-'], ['R - Recomendación', sb.r||'-']], headStyles: { fillColor: [239,68,68] }, styles: { fontSize: 8, cellWidth: 'wrap' }, margin: { left: 14, right: 14 } });
         y = doc.lastAutoTable.finalY + 6;
     }
-    if (sn.notas) {
-        if (y > 250) { doc.addPage(); y = 30; }
-        doc.setFontSize(9); doc.text(`Notas: ${sn.notas}`, 14, y, { maxWidth: 182 }); y += 12;
-    }
     if (sessionAdverseEvents.length > 0) {
         doc.autoTable({ startY: y, head: [['🚨 Eventos Adversos']], body: sessionAdverseEvents.map(ev => [`${ev.hora} — ${ev.descripcion}`]), headStyles: { fillColor: [220,38,38] }, styles: { fontSize: 8, cellWidth: 'wrap' }, margin: { left: 14, right: 14 } });
         y = doc.lastAutoTable.finalY + 6;
     }
-    if (y > 245) { doc.addPage(); y = 30; }
-    doc.setFontSize(9);
-    if (c.consentProcedures) { doc.setTextColor(34,197,94); doc.text('✓ CONSENTIMIENTO DE PROCEDIMIENTOS: Informado y otorgado por el paciente/cuidador (firmas abajo).', 14, y, { maxWidth: 182 }); y += 10; }
-    doc.setTextColor(0);
+    if (c.warningsIgnored && c.warningsIgnored.length) {
+        doc.autoTable({ startY: y, head: [['⚠️ Advertencias registradas al cierre (ignoradas por el auxiliar)']], body: c.warningsIgnored.map(w => [w]), headStyles: { fillColor: [245,158,11] }, styles: { fontSize: 7, cellWidth: 'wrap' }, margin: { left: 14, right: 14 } });
+        y = doc.lastAutoTable.finalY + 6;
+    }
+    if (y > 250) { doc.addPage(); y = 30; }
+    doc.setFontSize(9); doc.setTextColor(0);
     doc.text(`Pendientes: ${c.pendingTasks || 'Ninguno'}`, 14, y); y += 8;
     if (c.patientLeavesHome) {
         doc.setTextColor(220,38,38);
         doc.text(`⚠️ El paciente salió del domicilio (${c.leaveData?.transport || '-'}) de ${c.leaveData?.time || '?'} a ${c.leaveData?.returnTime || '?'}. Responsabilidad asumida por el familiar.`, 14, y, { maxWidth: 182 });
         doc.setTextColor(0); y += 12;
     }
-    y = Math.max(y + 10, 240);
-    if (y > 255) { doc.addPage(); y = 40; }
-    if (c.auxiliarySignature) { try { doc.addImage(c.auxiliarySignature, 'JPEG', 30, y, 55, 20); } catch(e) {} doc.setFontSize(8); doc.text('Firma Auxiliar', 57, y + 24, null, null, 'center'); }
-    if (c.familySignature) { try { doc.addImage(c.familySignature, 'JPEG', 120, y, 55, 20); } catch(e) {} doc.setFontSize(8); doc.text(`Firma Familiar (${c.familyName || ''} — ${c.familyRelationship || ''})`, 147, y + 24, null, null, 'center'); }
+    drawLegalSignatures(doc, y, { auxName: c.auxiliaryName || s.auxiliar || '-', auxDoc: c.auxiliaryIdNumber || s.auxiliarDoc || '-', auxCard: s.auxiliarCard || '-', auxSig: c.auxiliarySignature || null, famName: c.familyName || '-', famDoc: c.familyIdNumber || '-', famRel: c.familyRelationship || '-', famSig: c.familySignature || null });
     doc.save(`Resumen_Clinico_Turno_${(c.paciente || 'paciente').replace(/\s+/g,'_')}_${Date.now()}.pdf`); showToast('PDF generado');
 }
 
@@ -1654,7 +1826,7 @@ async function saveProfRecord() {
         professionalSignature: getSigData('profSigCanvas'), familySignature: getSigData('famProfSigCanvas'),
         familyName: famRel ? `${getVal('profFamName')} (${famRel})` : getVal('profFamName'), familyId: getVal('profFamId')
     };
-    lastProfRecordData = { ...payload, patientName: selectedPatient.full_name, profName: currentUser.full_name, specialty: sp, tarjeta: currentUser.professional_card || '', cups, fecha: new Date().toLocaleString('es-CO'), secciones };
+    lastProfRecordData = { ...payload, patientName: selectedPatient.full_name, patientDoc: selectedPatient.document_number || '', profName: currentUser.full_name, profDoc: currentUser.document_number || '', specialty: sp, tarjeta: currentUser.professional_card || '', cups, fecha: new Date().toLocaleString('es-CO'), secciones };
     try {
         const r = await fetch(`${API_URL}/api/professional-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const d = await r.json();
@@ -1671,8 +1843,8 @@ function generateProfPDF() {
     doc.setFontSize(12); doc.setTextColor(0);
     doc.text(d.cups ? `Visita Domiciliaria (CUPS ${d.cups})` : "Nota de Evolución Profesional", 105, 30, null, null, "center");
     doc.setFontSize(10);
-    doc.text(`Paciente: ${d.patientName}`, 14, 45);
-    doc.text(`Profesional: ${d.profName} (${d.specialty})`, 14, 52);
+    doc.text(`Paciente: ${d.patientName}${d.patientDoc ? ' — CC ' + d.patientDoc : ''}`, 14, 45);
+    doc.text(`Profesional: ${d.profName} (${d.specialty}) — CC ${d.profDoc || '-'}`, 14, 52);
     doc.text(`Tarjeta Profesional: ${d.tarjeta || '(pendiente de registrar)'}`, 14, 59);
     doc.text(`Fecha: ${d.fecha}`, 14, 66);
     doc.text(`Motivo: ${d.vitalSigns?.motivo || '-'} | Duración: ${d.vitalSigns?.duracion || '-'} (${d.vitalSigns?.visitaInicio || '?'} a ${d.vitalSigns?.visitaFin || '?'})`, 14, 73);
@@ -1681,9 +1853,7 @@ function generateProfPDF() {
         .map(([k, v]) => [k, (v && String(v).trim()) ? String(v) : '(No registrado)']);
     doc.autoTable({ startY: 88, head: [['Sección', 'Contenido']], body, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 9, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 55 } } });
     let y = doc.lastAutoTable.finalY + 15;
-    if (y > 230) { doc.addPage(); y = 30; }
-    if (d.professionalSignature) { try { doc.addImage(d.professionalSignature, 'JPEG', 30, y, 55, 20); } catch(e) {} doc.setFontSize(8); doc.text('Firma Profesional', 57, y + 24, null, null, 'center'); }
-    if (d.familySignature) { try { doc.addImage(d.familySignature, 'JPEG', 120, y, 55, 20); } catch(e) {} doc.setFontSize(8); doc.text(`Testigo: ${d.familyName || ''} CC ${d.familyId || ''}`, 147, y + 24, null, null, 'center'); }
+    drawLegalSignatures(doc, y, { auxName: d.profName || '-', auxDoc: d.profDoc || '-', auxCard: d.tarjeta || '-', auxSig: d.professionalSignature || null, famName: d.familyName || '-', famDoc: d.familyId || '-', famRel: 'Testigo', famSig: d.familySignature || null });
     doc.save(`Visita_Domiciliaria_${d.patientName.replace(/\s+/g,'_')}_${Date.now()}.pdf`); showToast('PDF generado');
 }
 
@@ -1772,6 +1942,8 @@ document.addEventListener('DOMContentLoaded', () => {
     if (confirmBtn) confirmBtn.addEventListener('click', () => { if (typeof _confirmModalCallback === 'function') { const cb = _confirmModalCallback; closeConfirmModal(); cb(); } });
     const confirmInput = document.getElementById('confirmModalInput');
     if (confirmInput) confirmInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !document.getElementById('confirmModalBtn').disabled) document.getElementById('confirmModalBtn').click(); });
+    const reviewBtn = document.getElementById('reviewConfirmBtn');
+    if (reviewBtn) reviewBtn.addEventListener('click', confirmCloseShift);
 });
 </script>
 </body>
