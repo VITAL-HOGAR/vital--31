@@ -159,8 +159,8 @@ app.patch('/api/patients/:id', async (req, res) => {
         const updateData = {};
         if (fullName) updateData.full_name = fullName;
         if (documentNumber) updateData.document_number = documentNumber;
-        if (familyName) updateData.family_name = familyName;
-        if (contactPhone) updateData.contact_phone = contactPhone;
+        if (familyName !== undefined) updateData.family_name = familyName;
+        if (contactPhone !== undefined) updateData.contact_phone = contactPhone;
         if (cie10Code !== undefined) updateData.cie_10_code = cie10Code;
         if (epsName !== undefined) updateData.eps_name = epsName;
         if (epsAuthorization !== undefined) updateData.eps_authorization = epsAuthorization;
@@ -181,8 +181,7 @@ app.patch('/api/patients/:id/reactivate', async (req, res) => {
 
 // ==========================================
 // 5. ELIMINACIÓN PERMANENTE CON CASCADA
-// (Borra el registro Y todos sus datos asociados)
-// Para datos de PRUEBA. Para datos reales usa Archivar.
+// (Para datos de PRUEBA. Para datos reales usa Archivar.)
 // ==========================================
 app.delete('/api/patients/:id', async (req, res) => {
     try {
@@ -284,21 +283,65 @@ app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
 });
 
 // ==========================================
-// 8. SOPORTES PARA FACTURACIÓN (NUEVO)
+// 8. SOPORTES PARA FACTURACIÓN (con fallback anti-500)
 // ==========================================
 app.get('/api/shifts/closed', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('shifts').select('*, patients(full_name, document_number), professionals(full_name, document_number, professional_card)').eq('is_closed', true).order('start_time', { ascending: false }).limit(200);
-        if (error) throw error;
+        let { data, error } = await supabase.from('shifts').select('*, patients(full_name, document_number), professionals(full_name, document_number, professional_card)').eq('is_closed', true).order('start_time', { ascending: false }).limit(200);
+        if (error) {
+            console.log('Join falló en shifts/closed, usando fallback:', error.message);
+            const fb = await supabase.from('shifts').select('*').eq('is_closed', true).order('start_time', { ascending: false }).limit(200);
+            if (fb.error) throw fb.error;
+            data = fb.data;
+            if (data && data.length) {
+                const patIds = [...new Set(data.map(s => s.patient_id).filter(Boolean))];
+                const profIds = [...new Set(data.map(s => s.professional_id).filter(Boolean))];
+                const { data: pats } = patIds.length ? await supabase.from('patients').select('id, full_name, document_number').in('id', patIds) : { data: [] };
+                const { data: profs } = profIds.length ? await supabase.from('professionals').select('id, full_name, document_number, professional_card').in('id', profIds) : { data: [] };
+                const patMap = new Map((pats || []).map(p => [p.id, p]));
+                const profMap = new Map((profs || []).map(p => [p.id, p]));
+                data = data.map(s => ({ ...s, patients: patMap.get(s.patient_id) || null, professionals: profMap.get(s.professional_id) || null }));
+            }
+        }
         res.json({ success: true, data: data || [] });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
 app.get('/api/professional-records/list', async (req, res) => {
     try {
-        const { data, error } = await supabase.from('professional_records').select('*, patients(full_name, document_number), professionals(full_name, document_number, professional_card)').order('created_at', { ascending: false }).limit(200);
-        if (error) throw error;
+        let { data, error } = await supabase.from('professional_records').select('*, patients(full_name, document_number), professionals(full_name, document_number, professional_card)').order('created_at', { ascending: false }).limit(200);
+        if (error) {
+            console.log('Join falló en professional-records/list, usando fallback:', error.message);
+            const fb = await supabase.from('professional_records').select('*').order('created_at', { ascending: false }).limit(200);
+            if (fb.error) throw fb.error;
+            data = fb.data;
+            if (data && data.length) {
+                const patIds = [...new Set(data.map(n => n.patient_id).filter(Boolean))];
+                const profIds = [...new Set(data.map(n => n.professional_id).filter(Boolean))];
+                const { data: pats } = patIds.length ? await supabase.from('patients').select('id, full_name, document_number').in('id', patIds) : { data: [] };
+                const { data: profs } = profIds.length ? await supabase.from('professionals').select('id, full_name, document_number, professional_card').in('id', profIds) : { data: [] };
+                const patMap = new Map((pats || []).map(p => [p.id, p]));
+                const profMap = new Map((profs || []).map(p => [p.id, p]));
+                data = data.map(n => ({ ...n, patients: patMap.get(n.patient_id) || null, professionals: profMap.get(n.professional_id) || null }));
+            }
+        }
         res.json({ success: true, data: data || [] });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.patch('/api/shifts/:id/validate', async (req, res) => {
+    try {
+        const { error } = await supabase.from('shifts').update({ admin_validated: true, admin_validated_at: new Date().toISOString() }).eq('id', req.params.id);
+        if (error) throw error;
+        res.json({ success: true, message: 'Soporte validado correctamente' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.patch('/api/professional-records/:id/validate', async (req, res) => {
+    try {
+        const { error } = await supabase.from('professional_records').update({ admin_validated: true, admin_validated_at: new Date().toISOString() }).eq('id', req.params.id);
+        if (error) throw error;
+        res.json({ success: true, message: 'Soporte validado correctamente' });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
