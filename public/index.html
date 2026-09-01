@@ -117,6 +117,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .closed-success { text-align: center; padding: 20px; }
 .closed-success .big-icon { font-size: 4rem; margin-bottom: 10px; }
 .add-row-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.view-toggle { display: flex; gap: 6px; margin-bottom: 8px; }
 </style>
 
 <script>
@@ -200,7 +201,14 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 </div>
                 <button class="btn-primary" onclick="createProf()"><i class="fas fa-save"></i> Guardar Profesional</button>
             </div>
-            <div class="card"><table id="profTable"><thead><tr><th>Nombre</th><th>Cédula</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table></div>
+            <div class="card">
+                <h3 style="cursor:default;">Listado de Profesionales</h3>
+                <div class="view-toggle">
+                    <button class="btn-small btn-info" id="profViewActiveBtn" onclick="setProfView('active')">✅ Activos</button>
+                    <button class="btn-small btn-secondary" id="profViewArchivedBtn" onclick="setProfView('archived')">📦 Archivados</button>
+                </div>
+                <table id="profTable"><thead><tr><th>Nombre</th><th>Cédula</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+            </div>
         </div>
 
         <div id="admin_pat" class="hidden">
@@ -218,7 +226,14 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 </div>
                 <button class="btn-primary" onclick="createPat()"><i class="fas fa-save"></i> Guardar Paciente</button>
             </div>
-            <div class="card"><table id="patTable"><thead><tr><th>Nombre</th><th>Ciudad</th><th>Familiar</th><th>Celular</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table></div>
+            <div class="card">
+                <h3 style="cursor:default;">Listado de Pacientes</h3>
+                <div class="view-toggle">
+                    <button class="btn-small btn-info" id="patViewActiveBtn" onclick="setPatView('active')">✅ Activos</button>
+                    <button class="btn-small btn-secondary" id="patViewArchivedBtn" onclick="setPatView('archived')">📦 Archivados</button>
+                </div>
+                <table id="patTable"><thead><tr><th>Nombre</th><th>Ciudad</th><th>Familiar</th><th>Celular</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+            </div>
         </div>
 
         <div id="admin_supports" class="hidden">
@@ -231,7 +246,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 <h3 style="cursor:default;">🧾 Notas de Evolución (Profesionales) — Soportes para Facturación</h3>
                 <table id="supportNotesTable"><thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th><th>Tipo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
             </div>
-            <p style="font-size:0.8rem; color:#94a3b8;">💡 Descarga los soportes (PDF con firmas desde la base de datos), valídalos y con ellos arma la Cuenta de Cobro en Finanzas. La persistencia del estado "Validado" llega en Fase 2.</p>
+            <p style="font-size:0.8rem; color:#94a3b8;">💡 Descarga los soportes (PDF con firmas desde la base de datos), valídalos — la validación queda guardada en la BD con fecha — y con ellos arma la Cuenta de Cobro en Finanzas.</p>
         </div>
 
         <div id="admin_edu" class="hidden">
@@ -812,6 +827,18 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     </div>
 </div>
 
+<div id="editPatModal" class="modal-overlay-confirm" onclick="if(event.target===this) closeEditPatModal()">
+    <div class="modal-confirm-box" style="border-color: var(--info); max-width: 480px;">
+        <div class="modal-icon" style="background: rgba(59,130,246,0.15); color: var(--info);"><i class="fas fa-user-pen"></i></div>
+        <h3 style="color: var(--info);">Editar Paciente</h3>
+        <div id="editPatFields" style="text-align:left;"></div>
+        <div class="modal-actions">
+            <button class="btn-primary btn-secondary" style="margin-top:0;" onclick="closeEditPatModal()">Cancelar</button>
+            <button class="btn-primary" id="editPatSaveBtn" style="margin-top:0;">💾 Guardar Cambios</button>
+        </div>
+    </div>
+</div>
+
 <div id="confirmModal" class="modal-overlay-confirm" onclick="if(event.target===this) closeConfirmModal()">
     <div class="modal-confirm-box">
         <div class="modal-icon"><i class="fas fa-triangle-exclamation"></i></div>
@@ -897,9 +924,9 @@ let lastShiftData = null, lastInvoiceData = null, lastLiquidationData = null, la
 let profsRegistry = [], patientsRegistry = [], finParamsId = null, tariffId = null;
 let sigHasInk = {};
 let sessionRecords = [], sessionAdverseEvents = [], scheduledShiftsMap = {};
-let validatedSupports = new Set();
 let _supportNotes = [];
-let _editingProfId = null;
+let _editingProfId = null, _editingPatId = null;
+let profViewMode = 'active', patViewMode = 'active';
 
 // ============ HELPERS ============
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
@@ -945,18 +972,35 @@ function initApp() {
     }
 }
 
-// ============ ADMIN: NAVEGACIÓN Y TABLAS ============
+// ============ ADMIN: NAVEGACIÓN ============
 function showAdminTab(tab, btn) { ['admin_prof','admin_pat','admin_supports','admin_edu','admin_reports','admin_finance','admin_agenda','admin_messages'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById('admin_'+tab).classList.remove('hidden'); document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); if (tab === 'supports') loadSupports(); }
 
+// --- PROFESIONALES: carga, render con toggle, archivar, reactivar, editar ---
 async function loadProfs() {
     try { const r = await fetch(`${API_URL}/api/professionals`); const d = await r.json(); profsRegistry = d.data || [];
-        document.querySelector('#profTable tbody').innerHTML = profsRegistry.map(p => `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.document_number)}</td><td>${escapeHtml(p.specialties?.name||'N/A')}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-warning" onclick="openEditProfModal('${p.id}')">Editar</button> <button class="btn-small btn-archive" onclick="archiveProf('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deleteProf('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`).join('');
-        fillSelects(); updateStats(); updateSchedShiftType();
+        renderProfs(); fillSelects(); updateStats(); updateSchedShiftType();
     } catch (e) { console.error(e); showToast('Error cargando profesionales', 'error'); }
 }
-async function archiveProf(id) { if(!confirm('¿Archivar este profesional? Desaparecerá de la lista activa.')) return; try { await fetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: false }) }); showToast('Archivado'); loadProfs(); } catch(e) { showToast('Error al archivar', 'error'); } }
+function setProfView(mode) {
+    profViewMode = mode;
+    document.getElementById('profViewActiveBtn').className = `btn-small ${mode === 'active' ? 'btn-info' : 'btn-secondary'}`;
+    document.getElementById('profViewArchivedBtn').className = `btn-small ${mode === 'archived' ? 'btn-info' : 'btn-secondary'}`;
+    renderProfs();
+}
+function renderProfs() {
+    const list = profsRegistry.filter(p => profViewMode === 'active' ? p.is_active !== false : p.is_active === false);
+    document.querySelector('#profTable tbody').innerHTML = list.length ? list.map(p => {
+        if (profViewMode === 'active') {
+            return `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.document_number)}</td><td>${escapeHtml(p.specialties?.name||'N/A')}</td><td>✅ Activo</td><td><button class="btn-small btn-warning" onclick="openEditProfModal('${p.id}')">Editar</button> <button class="btn-small btn-archive" onclick="archiveProf('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deleteProf('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`;
+        } else {
+            return `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.document_number)}</td><td>${escapeHtml(p.specialties?.name||'N/A')}</td><td>📦 Archivado</td><td><button class="btn-small btn-primary" onclick="reactivateProf('${p.id}')">🔁 Reactivar</button> <button class="btn-small btn-warning" onclick="openEditProfModal('${p.id}')">Editar</button> <button class="btn-small btn-danger" onclick="deleteProf('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`;
+        }
+    }).join('') : `<tr><td colspan="5" style="text-align:center;color:#94a3b8;">${profViewMode === 'active' ? 'No hay profesionales activos' : 'No hay profesionales archivados'}</td></tr>`;
+}
+async function archiveProf(id) { if(!confirm('¿Archivar este profesional? Desaparecerá de la lista activa pero podrás reactivarlo desde "Archivados".')) return; try { await fetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: false }) }); showToast('Profesional archivado'); loadProfs(); } catch(e) { showToast('Error al archivar', 'error'); } }
+async function reactivateProf(id) { try { await fetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: true }) }); showToast('✅ Profesional reactivado'); loadProfs(); } catch(e) { showToast('Error al reactivar', 'error'); } }
 
-// --- ✏️ MODAL DE EDICIÓN COMPLETA ---
+// --- ✏️ MODAL EDICIÓN PROFESIONAL ---
 function openEditProfModal(id) {
     const p = profsRegistry.find(x => x.id === id); if (!p) return;
     _editingProfId = id;
@@ -971,39 +1015,50 @@ function openEditProfModal(id) {
     document.getElementById('editProfModal').classList.add('show');
 }
 function closeEditProfModal() { document.getElementById('editProfModal').classList.remove('show'); _editingProfId = null; }
-document.addEventListener('DOMContentLoaded', () => {
-    const saveBtn = document.getElementById('editProfSaveBtn');
-    if (saveBtn) saveBtn.addEventListener('click', async () => {
-        if (!_editingProfId) return;
-        const body = { fullName: getVal('epName').trim(), documentNumber: getVal('epDoc').trim(), professionalCard: getVal('epCard').trim(), specialtyName: getVal('epSpec') };
-        const nuevaPass = getVal('epPass');
-        if (nuevaPass) body.newPassword = nuevaPass;
-        try {
-            const r = await fetch(`${API_URL}/api/professionals/${_editingProfId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-            const d = await r.json();
-            if (d.success) { showToast('✅ Profesional actualizado' + (nuevaPass ? ' (contraseña incluida)' : '')); closeEditProfModal(); loadProfs(); }
-            else showToast(d.message || 'Error al actualizar', 'error');
-        } catch (e) { showToast('Error de conexión', 'error'); }
-    });
-});
 
+// --- PACIENTES: carga, render con toggle, archivar, reactivar, editar ---
 async function loadPats() {
     try { const r = await fetch(`${API_URL}/api/patients`); const d = await r.json(); patientsRegistry = d.data || [];
-        document.querySelector('#patTable tbody').innerHTML = patientsRegistry.map(p => `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.altitude_profiles?.city_name||'N/A')}</td><td>${escapeHtml(p.family_name||'N/A')}</td><td>${escapeHtml(p.contact_phone||'N/A')}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-warning" onclick="editPatient('${p.id}')">Editar</button> <button class="btn-small btn-archive" onclick="archivePatient('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deletePatient('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`).join('');
-        fillSelects(); updateStats();
+        renderPats(); fillSelects(); updateStats();
     } catch (e) { console.error(e); showToast('Error cargando pacientes', 'error'); }
 }
-async function archivePatient(id) { if(!confirm('¿Archivar (dar de baja) este paciente?')) return; try { await fetch(`${API_URL}/api/patients/${id}/discharge`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ reason: 'Archivado por administración' }) }); showToast('Archivado'); loadPats(); } catch(e) { showToast('Error al archivar', 'error'); } }
-async function editPatient(id) {
-    const p = patientsRegistry.find(x => x.id === id); if (!p) return;
-    const nuevoNombre = prompt('Nuevo nombre:', p.full_name); if (nuevoNombre === null) return;
-    const nuevoTel = prompt('Nuevo celular:', p.contact_phone || '');
-    try {
-        const body = {}; if (nuevoNombre) body.fullName = nuevoNombre; if (nuevoTel) body.contactPhone = nuevoTel;
-        const r = await fetch(`${API_URL}/api/patients/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-        const d = await r.json(); if (d.success) { showToast('Paciente actualizado'); loadPats(); } else showToast(d.message || 'Error', 'error');
-    } catch (e) { showToast('Error de conexión', 'error'); }
+function setPatView(mode) {
+    patViewMode = mode;
+    document.getElementById('patViewActiveBtn').className = `btn-small ${mode === 'active' ? 'btn-info' : 'btn-secondary'}`;
+    document.getElementById('patViewArchivedBtn').className = `btn-small ${mode === 'archived' ? 'btn-info' : 'btn-secondary'}`;
+    renderPats();
 }
+function renderPats() {
+    const list = patientsRegistry.filter(p => patViewMode === 'active' ? p.is_active !== false : p.is_active === false);
+    document.querySelector('#patTable tbody').innerHTML = list.length ? list.map(p => {
+        if (patViewMode === 'active') {
+            return `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.altitude_profiles?.city_name||'N/A')}</td><td>${escapeHtml(p.family_name||'N/A')}</td><td>${escapeHtml(p.contact_phone||'N/A')}</td><td>✅ Activo</td><td><button class="btn-small btn-warning" onclick="openEditPatModal('${p.id}')">Editar</button> <button class="btn-small btn-archive" onclick="archivePatient('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deletePatient('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`;
+        } else {
+            return `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.altitude_profiles?.city_name||'N/A')}</td><td>${escapeHtml(p.family_name||'N/A')}</td><td>${escapeHtml(p.contact_phone||'N/A')}</td><td>📦 Archivado</td><td><button class="btn-small btn-primary" onclick="reactivatePatient('${p.id}')">🔁 Reactivar</button> <button class="btn-small btn-warning" onclick="openEditPatModal('${p.id}')">Editar</button> <button class="btn-small btn-danger" onclick="deletePatient('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`;
+        }
+    }).join('') : `<tr><td colspan="6" style="text-align:center;color:#94a3b8;">${patViewMode === 'active' ? 'No hay pacientes activos' : 'No hay pacientes archivados'}</td></tr>`;
+}
+async function archivePatient(id) { if(!confirm('¿Archivar (dar de baja) este paciente? Podrás reactivarlo desde "Archivados".')) return; try { await fetch(`${API_URL}/api/patients/${id}/discharge`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ reason: 'Archivado por administración' }) }); showToast('Paciente archivado'); loadPats(); } catch(e) { showToast('Error al archivar', 'error'); } }
+async function reactivatePatient(id) { try { await fetch(`${API_URL}/api/patients/${id}/reactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) }); showToast('✅ Paciente reactivado'); loadPats(); } catch(e) { showToast('Error al reactivar', 'error'); } }
+
+// --- ✏️ MODAL EDICIÓN PACIENTE ---
+function openEditPatModal(id) {
+    const p = patientsRegistry.find(x => x.id === id); if (!p) return;
+    _editingPatId = id;
+    const ciudadActual = p.altitude_profiles?.city_name || '';
+    const cityOptions = Object.keys(CIUDADES_COLOMBIA).map(c => `<option value="${c}" ${c === ciudadActual ? 'selected' : ''}>${c}</option>`).join('');
+    document.getElementById('editPatFields').innerHTML = `
+        <div class="form-group"><label>Nombre *</label><input type="text" id="etName" value="${escapeHtml(p.full_name||'')}"></div>
+        <div class="form-group"><label>Cédula *</label><input type="text" id="etDoc" value="${escapeHtml(p.document_number||'')}"></div>
+        <div class="form-group"><label>Ciudad</label><select id="etCity"><option value="">Sin ciudad</option>${cityOptions}</select></div>
+        <div class="form-group"><label>Familiar</label><input type="text" id="etFam" value="${escapeHtml(p.family_name||'')}"></div>
+        <div class="form-group"><label>Celular</label><input type="tel" id="etCel" value="${escapeHtml(p.contact_phone||'')}"></div>
+        <div class="form-group"><label>Código CIE-10</label><input type="text" id="etCie" value="${escapeHtml(p.cie_10_code||'')}"></div>
+        <div class="form-group"><label>EPS</label><input type="text" id="etEps" value="${escapeHtml(p.eps_name||'')}"></div>
+        <div class="form-group"><label>Autorización EPS</label><input type="text" id="etAuth" value="${escapeHtml(p.eps_authorization||'')}"></div>`;
+    document.getElementById('editPatModal').classList.add('show');
+}
+function closeEditPatModal() { document.getElementById('editPatModal').classList.remove('show'); _editingPatId = null; }
 
 function fillSelects() {
     const pats = patientsRegistry.filter(p => p.is_active !== false);
@@ -1034,26 +1089,37 @@ function initAdminChart(values) {
     window._adminChart = new Chart(ctx, { type: 'bar', data: { labels: ['Pacientes', 'Profesionales', 'Informes'], datasets: [{ data: values, backgroundColor: ['#22c55e','#3b82f6','#f59e0b'], borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, x: { ticks: { color: '#94a3b8' }, grid: { display: false } } } } });
 }
 
-// ============ ADMIN: SOPORTES PARA FACTURACIÓN ============
+// ============ ADMIN: SOPORTES (validación persistente en BD) ============
 async function loadSupports() {
     try {
         const r1 = await fetch(`${API_URL}/api/shifts/closed`); const d1 = await r1.json();
         const shifts = (d1.success ? d1.data : []) || [];
         document.querySelector('#supportShiftsTable tbody').innerHTML = shifts.length ? shifts.map(s => {
-            const key = 'shift-' + s.id;
-            const estado = validatedSupports.has(key) ? '✅ Validado' : '⏳ Pendiente';
-            return `<tr><td>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> <button class="btn-small btn-primary" onclick="validateSupport('${key}', this)">Validar</button></td></tr>`;
+            const estado = s.admin_validated ? '✅ Validado' : '⏳ Pendiente';
+            const valBtn = s.admin_validated ? `<button class="btn-small btn-primary" disabled>Validado</button>` : `<button class="btn-small btn-primary" onclick="validateSupport('shift', '${s.id}', this)">Validar</button>`;
+            return `<tr><td>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${valBtn}</td></tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay turnos cerrados</td></tr>';
         const r2 = await fetch(`${API_URL}/api/professional-records/list`); const d2 = await r2.json();
         _supportNotes = (d2.success ? d2.data : []) || [];
         document.querySelector('#supportNotesTable tbody').innerHTML = _supportNotes.length ? _supportNotes.map(n => {
-            const key = 'note-' + n.id;
-            const estado = validatedSupports.has(key) ? '✅ Validado' : '⏳ Pendiente';
-            return `<tr><td>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(n.patients?.full_name||'N/A')}</td><td>${escapeHtml(n.professionals?.full_name||'N/A')}</td><td style="font-size:0.8rem;">${escapeHtml(n.record_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> <button class="btn-small btn-primary" onclick="validateSupport('${key}', this)">Validar</button></td></tr>`;
+            const estado = n.admin_validated ? '✅ Validado' : '⏳ Pendiente';
+            const valBtn = n.admin_validated ? `<button class="btn-small btn-primary" disabled>Validado</button>` : `<button class="btn-small btn-primary" onclick="validateSupport('note', '${n.id}', this)">Validar</button>`;
+            return `<tr><td>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(n.patients?.full_name||'N/A')}</td><td>${escapeHtml(n.professionals?.full_name||'N/A')}</td><td style="font-size:0.8rem;">${escapeHtml(n.record_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${valBtn}</td></tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay notas de evolución</td></tr>';
-    } catch (e) { console.error(e); showToast('Error cargando soportes (revisa los Logs de Render para el detalle)', 'error'); }
+    } catch (e) { console.error(e); showToast('Error cargando soportes', 'error'); }
 }
-function validateSupport(key, btn) { validatedSupports.add(key); const row = btn.closest('tr'); if (row) row.querySelector('td:nth-child(5)').textContent = '✅ Validado'; showToast('Soporte validado ✅'); }
+async function validateSupport(type, id, btn) {
+    const ruta = type === 'shift' ? 'shifts' : 'professional-records';
+    try {
+        const r = await fetch(`${API_URL}/api/${ruta}/${id}/validate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) });
+        const d = await r.json();
+        if (d.success) {
+            const row = btn.closest('tr');
+            if (row) { row.querySelector('td:nth-child(5)').textContent = '✅ Validado'; btn.disabled = true; btn.textContent = 'Validado'; }
+            showToast('✅ Soporte validado (guardado en la base de datos)');
+        } else showToast(d.message || 'Error al validar', 'error');
+    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+}
 
 // --- 📜 Firmas legales con etiquetas según el tipo de documento ---
 function drawLegalSignatures(doc, y, d) {
@@ -1123,7 +1189,7 @@ function downloadSupportNotePDF(noteId) {
         const body = [['S — Subjetivo', rec.subjective || '-'], ['O — Objetivo', rec.objective || '-'], ['A — Análisis', rec.analysis || '-'], ['P — Plan', rec.plan || '-'], ...consRows];
         doc.autoTable({ startY: 74, head: [['Sección','Contenido']], body, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 55 } } });
         let y = doc.lastAutoTable.finalY + 12;
-        const relDelTestigo = (rec.family_name || '').includes('(') ? (rec.family_name || '').split('(').pop().replace(')', '').trim() : 'Testigo';
+        const relDelTestigo = (rec.vital_signs?.testigoParentesco) || ((rec.family_name || '').includes('(') ? (rec.family_name || '').split('(').pop().replace(')', '').trim() : 'Testigo');
         drawLegalSignatures(doc, y, { docType: 'profesional', auxName: rec.professionals?.full_name || '-', auxDoc: rec.professionals?.document_number || '-', auxCard: rec.professionals?.professional_card || '-', auxSig: rec.professional_signature || null, famName: (rec.family_name || '-').split('(')[0].trim(), famDoc: rec.family_id || '-', famRel: relDelTestigo, famSig: rec.family_signature || null });
         doc.save(`Soporte_Nota_${(rec.patients?.full_name||'paciente').replace(/\s+/g,'_')}_${noteId.slice(0,8)}.pdf`);
         showToast('PDF generado desde la base de datos');
@@ -1864,7 +1930,6 @@ async function saveProfRecord() {
     }
     secciones.push(['Consentimiento — Intervención informada', getVal('profConsentProcedure')], ['Consentimiento — Aceptación', 'El paciente/cuidador fue informado de riesgos, beneficios y alternativas, y otorgó su consentimiento.']);
     const famRelRaw = getVal('profFamRel').trim();
-    const famNameClean = getVal('profFamName').trim();
     const payload = {
         patientId: selectedPatient.id, professionalId: currentUser.id,
         recordType: cups ? `Visita Domiciliaria (CUPS ${cups})` : `Nota de Evolución - ${sp}`,
@@ -1872,7 +1937,7 @@ async function saveProfRecord() {
         vitalSigns: { bp: getVal('profBP'), hr: getVal('profHR'), visitaInicio: getVal('visitStart'), visitaFin: getVal('visitEnd'), duracion: getVal('visitDuration'), motivo: getVal('visitReason'), consentimiento: { procedimiento: getVal('profConsentProcedure'), aceptado: true }, testigoParentesco: famRelRaw },
         subjective: S, objective: O, analysis: A, plan: P,
         professionalSignature: getSigData('profSigCanvas'), familySignature: getSigData('famProfSigCanvas'),
-        familyName: famNameClean, familyId: getVal('profFamId')
+        familyName: getVal('profFamName').trim(), familyId: getVal('profFamId')
     };
     lastProfRecordData = { ...payload, patientName: selectedPatient.full_name, patientDoc: selectedPatient.document_number || '', profName: currentUser.full_name, profDoc: currentUser.document_number || '', specialty: sp, tarjeta: currentUser.professional_card || '', cups, fecha: new Date().toLocaleString('es-CO'), secciones, famRel: famRelRaw };
     try {
@@ -1992,6 +2057,30 @@ document.addEventListener('DOMContentLoaded', () => {
     if (confirmInput) confirmInput.addEventListener('keypress', (e) => { if (e.key === 'Enter' && !document.getElementById('confirmModalBtn').disabled) document.getElementById('confirmModalBtn').click(); });
     const reviewBtn = document.getElementById('reviewConfirmBtn');
     if (reviewBtn) reviewBtn.addEventListener('click', confirmCloseShift);
+    const editProfSaveBtn = document.getElementById('editProfSaveBtn');
+    if (editProfSaveBtn) editProfSaveBtn.addEventListener('click', async () => {
+        if (!_editingProfId) return;
+        const body = { fullName: getVal('epName').trim(), documentNumber: getVal('epDoc').trim(), professionalCard: getVal('epCard').trim(), specialtyName: getVal('epSpec') };
+        const nuevaPass = getVal('epPass');
+        if (nuevaPass) body.newPassword = nuevaPass;
+        try {
+            const r = await fetch(`${API_URL}/api/professionals/${_editingProfId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            const d = await r.json();
+            if (d.success) { showToast('✅ Profesional actualizado' + (nuevaPass ? ' (contraseña incluida)' : '')); closeEditProfModal(); loadProfs(); }
+            else showToast(d.message || 'Error al actualizar', 'error');
+        } catch (e) { showToast('Error de conexión', 'error'); }
+    });
+    const editPatSaveBtn = document.getElementById('editPatSaveBtn');
+    if (editPatSaveBtn) editPatSaveBtn.addEventListener('click', async () => {
+        if (!_editingPatId) return;
+        const body = { fullName: getVal('etName').trim(), documentNumber: getVal('etDoc').trim(), cityName: getVal('etCity'), familyName: getVal('etFam'), contactPhone: getVal('etCel'), cie10Code: getVal('etCie'), epsName: getVal('etEps'), epsAuthorization: getVal('etAuth') };
+        try {
+            const r = await fetch(`${API_URL}/api/patients/${_editingPatId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            const d = await r.json();
+            if (d.success) { showToast('✅ Paciente actualizado'); closeEditPatModal(); loadPats(); }
+            else showToast(d.message || 'Error al actualizar', 'error');
+        } catch (e) { showToast('Error de conexión', 'error'); }
+    });
 });
 </script>
 </body>
