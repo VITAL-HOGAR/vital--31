@@ -788,6 +788,30 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     </div>
 </div>
 
+<div id="forgotModal" class="modal-overlay-confirm" onclick="if(event.target===this) closeForgotModal()">
+    <div class="modal-confirm-box" style="border-color: var(--info); max-width: 380px;">
+        <div class="modal-icon" style="background: rgba(59,130,246,0.15); color: var(--info);"><i class="fas fa-mug-hot"></i></div>
+        <h3 style="color: var(--info);">¿Olvidaste tu contraseña?</h3>
+        <p>😴 Tranquilo, pasa hasta en las mejores familias.</p>
+        <p style="font-size:0.9rem;">Comunícate con el <strong>administrador de Vital Hogar</strong> para que te asigne una nueva contraseña.</p>
+        <p style="font-size:0.85rem; color:#94a3b8;">Mientras tanto, aquí va un café virtual ☕</p>
+        <button class="btn-primary btn-info" style="margin-top:0;" onclick="closeForgotModal()">Entendido 👍</button>
+    </div>
+</div>
+
+<div id="editProfModal" class="modal-overlay-confirm" onclick="if(event.target===this) closeEditProfModal()">
+    <div class="modal-confirm-box" style="border-color: var(--info); max-width: 480px;">
+        <div class="modal-icon" style="background: rgba(59,130,246,0.15); color: var(--info);"><i class="fas fa-user-pen"></i></div>
+        <h3 style="color: var(--info);">Editar Profesional</h3>
+        <div id="editProfFields" style="text-align:left;"></div>
+        <p style="font-size:0.75rem; color:#94a3b8;">⚠️ La contraseña solo se cambia si escribes una nueva. El correo no se puede modificar (es el identificador de acceso).</p>
+        <div class="modal-actions">
+            <button class="btn-primary btn-secondary" style="margin-top:0;" onclick="closeEditProfModal()">Cancelar</button>
+            <button class="btn-primary" id="editProfSaveBtn" style="margin-top:0;">💾 Guardar Cambios</button>
+        </div>
+    </div>
+</div>
+
 <div id="confirmModal" class="modal-overlay-confirm" onclick="if(event.target===this) closeConfirmModal()">
     <div class="modal-confirm-box">
         <div class="modal-icon"><i class="fas fa-triangle-exclamation"></i></div>
@@ -875,6 +899,7 @@ let sigHasInk = {};
 let sessionRecords = [], sessionAdverseEvents = [], scheduledShiftsMap = {};
 let validatedSupports = new Set();
 let _supportNotes = [];
+let _editingProfId = null;
 
 // ============ HELPERS ============
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
@@ -882,7 +907,8 @@ function getVal(id) { const el = document.getElementById(id); return el ? el.val
 function formatCurrency(v) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v || 0); }
 function togglePass(id, btn) { const i = document.getElementById(id); i.type = i.type === 'password' ? 'text' : 'password'; btn.textContent = i.type === 'password' ? '👁️' : '🙈'; }
 function escapeHtml(str) { if (str === null || str === undefined) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
-function forgotPassword() { alert('😴 Tranquilo, pasa hasta en las mejores familias.\n\nComunícate con el administrador de Vital Hogar para que te asigne una nueva contraseña. Mientras tanto, aquí va un café virtual ☕'); }
+function forgotPassword() { document.getElementById('forgotModal').classList.add('show'); }
+function closeForgotModal() { document.getElementById('forgotModal').classList.remove('show'); }
 
 // ============ LOGIN ============
 async function login() {
@@ -924,21 +950,42 @@ function showAdminTab(tab, btn) { ['admin_prof','admin_pat','admin_supports','ad
 
 async function loadProfs() {
     try { const r = await fetch(`${API_URL}/api/professionals`); const d = await r.json(); profsRegistry = d.data || [];
-        document.querySelector('#profTable tbody').innerHTML = profsRegistry.map(p => `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.document_number)}</td><td>${escapeHtml(p.specialties?.name||'N/A')}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-warning" onclick="editProf('${p.id}')">Editar</button> <button class="btn-small btn-archive" onclick="archiveProf('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deleteProf('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`).join('');
+        document.querySelector('#profTable tbody').innerHTML = profsRegistry.map(p => `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.document_number)}</td><td>${escapeHtml(p.specialties?.name||'N/A')}</td><td>${p.is_active?'✅':'❌'}</td><td><button class="btn-small btn-warning" onclick="openEditProfModal('${p.id}')">Editar</button> <button class="btn-small btn-archive" onclick="archiveProf('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deleteProf('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`).join('');
         fillSelects(); updateStats(); updateSchedShiftType();
     } catch (e) { console.error(e); showToast('Error cargando profesionales', 'error'); }
 }
 async function archiveProf(id) { if(!confirm('¿Archivar este profesional? Desaparecerá de la lista activa.')) return; try { await fetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: false }) }); showToast('Archivado'); loadProfs(); } catch(e) { showToast('Error al archivar', 'error'); } }
-async function editProf(id) {
+
+// --- ✏️ MODAL DE EDICIÓN COMPLETA ---
+function openEditProfModal(id) {
     const p = profsRegistry.find(x => x.id === id); if (!p) return;
-    const nuevoNombre = prompt('Nuevo nombre completo:', p.full_name); if (nuevoNombre === null) return;
-    const nuevaPass = prompt('Nueva contraseña (vacío = no cambiar):');
-    try {
-        const body = {}; if (nuevoNombre) body.fullName = nuevoNombre; if (nuevaPass) body.newPassword = nuevaPass;
-        const r = await fetch(`${API_URL}/api/professionals/${id}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
-        const d = await r.json(); if (d.success) { showToast('Profesional actualizado'); loadProfs(); } else showToast(d.message || 'Error', 'error');
-    } catch (e) { showToast('Error de conexión', 'error'); }
+    _editingProfId = id;
+    const specOptions = ['ADMINISTRACION','ENFERMERIA_JEFE','AUXILIAR_ENFERMERIA','MEDICINA','FISIOTERAPIA','FONOAUDIOLOGIA','TERAPIA_OCUPACIONAL','TERAPIA_RESPIRATORIA','PSICOLOGIA','NUTRICION','TRABAJO_SOCIAL'];
+    document.getElementById('editProfFields').innerHTML = `
+        <div class="form-group"><label>Nombre Completo *</label><input type="text" id="epName" value="${escapeHtml(p.full_name||'')}"></div>
+        <div class="form-group"><label>Cédula *</label><input type="text" id="epDoc" value="${escapeHtml(p.document_number||'')}"></div>
+        <div class="form-group"><label>Tarjeta Profesional / RETHUS *</label><input type="text" id="epCard" value="${escapeHtml(p.professional_card||'')}"></div>
+        <div class="form-group"><label>Correo (no editable)</label><input type="text" id="epEmail" value="${escapeHtml(p.email || 'No disponible')}" readonly style="opacity:0.6;"></div>
+        <div class="form-group"><label>Especialidad</label><select id="epSpec">${specOptions.map(s => `<option value="${s}" ${s === (p.specialties?.name||'') ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
+        <div class="form-group"><label>🔑 Nueva Contraseña (déjalo vacío para no cambiarla)</label><input type="text" id="epPass" placeholder="Solo escribe aquí si quieres cambiarla"></div>`;
+    document.getElementById('editProfModal').classList.add('show');
 }
+function closeEditProfModal() { document.getElementById('editProfModal').classList.remove('show'); _editingProfId = null; }
+document.addEventListener('DOMContentLoaded', () => {
+    const saveBtn = document.getElementById('editProfSaveBtn');
+    if (saveBtn) saveBtn.addEventListener('click', async () => {
+        if (!_editingProfId) return;
+        const body = { fullName: getVal('epName').trim(), documentNumber: getVal('epDoc').trim(), professionalCard: getVal('epCard').trim(), specialtyName: getVal('epSpec') };
+        const nuevaPass = getVal('epPass');
+        if (nuevaPass) body.newPassword = nuevaPass;
+        try {
+            const r = await fetch(`${API_URL}/api/professionals/${_editingProfId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            const d = await r.json();
+            if (d.success) { showToast('✅ Profesional actualizado' + (nuevaPass ? ' (contraseña incluida)' : '')); closeEditProfModal(); loadProfs(); }
+            else showToast(d.message || 'Error al actualizar', 'error');
+        } catch (e) { showToast('Error de conexión', 'error'); }
+    });
+});
 
 async function loadPats() {
     try { const r = await fetch(`${API_URL}/api/patients`); const d = await r.json(); patientsRegistry = d.data || [];
@@ -991,22 +1038,43 @@ function initAdminChart(values) {
 async function loadSupports() {
     try {
         const r1 = await fetch(`${API_URL}/api/shifts/closed`); const d1 = await r1.json();
-        const shifts = d1.data || [];
+        const shifts = (d1.success ? d1.data : []) || [];
         document.querySelector('#supportShiftsTable tbody').innerHTML = shifts.length ? shifts.map(s => {
             const key = 'shift-' + s.id;
             const estado = validatedSupports.has(key) ? '✅ Validado' : '⏳ Pendiente';
             return `<tr><td>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> <button class="btn-small btn-primary" onclick="validateSupport('${key}', this)">Validar</button></td></tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay turnos cerrados</td></tr>';
         const r2 = await fetch(`${API_URL}/api/professional-records/list`); const d2 = await r2.json();
-        _supportNotes = d2.data || [];
+        _supportNotes = (d2.success ? d2.data : []) || [];
         document.querySelector('#supportNotesTable tbody').innerHTML = _supportNotes.length ? _supportNotes.map(n => {
             const key = 'note-' + n.id;
             const estado = validatedSupports.has(key) ? '✅ Validado' : '⏳ Pendiente';
             return `<tr><td>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(n.patients?.full_name||'N/A')}</td><td>${escapeHtml(n.professionals?.full_name||'N/A')}</td><td style="font-size:0.8rem;">${escapeHtml(n.record_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> <button class="btn-small btn-primary" onclick="validateSupport('${key}', this)">Validar</button></td></tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay notas de evolución</td></tr>';
-    } catch (e) { console.error(e); showToast('Error cargando soportes (verifica las rutas nuevas en el server)', 'error'); }
+    } catch (e) { console.error(e); showToast('Error cargando soportes (revisa los Logs de Render para el detalle)', 'error'); }
 }
 function validateSupport(key, btn) { validatedSupports.add(key); const row = btn.closest('tr'); if (row) row.querySelector('td:nth-child(5)').textContent = '✅ Validado'; showToast('Soporte validado ✅'); }
+
+// --- 📜 Firmas legales con etiquetas según el tipo de documento ---
+function drawLegalSignatures(doc, y, d) {
+    if (y > 235) { doc.addPage(); y = 40; }
+    doc.setFontSize(8); doc.setTextColor(80);
+    doc.text('Declaración de conformidad: El familiar/cuidador suscrito declara haber recibido los servicios y cuidados descritos en este documento durante el turno indicado, y se declara conforme con ellos.', 14, y, { maxWidth: 182 }); y += 16;
+    const leftLabel = d.docType === 'profesional' ? 'Firma del Profesional' : 'Firma Auxiliar de Enfermería';
+    const leftExtra = d.docType === 'profesional' ? `Tarjeta Profesional: ${d.auxCard || '(pendiente)'}` : `ReTHUS: ${d.auxCard || '(pendiente)'}`;
+    if (d.auxSig) { try { doc.addImage(d.auxSig, 'JPEG', 30, y - 12, 55, 16); } catch(e) {} }
+    doc.setDrawColor(0); doc.line(30, y + 6, 85, y + 6);
+    doc.text(leftLabel, 57.5, y + 11, null, null, 'center');
+    doc.text(`${d.auxName} — CC ${d.auxDoc}`, 57.5, y + 15, null, null, 'center');
+    doc.text(leftExtra, 57.5, y + 19, null, null, 'center');
+    if (d.famSig) { try { doc.addImage(d.famSig, 'JPEG', 120, y - 12, 55, 16); } catch(e) {} }
+    doc.line(120, y + 6, 175, y + 6);
+    doc.text('Firma Familiar / Cuidador', 147.5, y + 11, null, null, 'center');
+    doc.text(`${d.famName} — CC ${d.famDoc}`, 147.5, y + 15, null, null, 'center');
+    doc.text(`Parentesco: ${d.famRel || '-'}`, 147.5, y + 19, null, null, 'center');
+    doc.setFontSize(7); doc.setTextColor(120);
+    doc.text(`Documento generado electrónicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Registro clínico oficial. Tratamiento de datos personales conforme a la Ley 1581 de 2012.`, 105, y + 27, null, null, 'center');
+}
 
 async function downloadSupportShiftPDF(shiftId) {
     try {
@@ -1029,28 +1097,10 @@ async function downloadSupportShiftPDF(shiftId) {
             doc.autoTable({ startY: y, head: [['Hora','PA','FC','FR','Temp','SpO2','Glu','EVA','Glasg','Braden']], body: records.map(rc => [String(rc.created_at||'').slice(11,16), rc.blood_pressure||'-', rc.heart_rate||'-', rc.respiratory_rate||'-', rc.temperature||'-', rc.spo2||'-', rc.glucose||'-', rc.eva_score??'-', (rc.glasgow_eyes||0)+(rc.glasgow_verbal||0)+(rc.glasgow_motor||0), rc.braden_score||'-']), headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
             y = doc.lastAutoTable.finalY + 6;
         }
-        drawLegalSignatures(doc, y, { auxName: sig?.auxiliary_name || shift.professionals?.full_name || '-', auxDoc: sig?.auxiliary_id_number || shift.professionals?.document_number || '-', auxCard: shift.professionals?.professional_card || '-', auxSig: sig?.auxiliary_signature || null, famName: sig?.family_name || '-', famDoc: sig?.family_id_number || '-', famRel: sig?.family_relationship || '-', famSig: sig?.family_signature || null });
+        drawLegalSignatures(doc, y, { docType: 'auxiliar', auxName: sig?.auxiliary_name || shift.professionals?.full_name || '-', auxDoc: sig?.auxiliary_id_number || shift.professionals?.document_number || '-', auxCard: shift.professionals?.professional_card || '-', auxSig: sig?.auxiliary_signature || null, famName: sig?.family_name || '-', famDoc: sig?.family_id_number || '-', famRel: sig?.family_relationship || '-', famSig: sig?.family_signature || null });
         doc.save(`Soporte_Turno_${(shift.patients?.full_name||'paciente').replace(/\s+/g,'_')}_${shiftId.slice(0,8)}.pdf`);
         showToast('PDF generado desde la base de datos');
     } catch (e) { console.error(e); showToast('Error generando PDF', 'error'); }
-}
-
-function drawLegalSignatures(doc, y, d) {
-    if (y > 235) { doc.addPage(); y = 40; }
-    doc.setFontSize(8); doc.setTextColor(80);
-    doc.text('Declaración de conformidad: El familiar/cuidador suscrito declara haber recibido los servicios y cuidados descritos en este documento durante el turno indicado, y se declara conforme con ellos.', 14, y, { maxWidth: 182 }); y += 16;
-    if (d.auxSig) { try { doc.addImage(d.auxSig, 'JPEG', 30, y - 12, 55, 16); } catch(e) {} }
-    doc.setDrawColor(0); doc.line(30, y + 6, 85, y + 6);
-    doc.text('Firma Auxiliar de Enfermería', 57.5, y + 11, null, null, 'center');
-    doc.text(`${d.auxName} — CC ${d.auxDoc}`, 57.5, y + 15, null, null, 'center');
-    doc.text(`ReTHUS: ${d.auxCard || '(pendiente)'}`, 57.5, y + 19, null, null, 'center');
-    if (d.famSig) { try { doc.addImage(d.famSig, 'JPEG', 120, y - 12, 55, 16); } catch(e) {} }
-    doc.line(120, y + 6, 175, y + 6);
-    doc.text('Firma Familiar / Cuidador', 147.5, y + 11, null, null, 'center');
-    doc.text(`${d.famName} — CC ${d.famDoc}`, 147.5, y + 15, null, null, 'center');
-    doc.text(`Parentesco: ${d.famRel || '-'}`, 147.5, y + 19, null, null, 'center');
-    doc.setFontSize(7); doc.setTextColor(120);
-    doc.text(`Documento generado electrónicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Registro clínico oficial. Tratamiento de datos personales conforme a la Ley 1581 de 2012.`, 105, y + 27, null, null, 'center');
 }
 
 function downloadSupportNotePDF(noteId) {
@@ -1073,7 +1123,8 @@ function downloadSupportNotePDF(noteId) {
         const body = [['S — Subjetivo', rec.subjective || '-'], ['O — Objetivo', rec.objective || '-'], ['A — Análisis', rec.analysis || '-'], ['P — Plan', rec.plan || '-'], ...consRows];
         doc.autoTable({ startY: 74, head: [['Sección','Contenido']], body, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 55 } } });
         let y = doc.lastAutoTable.finalY + 12;
-        drawLegalSignatures(doc, y, { auxName: rec.professionals?.full_name || '-', auxDoc: rec.professionals?.document_number || '-', auxCard: rec.professionals?.professional_card || '-', auxSig: rec.professional_signature || null, famName: rec.family_name || '-', famDoc: rec.family_id || '-', famRel: 'Testigo', famSig: rec.family_signature || null });
+        const relDelTestigo = (rec.family_name || '').includes('(') ? (rec.family_name || '').split('(').pop().replace(')', '').trim() : 'Testigo';
+        drawLegalSignatures(doc, y, { docType: 'profesional', auxName: rec.professionals?.full_name || '-', auxDoc: rec.professionals?.document_number || '-', auxCard: rec.professionals?.professional_card || '-', auxSig: rec.professional_signature || null, famName: (rec.family_name || '-').split('(')[0].trim(), famDoc: rec.family_id || '-', famRel: relDelTestigo, famSig: rec.family_signature || null });
         doc.save(`Soporte_Nota_${(rec.patients?.full_name||'paciente').replace(/\s+/g,'_')}_${noteId.slice(0,8)}.pdf`);
         showToast('PDF generado desde la base de datos');
     } catch (e) { console.error(e); showToast('Error generando PDF', 'error'); }
@@ -1670,7 +1721,7 @@ function generateClosurePDF() {
         doc.text(`⚠️ El paciente salió del domicilio (${c.leaveData?.transport || '-'}) de ${c.leaveData?.time || '?'} a ${c.leaveData?.returnTime || '?'}. Responsabilidad asumida por el familiar.`, 14, y, { maxWidth: 182 });
         doc.setTextColor(0); y += 12;
     }
-    drawLegalSignatures(doc, y, { auxName: c.auxiliaryName || s.auxiliar || '-', auxDoc: c.auxiliaryIdNumber || s.auxiliarDoc || '-', auxCard: s.auxiliarCard || '-', auxSig: c.auxiliarySignature || null, famName: c.familyName || '-', famDoc: c.familyIdNumber || '-', famRel: c.familyRelationship || '-', famSig: c.familySignature || null });
+    drawLegalSignatures(doc, y, { docType: 'auxiliar', auxName: c.auxiliaryName || s.auxiliar || '-', auxDoc: c.auxiliaryIdNumber || s.auxiliarDoc || '-', auxCard: s.auxiliarCard || '-', auxSig: c.auxiliarySignature || null, famName: c.familyName || '-', famDoc: c.familyIdNumber || '-', famRel: c.familyRelationship || '-', famSig: c.familySignature || null });
     doc.save(`Resumen_Clinico_Turno_${(c.paciente || 'paciente').replace(/\s+/g,'_')}_${Date.now()}.pdf`); showToast('PDF generado');
 }
 
@@ -1812,17 +1863,18 @@ async function saveProfRecord() {
         secciones.push(['S — Subjetivo', S], ['O — Objetivo', O], ['A — Análisis', A], ['P — Plan', P]);
     }
     secciones.push(['Consentimiento — Intervención informada', getVal('profConsentProcedure')], ['Consentimiento — Aceptación', 'El paciente/cuidador fue informado de riesgos, beneficios y alternativas, y otorgó su consentimiento.']);
-    const famRel = getVal('profFamRel').trim();
+    const famRelRaw = getVal('profFamRel').trim();
+    const famNameClean = getVal('profFamName').trim();
     const payload = {
         patientId: selectedPatient.id, professionalId: currentUser.id,
         recordType: cups ? `Visita Domiciliaria (CUPS ${cups})` : `Nota de Evolución - ${sp}`,
         weight: parseFloat(getVal('profWeight')) || null, height: parseFloat(getVal('profHeight')) || null, imc: getVal('profIMC') || null,
-        vitalSigns: { bp: getVal('profBP'), hr: getVal('profHR'), visitaInicio: getVal('visitStart'), visitaFin: getVal('visitEnd'), duracion: getVal('visitDuration'), motivo: getVal('visitReason'), consentimiento: { procedimiento: getVal('profConsentProcedure'), aceptado: true } },
+        vitalSigns: { bp: getVal('profBP'), hr: getVal('profHR'), visitaInicio: getVal('visitStart'), visitaFin: getVal('visitEnd'), duracion: getVal('visitDuration'), motivo: getVal('visitReason'), consentimiento: { procedimiento: getVal('profConsentProcedure'), aceptado: true }, testigoParentesco: famRelRaw },
         subjective: S, objective: O, analysis: A, plan: P,
         professionalSignature: getSigData('profSigCanvas'), familySignature: getSigData('famProfSigCanvas'),
-        familyName: famRel ? `${getVal('profFamName')} (${famRel})` : getVal('profFamName'), familyId: getVal('profFamId')
+        familyName: famNameClean, familyId: getVal('profFamId')
     };
-    lastProfRecordData = { ...payload, patientName: selectedPatient.full_name, patientDoc: selectedPatient.document_number || '', profName: currentUser.full_name, profDoc: currentUser.document_number || '', specialty: sp, tarjeta: currentUser.professional_card || '', cups, fecha: new Date().toLocaleString('es-CO'), secciones };
+    lastProfRecordData = { ...payload, patientName: selectedPatient.full_name, patientDoc: selectedPatient.document_number || '', profName: currentUser.full_name, profDoc: currentUser.document_number || '', specialty: sp, tarjeta: currentUser.professional_card || '', cups, fecha: new Date().toLocaleString('es-CO'), secciones, famRel: famRelRaw };
     try {
         const r = await fetch(`${API_URL}/api/professional-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const d = await r.json();
@@ -1849,7 +1901,7 @@ function generateProfPDF() {
         .map(([k, v]) => [k, (v && String(v).trim()) ? String(v) : '(No registrado)']);
     doc.autoTable({ startY: 88, head: [['Sección', 'Contenido']], body, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 9, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 55 } } });
     let y = doc.lastAutoTable.finalY + 15;
-    drawLegalSignatures(doc, y, { auxName: d.profName || '-', auxDoc: d.profDoc || '-', auxCard: d.tarjeta || '-', auxSig: d.professionalSignature || null, famName: d.familyName || '-', famDoc: d.familyId || '-', famRel: 'Testigo', famSig: d.familySignature || null });
+    drawLegalSignatures(doc, y, { docType: 'profesional', auxName: d.profName || '-', auxDoc: d.profDoc || '-', auxCard: d.tarjeta || '-', auxSig: d.professionalSignature || null, famName: d.familyName || '-', famDoc: d.familyId || '-', famRel: d.famRel || 'Testigo', famSig: d.familySignature || null });
     doc.save(`Visita_Domiciliaria_${d.patientName.replace(/\s+/g,'_')}_${Date.now()}.pdf`); showToast('PDF generado');
 }
 
