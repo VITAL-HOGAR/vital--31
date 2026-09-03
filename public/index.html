@@ -118,6 +118,8 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .closed-success .big-icon { font-size: 4rem; margin-bottom: 10px; }
 .add-row-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .view-toggle { display: flex; gap: 6px; margin-bottom: 8px; }
+.consent-ok { background: rgba(34,197,94,0.1); border: 1px solid var(--primary); border-radius: 8px; padding: 12px; font-size: 0.85rem; margin-bottom: 12px; }
+.consent-pending { background: rgba(245,158,11,0.1); border: 1px solid var(--warning); border-radius: 8px; padding: 12px; font-size: 0.85rem; margin-bottom: 12px; }
 </style>
 
 <script>
@@ -232,7 +234,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                     <button class="btn-small btn-info" id="patViewActiveBtn" onclick="setPatView('active')">✅ Activos</button>
                     <button class="btn-small btn-secondary" id="patViewArchivedBtn" onclick="setPatView('archived')">📦 Archivados</button>
                 </div>
-                <table id="patTable"><thead><tr><th>Nombre</th><th>Ciudad</th><th>Familiar</th><th>Celular</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+                <table id="patTable"><thead><tr><th>Nombre</th><th>Ciudad</th><th>Familiar</th><th>Celular</th><th>Estado</th><th>Consent.</th><th>Acciones</th></tr></thead><tbody></tbody></table>
             </div>
         </div>
 
@@ -348,12 +350,13 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 <h3 style="cursor:default;">📅 Publicar Nuevo Turno / Visita</h3>
                 <div class="grid">
                     <div class="form-group"><label>Fecha</label><input type="date" id="schedDate"></div>
-                    <div class="form-group"><label>Paciente</label><select id="schedPatient"><option value="">Seleccionar...</option></select></div>
+                    <div class="form-group"><label>Paciente</label><select id="schedPatient" onchange="updateSchedConsentWarn()"><option value="">Seleccionar...</option></select></div>
                     <div class="form-group"><label>Auxiliar / Profesional</label><select id="schedProf" onchange="updateSchedShiftType()"><option value="">Seleccionar...</option></select></div>
                     <div class="form-group"><label>Tipo (según el personal elegido)</label>
                         <select id="schedType"></select>
                     </div>
                 </div>
+                <div id="schedConsentWarn" class="hidden" style="font-size:0.8rem; margin-top:-8px; margin-bottom:10px;"></div>
                 <p style="font-size:0.8rem; color:#94a3b8;">💡 Si eliges un especialista (no auxiliar), se agenda automáticamente como <strong>Visita Domiciliaria</strong>: la duración real se registra en su nota de evolución. Los turnos de 6h-24h son para auxiliares de enfermería.</p>
                 <button class="btn-primary" onclick="createScheduledShift()"><i class="fas fa-calendar-plus"></i> Publicar</button>
             </div>
@@ -839,6 +842,17 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     </div>
 </div>
 
+<div id="consentModal" class="modal-overlay-confirm" onclick="if(event.target===this) closeConsentModal()">
+    <div class="modal-confirm-box" style="border-color: var(--info); max-width: 520px;">
+        <div class="modal-icon" style="background: rgba(59,130,246,0.15); color: var(--info);"><i class="fas fa-file-signature"></i></div>
+        <h3 style="color: var(--info);">📋 Consentimiento General de Ingreso</h3>
+        <div id="consentBody" style="text-align:left;"></div>
+        <div class="modal-actions">
+            <button class="btn-primary btn-secondary" style="margin-top:0;" onclick="closeConsentModal()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
 <div id="confirmModal" class="modal-overlay-confirm" onclick="if(event.target===this) closeConfirmModal()">
     <div class="modal-confirm-box">
         <div class="modal-icon"><i class="fas fa-triangle-exclamation"></i></div>
@@ -927,6 +941,7 @@ let sessionRecords = [], sessionAdverseEvents = [], scheduledShiftsMap = {};
 let _supportNotes = [];
 let _editingProfId = null, _editingPatId = null;
 let profViewMode = 'active', patViewMode = 'active';
+let _consentsList = [], _consentPatientId = null;
 
 // ============ HELPERS ============
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
@@ -959,7 +974,7 @@ function initApp() {
     document.getElementById('userName').textContent = currentUser.full_name; document.getElementById('userRoleDisplay').textContent = currentUser.specialty_name;
     if (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE') {
         document.getElementById('adminPanel').classList.remove('hidden');
-        loadProfs(); loadPats(); loadEduList(); loadScheduledShiftsAdmin(); loadFinanceData(); loadSupports(); updateStats();
+        loadProfs(); loadPats(); loadConsents(); loadEduList(); loadScheduledShiftsAdmin(); loadFinanceData(); loadSupports(); updateStats();
         updateSchedShiftType();
         refreshChat('adminMessageList'); setInterval(() => { if (!document.getElementById('admin_messages').classList.contains('hidden')) refreshChat('adminMessageList'); }, 7000);
     } else if (currentUser.specialty_name === 'AUXILIAR_ENFERMERIA') {
@@ -975,7 +990,7 @@ function initApp() {
 // ============ ADMIN: NAVEGACIÓN ============
 function showAdminTab(tab, btn) { ['admin_prof','admin_pat','admin_supports','admin_edu','admin_reports','admin_finance','admin_agenda','admin_messages'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById('admin_'+tab).classList.remove('hidden'); document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); if (tab === 'supports') loadSupports(); }
 
-// --- PROFESIONALES: carga, render con toggle, archivar, reactivar, editar ---
+// --- PROFESIONALES ---
 async function loadProfs() {
     try { const r = await fetch(`${API_URL}/api/professionals`); const d = await r.json(); profsRegistry = d.data || [];
         renderProfs(); fillSelects(); updateStats(); updateSchedShiftType();
@@ -1016,7 +1031,7 @@ function openEditProfModal(id) {
 }
 function closeEditProfModal() { document.getElementById('editProfModal').classList.remove('show'); _editingProfId = null; }
 
-// --- PACIENTES: carga, render con toggle, archivar, reactivar, editar ---
+// --- PACIENTES ---
 async function loadPats() {
     try { const r = await fetch(`${API_URL}/api/patients`); const d = await r.json(); patientsRegistry = d.data || [];
         renderPats(); fillSelects(); updateStats();
@@ -1031,12 +1046,16 @@ function setPatView(mode) {
 function renderPats() {
     const list = patientsRegistry.filter(p => patViewMode === 'active' ? p.is_active !== false : p.is_active === false);
     document.querySelector('#patTable tbody').innerHTML = list.length ? list.map(p => {
+        const c = getConsentFor(p.id);
+        const consentBtn = c
+            ? `<button class="btn-small btn-primary" onclick="openConsentModal('${p.id}')" title="Firmado el ${new Date(c.created_at).toLocaleDateString('es-CO')}">📋 ✔</button>`
+            : `<button class="btn-small btn-warning" onclick="openConsentModal('${p.id}')" title="Sin consentimiento firmado">📋 ⚠️</button>`;
         if (patViewMode === 'active') {
-            return `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.altitude_profiles?.city_name||'N/A')}</td><td>${escapeHtml(p.family_name||'N/A')}</td><td>${escapeHtml(p.contact_phone||'N/A')}</td><td>✅ Activo</td><td><button class="btn-small btn-warning" onclick="openEditPatModal('${p.id}')">Editar</button> <button class="btn-small btn-archive" onclick="archivePatient('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deletePatient('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`;
+            return `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.altitude_profiles?.city_name||'N/A')}</td><td>${escapeHtml(p.family_name||'N/A')}</td><td>${escapeHtml(p.contact_phone||'N/A')}</td><td>✅ Activo</td><td>${consentBtn}</td><td><button class="btn-small btn-warning" onclick="openEditPatModal('${p.id}')">Editar</button> <button class="btn-small btn-archive" onclick="archivePatient('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deletePatient('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`;
         } else {
-            return `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.altitude_profiles?.city_name||'N/A')}</td><td>${escapeHtml(p.family_name||'N/A')}</td><td>${escapeHtml(p.contact_phone||'N/A')}</td><td>📦 Archivado</td><td><button class="btn-small btn-primary" onclick="reactivatePatient('${p.id}')">🔁 Reactivar</button> <button class="btn-small btn-warning" onclick="openEditPatModal('${p.id}')">Editar</button> <button class="btn-small btn-danger" onclick="deletePatient('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`;
+            return `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.altitude_profiles?.city_name||'N/A')}</td><td>${escapeHtml(p.family_name||'N/A')}</td><td>${escapeHtml(p.contact_phone||'N/A')}</td><td>📦 Archivado</td><td>${consentBtn}</td><td><button class="btn-small btn-primary" onclick="reactivatePatient('${p.id}')">🔁 Reactivar</button> <button class="btn-small btn-warning" onclick="openEditPatModal('${p.id}')">Editar</button> <button class="btn-small btn-danger" onclick="deletePatient('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`;
         }
-    }).join('') : `<tr><td colspan="6" style="text-align:center;color:#94a3b8;">${patViewMode === 'active' ? 'No hay pacientes activos' : 'No hay pacientes archivados'}</td></tr>`;
+    }).join('') : `<tr><td colspan="7" style="text-align:center;color:#94a3b8;">${patViewMode === 'active' ? 'No hay pacientes activos' : 'No hay pacientes archivados'}</td></tr>`;
 }
 async function archivePatient(id) { if(!confirm('¿Archivar (dar de baja) este paciente? Podrás reactivarlo desde "Archivados".')) return; try { await fetch(`${API_URL}/api/patients/${id}/discharge`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ reason: 'Archivado por administración' }) }); showToast('Paciente archivado'); loadPats(); } catch(e) { showToast('Error al archivar', 'error'); } }
 async function reactivatePatient(id) { try { await fetch(`${API_URL}/api/patients/${id}/reactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) }); showToast('✅ Paciente reactivado'); loadPats(); } catch(e) { showToast('Error al reactivar', 'error'); } }
@@ -1060,6 +1079,122 @@ function openEditPatModal(id) {
 }
 function closeEditPatModal() { document.getElementById('editPatModal').classList.remove('show'); _editingPatId = null; }
 
+// --- 📋 CONSENTIMIENTO GENERAL DE INGRESO ---
+async function loadConsents() {
+    try {
+        const r = await fetch(`${API_URL}/api/consents`); const d = await r.json();
+        _consentsList = (d.success ? d.data : []) || [];
+        if (currentUser && (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE')) renderPats();
+        updateSchedConsentWarn();
+    } catch (e) { console.error(e); }
+}
+function getConsentFor(patientId) {
+    return _consentsList.find(c => c.patient_id === patientId && c.is_signed);
+}
+function openConsentModal(patientId) {
+    const p = patientsRegistry.find(x => x.id === patientId); if (!p) return showToast('Paciente no encontrado', 'error');
+    _consentPatientId = patientId;
+    const c = getConsentFor(patientId);
+    const parentescos = ['Hijo/a','Esposo/a - Cónyuge','Padre/Madre','Hermano/a','Tío/a','Primo/a','Nieto/a','Sobrino/a','Cuñado/a','Cuidador contratado','Apoderado/Representante legal','Otro'];
+    const body = document.getElementById('consentBody');
+    if (c) {
+        body.innerHTML = `
+            <div class="consent-ok"><strong>✅ Consentimiento firmado</strong><br>
+            👤 Firmado por: <strong>${escapeHtml(c.signed_by_name||'-')}</strong> — CC ${escapeHtml(c.signed_by_id||'-')}<br>
+            👥 Parentesco: ${escapeHtml(c.signed_by_relationship||'-')}<br>
+            📅 Fecha: ${new Date(c.created_at).toLocaleString('es-CO')}</div>
+            <button class="btn-primary btn-warning" style="margin-top:0;" onclick="generateConsentPDF('${patientId}', true)"><i class="fas fa-file-pdf"></i> Descargar copia firmada (PDF)</button>`;
+    } else {
+        body.innerHTML = `
+            <div class="consent-pending">⚠️ <strong>Este paciente NO tiene consentimiento general de ingreso firmado.</strong><br>Este documento autoriza legalmente todos los cuidados rutinarios del servicio (medicamentos prescritos, curaciones, higiene, alimentación, movilización, control de sondas, etc.). Se firma una sola vez al ingresar.</div>
+            <button class="btn-primary btn-info" style="margin-top:0;" onclick="generateConsentPDF('${patientId}', false)"><i class="fas fa-file-pdf"></i> 🖨️ Descargar PDF en blanco para firma física</button>
+            <hr style="border-color: var(--border); margin: 14px 0;">
+            <p style="font-size:0.85rem; color:#94a3b8; text-align:center;">Ya firmado en papel: registra los datos de quien firmó.</p>
+            <div class="form-group"><label>Nombre de quien firma (paciente o familiar responsable) *</label><input type="text" id="consFirmName"></div>
+            <div class="form-group"><label>Cédula de quien firma *</label><input type="text" id="consFirmId"></div>
+            <div class="form-group"><label>Parentesco con el paciente *</label><select id="consFirmRel">${parentescos.map(x => `<option value="${x}">${x}</option>`).join('')}</select></div>
+            <div class="grid">
+                <div class="form-group"><label>Firma digital (opcional)</label><canvas id="consFamSigCanvas" class="signature-canvas"></canvas><button class="btn-small btn-secondary" onclick="clearSig('consFamSigCanvas')">Borrar</button></div>
+                <div class="form-group"><label>Firma Vital Hogar (opcional)</label><canvas id="consAdminSigCanvas" class="signature-canvas"></canvas><button class="btn-small btn-secondary" onclick="clearSig('consAdminSigCanvas')">Borrar</button></div>
+            </div>
+            <div style="margin-bottom:12px;"><input type="checkbox" id="consArchiveAck" style="width:auto; margin-right:10px;"><label for="consArchiveAck" style="display:inline; font-size:0.85rem;">Confirmo que el documento fue firmado físicamente por las partes y el original queda archivado en el expediente.</label></div>
+            <button class="btn-primary" style="margin-top:0;" onclick="saveConsent()"><i class="fas fa-save"></i> ✅ Registrar como firmado</button>`;
+        setTimeout(() => { initSigCanvas('consFamSigCanvas'); initSigCanvas('consAdminSigCanvas'); }, 50);
+    }
+    document.getElementById('consentModal').classList.add('show');
+}
+function closeConsentModal() { document.getElementById('consentModal').classList.remove('show'); _consentPatientId = null; }
+async function saveConsent() {
+    if (!_consentPatientId) return;
+    const name = getVal('consFirmName').trim(), idNum = getVal('consFirmId').trim();
+    if (!name || !idNum) return showToast('Completa el nombre y la cédula de quien firmó', 'error');
+    if (!document.getElementById('consArchiveAck').checked) return showToast('Confirma que el documento fue firmado y archivado', 'warning');
+    try {
+        const r = await fetch(`${API_URL}/api/consents`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ patientId: _consentPatientId, signedByName: name, signedById: idNum, signedByRelationship: getVal('consFirmRel'), patientSignature: getSigData('consFamSigCanvas'), adminSignature: getSigData('consAdminSigCanvas') }) });
+        const d = await r.json();
+        if (d.success) { showToast('✅ Consentimiento de ingreso registrado'); closeConsentModal(); loadConsents(); }
+        else showToast(d.message || 'Error al guardar', 'error');
+    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+}
+function generateConsentPDF(patientId, isCopy) {
+    const p = patientsRegistry.find(x => x.id === patientId); if (!p) return showToast('Paciente no encontrado', 'error');
+    const c = isCopy ? getConsentFor(patientId) : null;
+    const { jsPDF } = window.jspdf; const doc = new jsPDF();
+    try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
+    doc.setFontSize(16); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 18, null, null, "center");
+    doc.setFontSize(11); doc.setTextColor(0);
+    doc.text("CONSENTIMIENTO INFORMADO GENERAL DE INGRESO", 105, 28, null, null, "center");
+    doc.text("SERVICIO DE ATENCIÓN DOMICILIARIA EN SALUD", 105, 34, null, null, "center");
+    doc.setFontSize(9);
+    let y = 44;
+    doc.text(`Paciente: ${p.full_name || '-'} — CC ${p.document_number || '-'}${p.altitude_profiles?.city_name ? ' — Ciudad: ' + p.altitude_profiles.city_name : ''}`, 14, y); y += 10;
+    const clausulas = [
+        'Por medio del presente documento, quien suscribe, en su condición de paciente o familiar/representante responsable, manifiesto que:',
+        '1. He sido informado(a) del servicio de atención domiciliaria que presta VITAL HOGAR PRO, incluyendo su propósito, alcance y el personal que lo ejecutará (auxiliares de enfermería y profesionales de la salud).',
+        '2. AUTORIZO de manera general, previa, expresa e informada (Ley 23 de 1981, Resolución 3100 de 2019), la realización de los cuidados rutinarios del servicio, entre otros: administración de medicamentos prescritos por el médico tratante por cualquier vía indicada; control de signos vitales y glucometrías capilares; curación y cuidado de heridas; baño, higiene y confort, cambio de pañal y ropa de cama; alimentación por vía oral, enteral (sonda) o parenteral según indicación médica; movilización, cambios posturales y deambulación asistida; control y vigilancia de sondas (Foley, Nelaton, nasogástrica); oxigenoterapia y nebulizaciones según prescripción; y acompañamiento y soporte emocional básico.',
+        '3. Entiendo que los procedimientos NO incluidos en el numeral 2 (como el cambio de sondas u otros procedimientos invasivos no previstos) requieren consentimiento específico adicional, el cual será solicitado en el momento por el profesional correspondiente.',
+        '4. Conozco mis derechos según la Ley 1581 de 2012 sobre protección de datos personales y autorizo el tratamiento de los datos de salud del paciente exclusivamente para fines de la prestación del servicio, facturación y cumplimiento legal.',
+        '5. Manifiesto que puedo revocar este consentimiento en cualquier momento, por escrito y sin penalización, informando a la administración de VITAL HOGAR PRO.',
+        '6. Me comprometo a informar de manera veraz el estado de salud del paciente y cualquier condición relevante para su seguridad durante la atención.'
+    ];
+    clausulas.forEach(t => {
+        const lines = doc.splitTextToSize(t, 182);
+        if (y + lines.length * 4.2 > 240) { doc.addPage(); y = 25; }
+        doc.text(lines, 14, y); y += lines.length * 4.2 + 3;
+    });
+    y = Math.max(y + 10, 215);
+    if (y > 230) { doc.addPage(); y = 40; }
+    if (c) {
+        if (c.patient_signature) { try { doc.addImage(c.patient_signature, 'JPEG', 30, y - 12, 55, 16); } catch(e) {} }
+        doc.setDrawColor(0); doc.line(30, y + 6, 85, y + 6);
+        doc.setFontSize(8);
+        doc.text('Firma del Paciente / Familiar Responsable', 57.5, y + 11, null, null, 'center');
+        doc.text(`${c.signed_by_name || '-'} — CC ${c.signed_by_id || '-'}`, 57.5, y + 15, null, null, 'center');
+        doc.text(`Parentesco: ${c.signed_by_relationship || '-'} | Fecha: ${new Date(c.created_at).toLocaleDateString('es-CO')}`, 57.5, y + 19, null, null, 'center');
+        if (c.admin_signature) { try { doc.addImage(c.admin_signature, 'JPEG', 120, y - 12, 55, 16); } catch(e) {} }
+        doc.line(120, y + 6, 175, y + 6);
+        doc.text('Por VITAL HOGAR PRO', 147.5, y + 11, null, null, 'center');
+        doc.text('Representante legal / Administrador', 147.5, y + 15, null, null, 'center');
+        doc.setFontSize(7); doc.setTextColor(120);
+        doc.text(`Documento generado electrónicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Registro oficial del expediente del paciente. Ley 1581 de 2012.`, 105, y + 26, null, null, 'center');
+    } else {
+        doc.setFontSize(8); doc.setTextColor(80);
+        doc.setDrawColor(0);
+        doc.line(25, y + 10, 85, y + 10);
+        doc.text('Firma del Paciente / Familiar Responsable', 55, y + 15, null, null, 'center');
+        doc.text('Nombre: ________________________', 55, y + 20, null, null, 'center');
+        doc.text('C.C.: ____________________  Parentesco: ____________', 55, y + 24, null, null, 'center');
+        doc.line(120, y + 10, 180, y + 10);
+        doc.text('Por VITAL HOGAR PRO', 150, y + 15, null, null, 'center');
+        doc.text('Nombre y sello: ________________________', 150, y + 20, null, null, 'center');
+        doc.text('Fecha de ingreso al servicio: ____ / ____ / ________', 150, y + 24, null, null, 'center');
+        doc.setFontSize(7); doc.setTextColor(120);
+        doc.text(`Documento generado electrónicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Ley 1581 de 2012.`, 105, y + 30, null, null, 'center');
+    }
+    doc.save(`Consentimiento_Ingreso_${(p.full_name||'paciente').replace(/\s+/g,'_')}_${Date.now()}.pdf`);
+    showToast('PDF generado');
+}
+
 function fillSelects() {
     const pats = patientsRegistry.filter(p => p.is_active !== false);
     const profs = profsRegistry.filter(p => p.is_active !== false);
@@ -1070,6 +1205,16 @@ function fillSelects() {
     setOpts('liquidationProf', profs, p => p.full_name);
     setOpts('schedProf', profs, p => p.full_name);
     setOpts('eduResp', profs, p => p.full_name);
+    updateSchedConsentWarn();
+}
+
+function updateSchedConsentWarn() {
+    const el = document.getElementById('schedConsentWarn'); if (!el) return;
+    const pid = getVal('schedPatient');
+    if (!pid) { el.classList.add('hidden'); el.textContent = ''; return; }
+    const c = getConsentFor(pid);
+    if (c) { el.classList.remove('hidden'); el.style.color = 'var(--primary)'; el.textContent = '✅ Consentimiento general firmado (' + new Date(c.created_at).toLocaleDateString('es-CO') + ')'; }
+    else { el.classList.remove('hidden'); el.style.color = 'var(--warning)'; el.textContent = '⚠️ Este paciente NO tiene consentimiento general firmado. Gestiónalo en Pacientes → botón 📋 antes de iniciar el servicio.'; }
 }
 
 async function updateStats() {
@@ -1089,7 +1234,7 @@ function initAdminChart(values) {
     window._adminChart = new Chart(ctx, { type: 'bar', data: { labels: ['Pacientes', 'Profesionales', 'Informes'], datasets: [{ data: values, backgroundColor: ['#22c55e','#3b82f6','#f59e0b'], borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, x: { ticks: { color: '#94a3b8' }, grid: { display: false } } } } });
 }
 
-// ============ ADMIN: SOPORTES (validación persistente en BD) ============
+// ============ ADMIN: SOPORTES ============
 async function loadSupports() {
     try {
         const r1 = await fetch(`${API_URL}/api/shifts/closed`); const d1 = await r1.json();
@@ -2032,13 +2177,13 @@ async function deletePatient(id) {
     showConfirmModal({
         title: 'Eliminar Paciente',
         message: `Vas a eliminar permanentemente a "${pat.full_name}".`,
-        warning: '⚠️ Se borrarán TAMBIÉN todos sus turnos y registros clínicos. Usa solo con datos de PRUEBA. Para pacientes reales usa "Archivar".',
+        warning: '⚠️ Se borrarán TAMBIÉN todos sus turnos, registros clínicos y consentimientos. Usa solo con datos de PRUEBA. Para pacientes reales usa "Archivar".',
         requireText: 'ELIMINAR',
         onConfirm: async () => {
             try {
                 const r = await fetch(`${API_URL}/api/patients/${id}`, { method: 'DELETE' });
                 const d = await r.json();
-                if (d.success) { showToast('🗑️ ' + d.message); loadPats(); }
+                if (d.success) { showToast('🗑️ ' + d.message); loadPats(); loadConsents(); }
                 else showToast(d.message || 'Error al eliminar', 'error');
             } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
         }
