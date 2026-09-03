@@ -180,12 +180,39 @@ app.patch('/api/patients/:id/reactivate', async (req, res) => {
 });
 
 // ==========================================
-// 5. ELIMINACIÓN PERMANENTE CON CASCADA
+// 5. CONSENTIMIENTO GENERAL DE INGRESO (NUEVO)
+// ==========================================
+app.get('/api/consents', async (req, res) => {
+    try {
+        let { data, error } = await supabase.from('admission_consents').select('*, patients(full_name, document_number)').order('created_at', { ascending: false });
+        if (error) {
+            console.log('Join falló en consents, usando fallback:', error.message);
+            const fb = await supabase.from('admission_consents').select('*').order('created_at', { ascending: false });
+            if (fb.error) throw fb.error;
+            data = fb.data;
+        }
+        res.json({ success: true, data: data || [] });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.post('/api/consents', async (req, res) => {
+    try {
+        const { patientId, signedByName, signedById, signedByRelationship, patientSignature, adminSignature } = req.body;
+        if (!patientId || !signedByName || !signedById) return res.status(400).json({ success: false, message: 'Datos del consentimiento incompletos' });
+        const { error } = await supabase.from('admission_consents').insert([{ patient_id: patientId, signed_by_name: signedByName, signed_by_id: signedById, signed_by_relationship: signedByRelationship || null, patient_signature: patientSignature || null, admin_signature: adminSignature || null, is_signed: true }]);
+        if (error) throw error;
+        res.json({ success: true, message: 'Consentimiento de ingreso registrado exitosamente' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// ==========================================
+// 6. ELIMINACIÓN PERMANENTE CON CASCADA
 // (Para datos de PRUEBA. Para datos reales usa Archivar.)
 // ==========================================
 app.delete('/api/patients/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        await supabase.from('admission_consents').delete().eq('patient_id', id);
         await supabase.from('clinical_records').delete().eq('patient_id', id);
         await supabase.from('professional_records').delete().eq('patient_id', id);
         await supabase.from('adverse_events').delete().eq('patient_id', id);
@@ -223,7 +250,7 @@ app.delete('/api/professionals/:id', async (req, res) => {
 });
 
 // ==========================================
-// 6. EDUCACIÓN
+// 7. EDUCACIÓN
 // ==========================================
 app.get('/api/education/topics', async (req, res) => {
     try { const { data, error } = await supabase.from('education_topics').select(`*, professionals!education_topics_created_by_fkey(full_name, document_number, professional_card)`).order('created_at', { ascending: false }); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
@@ -234,7 +261,7 @@ app.post('/api/education/topics', async (req, res) => {
 });
 
 // ==========================================
-// 7. AUXILIAR - TURNOS, REGISTROS Y EVENTOS
+// 8. AUXILIAR - TURNOS, REGISTROS Y EVENTOS
 // ==========================================
 app.get('/api/auxiliar/patients', async (req, res) => {
     try {
@@ -283,7 +310,7 @@ app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
 });
 
 // ==========================================
-// 8. SOPORTES PARA FACTURACIÓN (con fallback anti-500)
+// 9. SOPORTES PARA FACTURACIÓN (con fallback anti-500)
 // ==========================================
 app.get('/api/shifts/closed', async (req, res) => {
     try {
@@ -356,7 +383,7 @@ app.post('/api/adverse-events', async (req, res) => {
 });
 
 // ==========================================
-// 9. INFORMES CONSOLIDADOS
+// 10. INFORMES CONSOLIDADOS
 // ==========================================
 app.get('/api/reports/pending', async (req, res) => {
     try { const { data, error } = await supabase.from('patients').select('id, full_name, family_name').eq('is_active', true).order('full_name'); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
@@ -382,7 +409,7 @@ app.post('/api/professional-records', async (req, res) => {
 });
 
 // ==========================================
-// 10. MÓDULO FINANCIERO
+// 11. MÓDULO FINANCIERO
 // ==========================================
 app.get('/api/finance/parameters', async (req, res) => { try { const { data, error } = await supabase.from('financial_parameters').select('*').eq('is_active', true).single(); if (error) throw error; res.json({ success: true, data: data || {} }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
 app.patch('/api/finance/parameters/:id', async (req, res) => { try { const { smmlv, subsidy_transport, night_surcharge_percentage, holiday_surcharge_percentage, night_start_hour, night_end_hour, year } = req.body; const { error } = await supabase.from('financial_parameters').update({ smmlv, subsidy_transport, night_surcharge_percentage, holiday_surcharge_percentage, night_start_hour, night_end_hour, year }).eq('id', req.params.id); if (error) throw error; res.json({ success: true, message: 'Parámetros de ley actualizados' }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
@@ -425,7 +452,7 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
 });
 
 // ==========================================
-// 11. AGENDA Y MENSAJERÍA
+// 12. AGENDA Y MENSAJERÍA
 // ==========================================
 app.get('/api/scheduled-shifts', async (req, res) => { try { const { data, error } = await supabase.from('scheduled_shifts').select('*, patients(full_name), professionals(full_name)').order('shift_date', { ascending: true }); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
 app.get('/api/scheduled-shifts/professional/:profId', async (req, res) => { try { const { data, error } = await supabase.from('scheduled_shifts').select('*, patients(*, altitude_profiles(city_name))').eq('professional_id', req.params.profId).eq('status', 'Programado').order('shift_date', { ascending: true }); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
