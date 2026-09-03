@@ -52,6 +52,27 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================
+// 🔐 MIDDLEWARE DE AUTENTICACIÓN JWT (LOTE 3)
+// Todas las rutas /api/* requieren token válido,
+// EXCEPTO /api/auth/* (login y recuperación).
+// ==========================================
+function verifyToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ success: false, message: 'Token no proporcionado. Inicia sesión.' });
+    jwt.verify(token, process.env.JWT_SECRET || 'secreto_vital_temporal', (err, decoded) => {
+        if (err) return res.status(401).json({ success: false, message: 'Token inválido o expirado. Ingresa de nuevo.' });
+        req.user = decoded;
+        next();
+    });
+}
+
+app.use('/api', (req, res, next) => {
+    if (req.path.startsWith('/auth/')) return next();
+    return verifyToken(req, res, next);
+});
+
+// ==========================================
 // 1. AUTENTICACIÓN
 // ==========================================
 app.post('/api/auth/login', async (req, res) => {
@@ -180,7 +201,7 @@ app.patch('/api/patients/:id/reactivate', async (req, res) => {
 });
 
 // ==========================================
-// 5. CONSENTIMIENTO GENERAL DE INGRESO (NUEVO)
+// 5. CONSENTIMIENTO GENERAL DE INGRESO
 // ==========================================
 app.get('/api/consents', async (req, res) => {
     try {
