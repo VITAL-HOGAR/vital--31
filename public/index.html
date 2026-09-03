@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=1.0">
 <meta name="theme-color" content="#22c55e">
 <link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="https://i.imgur.com/01YZxey.jpeg">
+<link rel="apple-touch-icon" href="/icon-192.png">
 <title>Vital Hogar Pro</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -952,7 +952,21 @@ function escapeHtml(str) { if (str === null || str === undefined) return ''; ret
 function forgotPassword() { document.getElementById('forgotModal').classList.add('show'); }
 function closeForgotModal() { document.getElementById('forgotModal').classList.remove('show'); }
 
-// ============ LOGIN ============
+// --- 🔐 API AUTENTICADA: envía el token JWT en cada petición y maneja sesión expirada ---
+async function apiFetch(url, options = {}) {
+    const token = localStorage.getItem('vital_token');
+    const headers = { ...(options.headers || {}), 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(url, { ...options, headers });
+    if (res.status === 401) {
+        showToast('⏰ Sesión expirada. Ingresa de nuevo.', 'error');
+        logout();
+        throw new Error('Sesión expirada');
+    }
+    return res;
+}
+
+// ============ LOGIN (sin token: es la puerta de entrada) ============
 async function login() {
     const email = document.getElementById('loginEmail').value.trim(), password = document.getElementById('loginPassword').value;
     if (!email || !password) return showToast('Complete todos los campos', 'error');
@@ -992,9 +1006,9 @@ function showAdminTab(tab, btn) { ['admin_prof','admin_pat','admin_supports','ad
 
 // --- PROFESIONALES ---
 async function loadProfs() {
-    try { const r = await fetch(`${API_URL}/api/professionals`); const d = await r.json(); profsRegistry = d.data || [];
+    try { const r = await apiFetch(`${API_URL}/api/professionals`); const d = await r.json(); profsRegistry = d.data || [];
         renderProfs(); fillSelects(); updateStats(); updateSchedShiftType();
-    } catch (e) { console.error(e); showToast('Error cargando profesionales', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error cargando profesionales', 'error'); } }
 }
 function setProfView(mode) {
     profViewMode = mode;
@@ -1012,8 +1026,8 @@ function renderProfs() {
         }
     }).join('') : `<tr><td colspan="5" style="text-align:center;color:#94a3b8;">${profViewMode === 'active' ? 'No hay profesionales activos' : 'No hay profesionales archivados'}</td></tr>`;
 }
-async function archiveProf(id) { if(!confirm('¿Archivar este profesional? Desaparecerá de la lista activa pero podrás reactivarlo desde "Archivados".')) return; try { await fetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: false }) }); showToast('Profesional archivado'); loadProfs(); } catch(e) { showToast('Error al archivar', 'error'); } }
-async function reactivateProf(id) { try { await fetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: true }) }); showToast('✅ Profesional reactivado'); loadProfs(); } catch(e) { showToast('Error al reactivar', 'error'); } }
+async function archiveProf(id) { if(!confirm('¿Archivar este profesional? Desaparecerá de la lista activa pero podrás reactivarlo desde "Archivados".')) return; try { await apiFetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: false }) }); showToast('Profesional archivado'); loadProfs(); } catch(e) { if (e.message !== 'Sesión expirada') showToast('Error al archivar', 'error'); } }
+async function reactivateProf(id) { try { await apiFetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: true }) }); showToast('✅ Profesional reactivado'); loadProfs(); } catch(e) { if (e.message !== 'Sesión expirada') showToast('Error al reactivar', 'error'); } }
 
 // --- ✏️ MODAL EDICIÓN PROFESIONAL ---
 function openEditProfModal(id) {
@@ -1033,9 +1047,9 @@ function closeEditProfModal() { document.getElementById('editProfModal').classLi
 
 // --- PACIENTES ---
 async function loadPats() {
-    try { const r = await fetch(`${API_URL}/api/patients`); const d = await r.json(); patientsRegistry = d.data || [];
+    try { const r = await apiFetch(`${API_URL}/api/patients`); const d = await r.json(); patientsRegistry = d.data || [];
         renderPats(); fillSelects(); updateStats();
-    } catch (e) { console.error(e); showToast('Error cargando pacientes', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error cargando pacientes', 'error'); } }
 }
 function setPatView(mode) {
     patViewMode = mode;
@@ -1057,8 +1071,8 @@ function renderPats() {
         }
     }).join('') : `<tr><td colspan="7" style="text-align:center;color:#94a3b8;">${patViewMode === 'active' ? 'No hay pacientes activos' : 'No hay pacientes archivados'}</td></tr>`;
 }
-async function archivePatient(id) { if(!confirm('¿Archivar (dar de baja) este paciente? Podrás reactivarlo desde "Archivados".')) return; try { await fetch(`${API_URL}/api/patients/${id}/discharge`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ reason: 'Archivado por administración' }) }); showToast('Paciente archivado'); loadPats(); } catch(e) { showToast('Error al archivar', 'error'); } }
-async function reactivatePatient(id) { try { await fetch(`${API_URL}/api/patients/${id}/reactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) }); showToast('✅ Paciente reactivado'); loadPats(); } catch(e) { showToast('Error al reactivar', 'error'); } }
+async function archivePatient(id) { if(!confirm('¿Archivar (dar de baja) este paciente? Podrás reactivarlo desde "Archivados".')) return; try { await apiFetch(`${API_URL}/api/patients/${id}/discharge`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ reason: 'Archivado por administración' }) }); showToast('Paciente archivado'); loadPats(); } catch(e) { if (e.message !== 'Sesión expirada') showToast('Error al archivar', 'error'); } }
+async function reactivatePatient(id) { try { await apiFetch(`${API_URL}/api/patients/${id}/reactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) }); showToast('✅ Paciente reactivado'); loadPats(); } catch(e) { if (e.message !== 'Sesión expirada') showToast('Error al reactivar', 'error'); } }
 
 // --- ✏️ MODAL EDICIÓN PACIENTE ---
 function openEditPatModal(id) {
@@ -1082,11 +1096,11 @@ function closeEditPatModal() { document.getElementById('editPatModal').classList
 // --- 📋 CONSENTIMIENTO GENERAL DE INGRESO ---
 async function loadConsents() {
     try {
-        const r = await fetch(`${API_URL}/api/consents`); const d = await r.json();
+        const r = await apiFetch(`${API_URL}/api/consents`); const d = await r.json();
         _consentsList = (d.success ? d.data : []) || [];
         if (currentUser && (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE')) renderPats();
         updateSchedConsentWarn();
-    } catch (e) { console.error(e); }
+    } catch (e) { if (e.message !== 'Sesión expirada') console.error(e); }
 }
 function getConsentFor(patientId) {
     return _consentsList.find(c => c.patient_id === patientId && c.is_signed);
@@ -1130,11 +1144,11 @@ async function saveConsent() {
     if (!name || !idNum) return showToast('Completa el nombre y la cédula de quien firmó', 'error');
     if (!document.getElementById('consArchiveAck').checked) return showToast('Confirma que el documento fue firmado y archivado', 'warning');
     try {
-        const r = await fetch(`${API_URL}/api/consents`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ patientId: _consentPatientId, signedByName: name, signedById: idNum, signedByRelationship: getVal('consFirmRel'), patientSignature: getSigData('consFamSigCanvas'), adminSignature: getSigData('consAdminSigCanvas') }) });
+        const r = await apiFetch(`${API_URL}/api/consents`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ patientId: _consentPatientId, signedByName: name, signedById: idNum, signedByRelationship: getVal('consFirmRel'), patientSignature: getSigData('consFamSigCanvas'), adminSignature: getSigData('consAdminSigCanvas') }) });
         const d = await r.json();
         if (d.success) { showToast('✅ Consentimiento de ingreso registrado'); closeConsentModal(); loadConsents(); }
         else showToast(d.message || 'Error al guardar', 'error');
-    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 function generateConsentPDF(patientId, isCopy) {
     const p = patientsRegistry.find(x => x.id === patientId); if (!p) return showToast('Paciente no encontrado', 'error');
@@ -1219,13 +1233,13 @@ function updateSchedConsentWarn() {
 
 async function updateStats() {
     try {
-        const r = await fetch(`${API_URL}/api/dashboard/stats`); const d = await r.json();
+        const r = await apiFetch(`${API_URL}/api/dashboard/stats`); const d = await r.json();
         const s = d.data || {};
         document.getElementById('statPat').textContent = s.patients || 0;
         document.getElementById('statProf').textContent = s.professionals || 0;
         document.getElementById('statReports').textContent = s.pendingReports || 0;
         initAdminChart([s.patients || 0, s.professionals || 0, s.pendingReports || 0]);
-    } catch (e) { console.error(e); }
+    } catch (e) { if (e.message !== 'Sesión expirada') console.error(e); }
 }
 function initAdminChart(values) {
     const ctx = document.getElementById('adminDashboardChart');
@@ -1237,33 +1251,33 @@ function initAdminChart(values) {
 // ============ ADMIN: SOPORTES ============
 async function loadSupports() {
     try {
-        const r1 = await fetch(`${API_URL}/api/shifts/closed`); const d1 = await r1.json();
+        const r1 = await apiFetch(`${API_URL}/api/shifts/closed`); const d1 = await r1.json();
         const shifts = (d1.success ? d1.data : []) || [];
         document.querySelector('#supportShiftsTable tbody').innerHTML = shifts.length ? shifts.map(s => {
             const estado = s.admin_validated ? '✅ Validado' : '⏳ Pendiente';
             const valBtn = s.admin_validated ? `<button class="btn-small btn-primary" disabled>Validado</button>` : `<button class="btn-small btn-primary" onclick="validateSupport('shift', '${s.id}', this)">Validar</button>`;
             return `<tr><td>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${valBtn}</td></tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay turnos cerrados</td></tr>';
-        const r2 = await fetch(`${API_URL}/api/professional-records/list`); const d2 = await r2.json();
+        const r2 = await apiFetch(`${API_URL}/api/professional-records/list`); const d2 = await r2.json();
         _supportNotes = (d2.success ? d2.data : []) || [];
         document.querySelector('#supportNotesTable tbody').innerHTML = _supportNotes.length ? _supportNotes.map(n => {
             const estado = n.admin_validated ? '✅ Validado' : '⏳ Pendiente';
             const valBtn = n.admin_validated ? `<button class="btn-small btn-primary" disabled>Validado</button>` : `<button class="btn-small btn-primary" onclick="validateSupport('note', '${n.id}', this)">Validar</button>`;
             return `<tr><td>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(n.patients?.full_name||'N/A')}</td><td>${escapeHtml(n.professionals?.full_name||'N/A')}</td><td style="font-size:0.8rem;">${escapeHtml(n.record_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${valBtn}</td></tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay notas de evolución</td></tr>';
-    } catch (e) { console.error(e); showToast('Error cargando soportes', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error cargando soportes', 'error'); } }
 }
 async function validateSupport(type, id, btn) {
     const ruta = type === 'shift' ? 'shifts' : 'professional-records';
     try {
-        const r = await fetch(`${API_URL}/api/${ruta}/${id}/validate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) });
+        const r = await apiFetch(`${API_URL}/api/${ruta}/${id}/validate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) });
         const d = await r.json();
         if (d.success) {
             const row = btn.closest('tr');
             if (row) { row.querySelector('td:nth-child(5)').textContent = '✅ Validado'; btn.disabled = true; btn.textContent = 'Validado'; }
             showToast('✅ Soporte validado (guardado en la base de datos)');
         } else showToast(d.message || 'Error al validar', 'error');
-    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 
 // --- 📜 Firmas legales con etiquetas según el tipo de documento ---
@@ -1289,7 +1303,7 @@ function drawLegalSignatures(doc, y, d) {
 
 async function downloadSupportShiftPDF(shiftId) {
     try {
-        const r = await fetch(`${API_URL}/api/shifts/${shiftId}/closure-data`); const d = await r.json();
+        const r = await apiFetch(`${API_URL}/api/shifts/${shiftId}/closure-data`); const d = await r.json();
         if (!d.success) return showToast(d.message || 'Error', 'error');
         const { shift, records, signatures } = d.data;
         const sig = signatures && signatures[0] ? signatures[0] : null;
@@ -1311,7 +1325,7 @@ async function downloadSupportShiftPDF(shiftId) {
         drawLegalSignatures(doc, y, { docType: 'auxiliar', auxName: sig?.auxiliary_name || shift.professionals?.full_name || '-', auxDoc: sig?.auxiliary_id_number || shift.professionals?.document_number || '-', auxCard: shift.professionals?.professional_card || '-', auxSig: sig?.auxiliary_signature || null, famName: sig?.family_name || '-', famDoc: sig?.family_id_number || '-', famRel: sig?.family_relationship || '-', famSig: sig?.family_signature || null });
         doc.save(`Soporte_Turno_${(shift.patients?.full_name||'paciente').replace(/\s+/g,'_')}_${shiftId.slice(0,8)}.pdf`);
         showToast('PDF generado desde la base de datos');
-    } catch (e) { console.error(e); showToast('Error generando PDF', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error generando PDF', 'error'); } }
 }
 
 function downloadSupportNotePDF(noteId) {
@@ -1347,22 +1361,22 @@ async function createProf() {
     if (!fullName || !doc || !email || !pass) return showToast('Completa: nombre, cédula, correo y contraseña', 'error');
     if (!getVal('pCard').trim()) return showToast('⚠️ La tarjeta profesional es obligatoria (requisito legal de las notas)', 'error');
     try {
-        const r = await fetch(`${API_URL}/api/professionals`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fullName, documentNumber: doc, professionalCard: getVal('pCard'), email, password: pass, specialtyName: getVal('pSpec') }) });
+        const r = await apiFetch(`${API_URL}/api/professionals`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fullName, documentNumber: doc, professionalCard: getVal('pCard'), email, password: pass, specialtyName: getVal('pSpec') }) });
         const d = await r.json();
         if (d.success) { showToast('✅ Profesional creado'); ['pName','pDoc','pCard','pEmail','pPass'].forEach(i => document.getElementById(i).value = ''); loadProfs(); }
         else showToast(d.message || 'Error al crear', 'error');
-    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 
 async function createPat() {
     const fullName = getVal('patName').trim(), doc = getVal('patDoc').trim();
     if (!fullName || !doc) return showToast('Completa: nombre y cédula', 'error');
     try {
-        const r = await fetch(`${API_URL}/api/patients`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fullName, documentNumber: doc, cityName: getVal('patCity'), familyName: getVal('famName'), contactPhone: getVal('famCel'), cie10Code: getVal('patCie'), epsName: getVal('patEps'), epsAuthorization: getVal('patAuth') }) });
+        const r = await apiFetch(`${API_URL}/api/patients`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fullName, documentNumber: doc, cityName: getVal('patCity'), familyName: getVal('famName'), contactPhone: getVal('famCel'), cie10Code: getVal('patCie'), epsName: getVal('patEps'), epsAuthorization: getVal('patAuth') }) });
         const d = await r.json();
         if (d.success) { showToast('✅ Paciente creado'); ['patName','patDoc','famName','famCel','patCie','patEps','patAuth'].forEach(i => document.getElementById(i).value = ''); loadPats(); }
         else showToast(d.message || 'Error al crear', 'error');
-    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 
 // ============ ADMIN: EDUCACIÓN ============
@@ -1370,18 +1384,18 @@ async function createEdu() {
     const title = getVal('eduTitle').trim();
     if (!title) return showToast('Escribe el título del tema', 'error');
     try {
-        const r = await fetch(`${API_URL}/api/education/topics`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ title, description: getVal('eduDesc'), responsibleId: getVal('eduResp') || null }) });
+        const r = await apiFetch(`${API_URL}/api/education/topics`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ title, description: getVal('eduDesc'), responsibleId: getVal('eduResp') || null }) });
         const d = await r.json();
         if (d.success) { showToast('✅ Tema guardado'); document.getElementById('eduTitle').value = ''; document.getElementById('eduDesc').value = ''; loadEduList(); }
         else showToast(d.message || 'Error', 'error');
-    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 async function loadEduList() {
     try {
-        const r = await fetch(`${API_URL}/api/education/topics`); const d = await r.json();
+        const r = await apiFetch(`${API_URL}/api/education/topics`); const d = await r.json();
         const list = d.data || [];
         document.getElementById('eduList').innerHTML = list.length ? list.map(t => `<div class="sub-activity"><strong>${escapeHtml(t.title)}</strong><br><small>${escapeHtml(t.description||'')}</small><br><small style="color:#94a3b8;">👤 ${escapeHtml(t.professionals?.full_name || 'Sin asignar')}</small></div>`).join('') : '<p style="color:#94a3b8;">No hay temas registrados.</p>';
-    } catch (e) { console.error(e); }
+    } catch (e) { if (e.message !== 'Sesión expirada') console.error(e); }
 }
 
 // ============ ADMIN: AGENDA ============
@@ -1401,42 +1415,42 @@ async function createScheduledShift() {
     const date = getVal('schedDate'), patId = getVal('schedPatient'), profId = getVal('schedProf');
     if (!date || !patId || !profId) return showToast('Completa: fecha, paciente y profesional', 'error');
     try {
-        const r = await fetch(`${API_URL}/api/scheduled-shifts`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ shiftDate: date, patientId: patId, professionalId: profId, shiftType: getVal('schedType') }) });
+        const r = await apiFetch(`${API_URL}/api/scheduled-shifts`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ shiftDate: date, patientId: patId, professionalId: profId, shiftType: getVal('schedType') }) });
         const d = await r.json();
         if (d.success) { showToast('✅ Publicado'); loadScheduledShiftsAdmin(); } else showToast(d.message || 'Error', 'error');
-    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 async function loadScheduledShiftsAdmin() {
     try {
-        const r = await fetch(`${API_URL}/api/scheduled-shifts`); const d = await r.json();
+        const r = await apiFetch(`${API_URL}/api/scheduled-shifts`); const d = await r.json();
         const list = d.data || [];
         document.querySelector('#schedTable tbody').innerHTML = list.length ? list.map(s => `<tr><td>${escapeHtml(new Date(s.shift_date).toLocaleDateString('es-CO'))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${escapeHtml(s.status||'')}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">No hay turnos publicados</td></tr>';
-    } catch (e) { console.error(e); }
+    } catch (e) { if (e.message !== 'Sesión expirada') console.error(e); }
 }
 
 // ============ ADMIN: FINANZAS ============
 async function loadFinanceData() {
-    try { const r = await fetch(`${API_URL}/api/finance/parameters`); const d = await r.json(); const p = d.data; if (p && p.id) { finParamsId = p.id; if (p.year) document.getElementById('finYear').value = p.year; if (p.smmlv) document.getElementById('finSmmlv').value = p.smmlv; if (p.subsidy_transport) document.getElementById('finSubsidy').value = p.subsidy_transport; if (p.night_surcharge_percentage) document.getElementById('finNightPct').value = p.night_surcharge_percentage; if (p.holiday_surcharge_percentage) document.getElementById('finSunPct').value = p.holiday_surcharge_percentage; } } catch (e) {}
-    try { const r = await fetch(`${API_URL}/api/finance/tariffs`); const d = await r.json(); const t = d.data; if (t && t.id) { tariffId = t.id; ['6h_diurno','6h_nocturno','8h_diurno','8h_nocturno','12h_diurno','12h_nocturno','24h'].forEach(k => { const el = document.getElementById('t_' + k); if (el && t['t_' + k] != null) el.value = t['t_' + k]; }); } } catch (e) {}
+    try { const r = await apiFetch(`${API_URL}/api/finance/parameters`); const d = await r.json(); const p = d.data; if (p && p.id) { finParamsId = p.id; if (p.year) document.getElementById('finYear').value = p.year; if (p.smmlv) document.getElementById('finSmmlv').value = p.smmlv; if (p.subsidy_transport) document.getElementById('finSubsidy').value = p.subsidy_transport; if (p.night_surcharge_percentage) document.getElementById('finNightPct').value = p.night_surcharge_percentage; if (p.holiday_surcharge_percentage) document.getElementById('finSunPct').value = p.holiday_surcharge_percentage; } } catch (e) {}
+    try { const r = await apiFetch(`${API_URL}/api/finance/tariffs`); const d = await r.json(); const t = d.data; if (t && t.id) { tariffId = t.id; ['6h_diurno','6h_nocturno','8h_diurno','8h_nocturno','12h_diurno','12h_nocturno','24h'].forEach(k => { const el = document.getElementById('t_' + k); if (el && t['t_' + k] != null) el.value = t['t_' + k]; }); } } catch (e) {}
 }
 async function saveFinanceParams() {
     if (!getVal('finSmmlv')) return showToast('Ingresa el SMMLV', 'error');
     if (!finParamsId) return showToast('No hay fila de parámetros en la BD (crea una en Supabase)', 'error');
     try {
-        const r = await fetch(`${API_URL}/api/finance/parameters/${finParamsId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ year: Number(getVal('finYear')), smmlv: Number(getVal('finSmmlv')), subsidy_transport: Number(getVal('finSubsidy')), night_surcharge_percentage: Number(getVal('finNightPct')), holiday_surcharge_percentage: Number(getVal('finSunPct')) }) });
+        const r = await apiFetch(`${API_URL}/api/finance/parameters/${finParamsId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ year: Number(getVal('finYear')), smmlv: Number(getVal('finSmmlv')), subsidy_transport: Number(getVal('finSubsidy')), night_surcharge_percentage: Number(getVal('finNightPct')), holiday_surcharge_percentage: Number(getVal('finSunPct')) }) });
         const d = await r.json();
         if (d.success) showToast('✅ Parámetros guardados'); else showToast(d.message || 'Error', 'error');
-    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 async function saveClientTariffs() {
     if (!tariffId) return showToast('No hay fila de tarifas en la BD (crea una en Supabase)', 'error');
     const keys = ['6h_diurno','6h_nocturno','8h_diurno','8h_nocturno','12h_diurno','12h_nocturno','24h'];
     const body = {}; keys.forEach(k => body['t_' + k] = Number(getVal('t_' + k)) || 0);
     try {
-        const r = await fetch(`${API_URL}/api/finance/tariffs/${tariffId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        const r = await apiFetch(`${API_URL}/api/finance/tariffs/${tariffId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
         const d = await r.json();
         if (d.success) showToast('✅ Tarifas guardadas'); else showToast(d.message || 'Error', 'error');
-    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 
 async function calculateLiquidation() {
@@ -1444,10 +1458,10 @@ async function calculateLiquidation() {
     if (!profId) return showToast('Selecciona un profesional', 'error');
     const month = getVal('liquidationMonth') || '01', year = getVal('liquidationYear') || new Date().getFullYear();
     try {
-        const r = await fetch(`${API_URL}/api/finance/liquidation/${profId}/${month}/${year}`); const d = await r.json();
+        const r = await apiFetch(`${API_URL}/api/finance/liquidation/${profId}/${month}/${year}`); const d = await r.json();
         if (d.success) { lastLiquidationData = { ...d.data, _month: month, _year: year }; renderLiquidation(lastLiquidationData); }
         else showToast(d.message || 'Error al calcular', 'error');
-    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 function renderLiquidation(data) {
     const c = document.getElementById('liquidationResult'); c.classList.remove('hidden');
@@ -1473,10 +1487,10 @@ async function calculateInvoice() {
     const patId = getVal('invoicePatient'); if (!patId) return showToast('Selecciona un paciente', 'error');
     const month = getVal('invoiceMonth') || '01', year = getVal('invoiceYear') || new Date().getFullYear();
     try {
-        const r = await fetch(`${API_URL}/api/finance/invoice/${patId}/${month}/${year}`); const d = await r.json();
+        const r = await apiFetch(`${API_URL}/api/finance/invoice/${patId}/${month}/${year}`); const d = await r.json();
         if (d.success) { lastInvoiceData = { ...d.data, _month: month, _year: year }; renderInvoice(lastInvoiceData); }
         else showToast(d.message || 'Error al generar', 'error');
-    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 function renderInvoice(data) {
     const container = document.getElementById('invoiceResult'); container.classList.remove('hidden');
@@ -1507,7 +1521,7 @@ async function generateMonthlyPDF() {
     const month = getVal('reportMonth') || '01', year = getVal('reportYear') || new Date().getFullYear();
     const status = document.getElementById('pdfStatus'); status.textContent = '⏳ Generando informe...';
     try {
-        const r = await fetch(`${API_URL}/api/reports/${patId}/${month}/${year}`); const d = await r.json();
+        const r = await apiFetch(`${API_URL}/api/reports/${patId}/${month}/${year}`); const d = await r.json();
         if (!d.success) { status.textContent = ''; return showToast(d.message || 'Error', 'error'); }
         const { jsPDF } = window.jspdf; const doc = new jsPDF();
         const patName = d.data.patient?.full_name || 'Paciente';
@@ -1525,7 +1539,7 @@ async function generateMonthlyPDF() {
         doc.setFontSize(9); doc.setTextColor(80); doc.text('Firma del Profesional Validador', 70, y + 30, null, null, 'center');
         doc.save(`Informe_Mensual_${patName}_${month}_${year}.pdf`);
         status.textContent = '✅ Informe generado y firmado'; showToast('PDF generado');
-    } catch (e) { console.error(e); status.textContent = ''; showToast('Error de conexión', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); status.textContent = ''; showToast('Error de conexión', 'error'); } }
 }
 
 // ============ CHAT ============
@@ -1540,15 +1554,15 @@ function renderMessages(containerId, msgs) {
     box.scrollTop = box.scrollHeight;
 }
 async function refreshChat(containerId) {
-    try { const r = await fetch(`${API_URL}/api/messages`); const d = await r.json(); renderMessages(containerId, d.data || []); } catch (e) { console.error(e); }
+    try { const r = await apiFetch(`${API_URL}/api/messages`); const d = await r.json(); renderMessages(containerId, d.data || []); } catch (e) { if (e.message !== 'Sesión expirada') console.error(e); }
 }
 async function sendChatMessage(containerId, inputId, isAlert = false) {
     const input = document.getElementById(inputId);
     const message = input.value.trim(); if (!message) return;
     try {
-        await fetch(`${API_URL}/api/messages`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ senderId: currentUser.id, senderName: currentUser.full_name, message, isAlert }) });
+        await apiFetch(`${API_URL}/api/messages`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ senderId: currentUser.id, senderName: currentUser.full_name, message, isAlert }) });
         input.value = ''; refreshChat(containerId);
-    } catch (e) { console.error(e); showToast('Error enviando mensaje', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error enviando mensaje', 'error'); } }
 }
 function sendAdminMessage() { sendChatMessage('adminMessageList', 'adminMsgInput'); }
 function sendAuxMessage() { sendChatMessage('auxMessageList', 'auxMsgInput'); }
@@ -1564,32 +1578,32 @@ async function reportAdverseEvent() {
     if (!desc || !desc.trim()) return;
     const hora = new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
     try {
-        const r = await fetch(`${API_URL}/api/adverse-events`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ patientId: selectedPatient?.id, professionalId: currentUser.id, shiftId: currentShiftId, eventType: 'Otro', description: desc.trim() }) });
+        const r = await apiFetch(`${API_URL}/api/adverse-events`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ patientId: selectedPatient?.id, professionalId: currentUser.id, shiftId: currentShiftId, eventType: 'Otro', description: desc.trim() }) });
         const d = await r.json();
         if (d.success) {
-            await fetch(`${API_URL}/api/messages`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ senderId: currentUser.id, senderName: currentUser.full_name, message: `🚨 EVENTO ADVERSO: ${desc.trim()}`, isAlert: true }) });
+            await apiFetch(`${API_URL}/api/messages`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ senderId: currentUser.id, senderName: currentUser.full_name, message: `🚨 EVENTO ADVERSO: ${desc.trim()}`, isAlert: true }) });
             sessionAdverseEvents.push({ hora, descripcion: desc.trim() });
             showToast('🚨 Evento adverso reportado', 'warning'); refreshChat('auxMessageList');
         } else showToast(d.message || 'Error', 'error');
-    } catch (e) { console.error(e); sessionAdverseEvents.push({ hora, descripcion: desc.trim() }); showToast('Evento registrado localmente (sin conexión)', 'warning'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); sessionAdverseEvents.push({ hora, descripcion: desc.trim() }); showToast('Evento registrado localmente (sin conexión)', 'warning'); } }
 }
 
 // ============ AUXILIAR: PACIENTES Y TURNOS ============
 async function loadAuxPatients() {
     try {
-        const r = await fetch(`${API_URL}/api/patients`); const d = await r.json();
+        const r = await apiFetch(`${API_URL}/api/patients`); const d = await r.json();
         const active = (d.data || []).filter(p => p.is_active !== false);
         document.getElementById('auxPatientList').innerHTML = active.length ? active.map(p => `<div class="patient-card" onclick='selectPatient(${JSON.stringify({ id: p.id, full_name: p.full_name, document_number: p.document_number, altitude_profiles: p.altitude_profiles }).replace(/'/g, "&#39;")})'><strong>🧑 ${escapeHtml(p.full_name)}</strong><br><small>📍 ${escapeHtml(p.altitude_profiles?.city_name || 'Sin ciudad')} · EPS: ${escapeHtml(p.eps_name || 'N/A')}</small></div>`).join('') : '<p style="color:#94a3b8; text-align:center;">No hay pacientes activos.</p>';
-    } catch (e) { console.error(e); showToast('Error cargando pacientes', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error cargando pacientes', 'error'); } }
 }
 async function loadAuxScheduledShifts() {
     try {
-        const r = await fetch(`${API_URL}/api/scheduled-shifts/professional/${currentUser.id}`); const d = await r.json();
+        const r = await apiFetch(`${API_URL}/api/scheduled-shifts/professional/${currentUser.id}`); const d = await r.json();
         const c = document.getElementById('auxScheduledList');
         if (!d.data || d.data.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay turnos publicados para ti.</p>'; return; }
         scheduledShiftsMap = {};
         c.innerHTML = d.data.map(s => { scheduledShiftsMap[s.id] = s; return `<div class="card" style="cursor:pointer; border-left:4px solid var(--info); margin-bottom:10px;"><strong>${escapeHtml(new Date(s.shift_date).toLocaleDateString('es-CO'))}</strong> - ${escapeHtml(s.patients?.full_name||'')}<br><small>Turno: ${escapeHtml(s.shift_type||'')}</small><button class="btn-small btn-primary" style="margin-top:10px;" onclick="acceptShiftById('${s.id}')">Aceptar y Atender</button></div>`; }).join('');
-    } catch (e) { console.error(e); }
+    } catch (e) { if (e.message !== 'Sesión expirada') console.error(e); }
 }
 function acceptShiftById(shiftId) { const s = scheduledShiftsMap[shiftId]; if (!s) return showToast('Turno no encontrado', 'error'); showToast('Turno aceptado'); selectPatient(s.patients); }
 function selectPatient(p) {
@@ -1614,7 +1628,7 @@ async function startShift() {
         customEnd = new Date(`${today}T${getVal('customEndTime')}`).toISOString();
     }
     try {
-        const r = await fetch(`${API_URL}/api/shifts/start`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ patientId: selectedPatient.id, professionalId: currentUser.id, shiftType, patientStatus: getVal('patientReceivedStatus'), patientNotes: getVal('patientReceivedNotes'), customStartTime: customStart, customEndTime: customEnd }) });
+        const r = await apiFetch(`${API_URL}/api/shifts/start`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ patientId: selectedPatient.id, professionalId: currentUser.id, shiftType, patientStatus: getVal('patientReceivedStatus'), patientNotes: getVal('patientReceivedNotes'), customStartTime: customStart, customEndTime: customEnd }) });
         const d = await r.json();
         if (d.success) {
             currentShiftId = d.data.id; shiftStartTime = new Date();
@@ -1626,7 +1640,7 @@ async function startShift() {
             ['auxSigCanvas','famSigCanvas','leaveSigCanvas'].forEach(initSigCanvas);
             renderDailyHistory();
         } else showToast(d.message || 'Error al iniciar turno', 'error');
-    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 
 // --- Escalas y vitales ---
@@ -1772,23 +1786,23 @@ async function saveClinicalRecord() {
         notes: getVal('clinicalNotes') || null
     };
     try {
-        const r = await fetch(`${API_URL}/api/clinical-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const r = await apiFetch(`${API_URL}/api/clinical-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const d = await r.json();
         if (d.success) { showToast('✅ Registro clínico guardado'); sessionRecords.push({ hora: new Date().toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' }), vitals: { bp: payload.bloodPressure, hr: payload.heartRate, rr: payload.respiratoryRate, temp: payload.temperature, spo2: payload.spo2, glu: payload.glucose }, eva: payload.evaScore, glasgow: (gE||0)+(gV||0)+(gM||0), braden: payload.bradenScore }); renderDailyHistory(); }
         else showToast(d.message || 'Error al guardar', 'error');
-    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 async function renderDailyHistory() {
     const box = document.getElementById('dailyHistory'); if (!box || !selectedPatient) return;
     try {
-        const r = await fetch(`${API_URL}/api/patients/${selectedPatient.id}/daily-history`); const d = await r.json();
+        const r = await apiFetch(`${API_URL}/api/patients/${selectedPatient.id}/daily-history`); const d = await r.json();
         const records = d.data?.records || [];
         box.innerHTML = records.length ? records.map(rec => {
             const hora = String(rec.created_at || '').slice(11, 16);
             const ac = rec.activities_completed || {};
             return `<div class="sub-activity"><strong>🕐 ${hora}</strong> ${rec.professionals?.full_name ? '— ' + escapeHtml(rec.professionals.full_name) : ''}<br>PA: ${escapeHtml(rec.blood_pressure||'-')} · FC: ${escapeHtml(rec.heart_rate||'-')} · SpO2: ${escapeHtml(rec.spo2||'-')} · EVA: ${escapeHtml(rec.eva_score??'-')}<br><small>Glasgow: ${(rec.glasgow_eyes||0)+(rec.glasgow_verbal||0)+(rec.glasgow_motor||0)}/15 · Braden: ${escapeHtml(rec.braden_score||'-')} · 🧰 ${(ac.actividades||[]).length} cuidados · 💊 ${(ac.medicamentos||[]).length} medicamentos · 🍽️ ${(ac.comidas||[]).length} comidas</small>${rec.notes ? `<br><small>📝 ${escapeHtml(rec.notes)}</small>` : ''}</div>`;
         }).join('') : '<p style="color:#94a3b8;">Sin registros hoy todavía.</p>';
-    } catch (e) { box.innerHTML = '<p style="color:#94a3b8;">No se pudo cargar el historial.</p>'; }
+    } catch (e) { if (e.message !== 'Sesión expirada') box.innerHTML = '<p style="color:#94a3b8;">No se pudo cargar el historial.</p>'; }
 }
 
 // --- 🔒 REVISIÓN DE CIERRE INTELIGENTE ---
@@ -1857,10 +1871,10 @@ async function confirmCloseShift() {
         warningsIgnored: (window._closeAlerts && window._closeAlerts.length) ? window._closeAlerts : null
     };
     try {
-        const r = await fetch(`${API_URL}/api/shifts/close`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const r = await apiFetch(`${API_URL}/api/shifts/close`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const d = await r.json();
         if (!d.success) return showToast(d.message || 'Error al cerrar turno', 'error');
-    } catch (e) { console.error(e); return showToast('No se pudo sincronizar el cierre', 'warning'); }
+    } catch (e) { if (e.message === 'Sesión expirada') return; console.error(e); return showToast('No se pudo sincronizar el cierre', 'warning'); }
     lastShiftData.close = { ...payload, fecha: new Date().toLocaleString('es-CO'), paciente: selectedPatient.full_name };
     lastShiftData.snapshot = closureSnapshot;
     currentShiftId = null;
@@ -1939,19 +1953,19 @@ function generateClosurePDF() {
 // ============ PROFESIONAL ============
 async function loadProfScheduledShifts() {
     try {
-        const r = await fetch(`${API_URL}/api/scheduled-shifts`); const d = await r.json();
+        const r = await apiFetch(`${API_URL}/api/scheduled-shifts`); const d = await r.json();
         const mine = (d.data || []).filter(x => x.professional_id === currentUser.id && x.shift_type === 'Visita Domiciliaria' && x.status === 'Programado');
         const el = document.getElementById('profScheduledList'); if (!el) return;
         el.innerHTML = mine.length ? mine.map(x => `<div class="sub-activity">📅 <strong>${escapeHtml(new Date(x.shift_date).toLocaleDateString('es-CO'))}</strong> — ${escapeHtml(x.patients?.full_name||'')} (${escapeHtml(x.shift_type)})</div>`).join('') : '<p style="color:#94a3b8;">No tienes visitas programadas.</p>';
-    } catch (e) { console.error(e); }
+    } catch (e) { if (e.message !== 'Sesión expirada') console.error(e); }
 }
 async function loadProfPatients() {
     try {
-        const r = await fetch(`${API_URL}/api/patients`); const d = await r.json();
+        const r = await apiFetch(`${API_URL}/api/patients`); const d = await r.json();
         patientsRegistry = d.data || [];
         const active = patientsRegistry.filter(p => p.is_active !== false);
         document.getElementById('profPatientList').innerHTML = active.length ? active.map(p => `<div class="patient-card" onclick="selectProfPatientById('${p.id}')"><strong>🧑 ${escapeHtml(p.full_name)}</strong><br><small>CIE-10: ${escapeHtml(p.cie_10_code || 'N/A')} · EPS: ${escapeHtml(p.eps_name || 'N/A')}</small></div>`).join('') : '<p style="color:#94a3b8; text-align:center;">No hay pacientes activos.</p>';
-    } catch (e) { console.error(e); showToast('Error cargando pacientes', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error cargando pacientes', 'error'); } }
 }
 function selectProfPatientById(id) { const p = patientsRegistry.find(x => x.id === id); if (p) selectProfPatient(p); }
 function selectProfPatient(p) {
@@ -2086,11 +2100,11 @@ async function saveProfRecord() {
     };
     lastProfRecordData = { ...payload, patientName: selectedPatient.full_name, patientDoc: selectedPatient.document_number || '', profName: currentUser.full_name, profDoc: currentUser.document_number || '', specialty: sp, tarjeta: currentUser.professional_card || '', cups, fecha: new Date().toLocaleString('es-CO'), secciones, famRel: famRelRaw };
     try {
-        const r = await fetch(`${API_URL}/api/professional-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+        const r = await apiFetch(`${API_URL}/api/professional-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const d = await r.json();
         if (d.success) { showToast('✅ Nota de evolución guardada'); document.getElementById('generateProfPDFBtn').classList.remove('hidden'); }
         else showToast(d.message || 'Error', 'error');
-    } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 function generateProfPDF() {
     if (!lastProfRecordData) return showToast('Guarda primero la nota', 'error');
@@ -2163,11 +2177,11 @@ async function deleteProf(id) {
         requireText: 'ELIMINAR',
         onConfirm: async () => {
             try {
-                const r = await fetch(`${API_URL}/api/professionals/${id}`, { method: 'DELETE' });
+                const r = await apiFetch(`${API_URL}/api/professionals/${id}`, { method: 'DELETE' });
                 const d = await r.json();
                 if (d.success) { showToast('🗑️ ' + d.message); loadProfs(); }
                 else showToast(d.message || 'Error al eliminar', 'error');
-            } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+            } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
         }
     });
 }
@@ -2181,11 +2195,11 @@ async function deletePatient(id) {
         requireText: 'ELIMINAR',
         onConfirm: async () => {
             try {
-                const r = await fetch(`${API_URL}/api/patients/${id}`, { method: 'DELETE' });
+                const r = await apiFetch(`${API_URL}/api/patients/${id}`, { method: 'DELETE' });
                 const d = await r.json();
                 if (d.success) { showToast('🗑️ ' + d.message); loadPats(); loadConsents(); }
                 else showToast(d.message || 'Error al eliminar', 'error');
-            } catch (e) { console.error(e); showToast('Error de conexión', 'error'); }
+            } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
         }
     });
 }
@@ -2209,22 +2223,22 @@ document.addEventListener('DOMContentLoaded', () => {
         const nuevaPass = getVal('epPass');
         if (nuevaPass) body.newPassword = nuevaPass;
         try {
-            const r = await fetch(`${API_URL}/api/professionals/${_editingProfId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            const r = await apiFetch(`${API_URL}/api/professionals/${_editingProfId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
             const d = await r.json();
             if (d.success) { showToast('✅ Profesional actualizado' + (nuevaPass ? ' (contraseña incluida)' : '')); closeEditProfModal(); loadProfs(); }
             else showToast(d.message || 'Error al actualizar', 'error');
-        } catch (e) { showToast('Error de conexión', 'error'); }
+        } catch (e) { if (e.message !== 'Sesión expirada') showToast('Error de conexión', 'error'); }
     });
     const editPatSaveBtn = document.getElementById('editPatSaveBtn');
     if (editPatSaveBtn) editPatSaveBtn.addEventListener('click', async () => {
         if (!_editingPatId) return;
         const body = { fullName: getVal('etName').trim(), documentNumber: getVal('etDoc').trim(), cityName: getVal('etCity'), familyName: getVal('etFam'), contactPhone: getVal('etCel'), cie10Code: getVal('etCie'), epsName: getVal('etEps'), epsAuthorization: getVal('etAuth') };
         try {
-            const r = await fetch(`${API_URL}/api/patients/${_editingPatId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+            const r = await apiFetch(`${API_URL}/api/patients/${_editingPatId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
             const d = await r.json();
             if (d.success) { showToast('✅ Paciente actualizado'); closeEditPatModal(); loadPats(); }
             else showToast(d.message || 'Error al actualizar', 'error');
-        } catch (e) { showToast('Error de conexión', 'error'); }
+        } catch (e) { if (e.message !== 'Sesión expirada') showToast('Error de conexión', 'error'); }
     });
 });
 </script>
