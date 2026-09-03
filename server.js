@@ -52,9 +52,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================
-// 🔐 MIDDLEWARE DE AUTENTICACIÓN JWT (LOTE 3)
-// Todas las rutas /api/* requieren token válido,
-// EXCEPTO /api/auth/* (login y recuperación).
+// 🔐 MIDDLEWARE DE AUTENTICACIÓN JWT
 // ==========================================
 function verifyToken(req, res, next) {
     const authHeader = req.headers['authorization'];
@@ -105,8 +103,9 @@ app.get('/api/dashboard/stats', async (req, res) => {
     try {
         const { count: patCount } = await supabase.from('patients').select('*', { count: 'exact', head: true }).eq('is_active', true);
         const { count: profCount } = await supabase.from('professionals').select('*', { count: 'exact', head: true }).eq('is_active', true);
-        const { count: pendingReports } = await supabase.from('patients').select('*', { count: 'exact', head: true }).eq('is_active', true);
-        res.json({ success: true, data: { patients: patCount || 0, professionals: profCount || 0, pendingReports: pendingReports || 0 } });
+        const { count: pendingShifts } = await supabase.from('shifts').select('*', { count: 'exact', head: true }).eq('is_closed', true).eq('admin_validated', false);
+        const { count: pendingNotes } = await supabase.from('professional_records').select('*', { count: 'exact', head: true }).eq('admin_validated', false);
+        res.json({ success: true, data: { patients: patCount || 0, professionals: profCount || 0, pendingReports: (pendingShifts || 0) + (pendingNotes || 0) } });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
@@ -228,7 +227,6 @@ app.post('/api/consents', async (req, res) => {
 
 // ==========================================
 // 6. ELIMINACIÓN PERMANENTE CON CASCADA
-// (Para datos de PRUEBA. Para datos reales usa Archivar.)
 // ==========================================
 app.delete('/api/patients/:id', async (req, res) => {
     try {
@@ -294,8 +292,21 @@ app.get('/api/auxiliar/patients', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
+// 🔒 BLOQUEO DE TURNOS DOBLES + AVISO DE HUÉRFANOS
+app.get('/api/shifts/open-check/:profId', async (req, res) => {
+    try {
+        const { data, error } = await supabase.from('shifts').select('id, start_time, shift_type, patients(full_name)').eq('professional_id', req.params.profId).eq('is_closed', false).order('start_time', { ascending: false });
+        if (error) throw error;
+        res.json({ success: true, data: data || [] });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
 app.post('/api/shifts/start', async (req, res) => {
-    try { const { patientId, professionalId, shiftType, patientStatus, patientNotes, customStartTime, customEndTime } = req.body; if (!patientId || !professionalId || !shiftType) return res.status(400).json({ success: false, message: 'Datos incompletos' }); const { data, error } = await supabase.from('shifts').insert([{ patient_id: patientId, professional_id: professionalId, shift_type: shiftType, start_time: customStartTime ? new Date(customStartTime).toISOString() : new Date().toISOString(), end_time: customEndTime ? new Date(customEndTime).toISOString() : null, patient_received_status: patientStatus || null, patient_received_notes: patientNotes || null, is_closed: false }]).select().single(); if (error) throw error; res.json({ success: true, message: 'Turno iniciado', data: { id: data.id } }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+    try { const { patientId, professionalId, shiftType, patientStatus, patientNotes, customStartTime, customEndTime } = req.body; if (!patientId || !professionalId || !shiftType) return res.status(400).json({ success: false, message: 'Datos incompletos' });
+        const { data: openShifts } = await supabase.from('shifts').select('id, start_time, patients(full_name)').eq('professional_id', professionalId).eq('is_closed', false);
+        if (openShifts && openShifts.length > 0) return res.status(409).json({ success: false, message: `⚠️ Ya tienes un turno abierto desde el ${new Date(openShifts[0].start_time).toLocaleString('es-CO')} con el paciente ${openShifts[0].patients?.full_name || 'N/A'}. Ciérralo antes de iniciar otro.` });
+        const { data, error } = await supabase.from('shifts').insert([{ patient_id: patientId, professional_id: professionalId, shift_type: shiftType, start_time: customStartTime ? new Date(customStartTime).toISOString() : new Date().toISOString(), end_time: customEndTime ? new Date(customEndTime).toISOString() : null, patient_received_status: patientStatus || null, patient_received_notes: patientNotes || null, is_closed: false }]).select().single(); if (error) throw error; res.json({ success: true, message: 'Turno iniciado', data: { id: data.id } });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
 app.post('/api/clinical-records', async (req, res) => {
@@ -331,7 +342,7 @@ app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
 });
 
 // ==========================================
-// 9. SOPORTES PARA FACTURACIÓN (con fallback anti-500)
+// 9. SOPORTES PARA FACTURACIÓN
 // ==========================================
 app.get('/api/shifts/closed', async (req, res) => {
     try {
@@ -379,6 +390,11 @@ app.get('/api/professional-records/list', async (req, res) => {
 
 app.patch('/api/shifts/:id/validate', async (req, res) => {
     try {
+        const { data: shift } = await supabase.from('shifts').select('closing_addendas').eq('id', req.params.id).single();
+        if (shift && shift.closing_addendas && Array.isArray(shift.closing_addendas)) {
+            const pendiente = shift.closing_addendas.some(a => !a.admin_validated);
+            if (pendiente) return res.status(409).json({ success: false, message: '⚠️ Este soporte tiene ADDENDAS pendientes de validar. Revísalas y valídalas primero (sección Addendas).' });
+        }
         const { error } = await supabase.from('shifts').update({ admin_validated: true, admin_validated_at: new Date().toISOString() }).eq('id', req.params.id);
         if (error) throw error;
         res.json({ success: true, message: 'Soporte validado correctamente' });
@@ -387,9 +403,86 @@ app.patch('/api/shifts/:id/validate', async (req, res) => {
 
 app.patch('/api/professional-records/:id/validate', async (req, res) => {
     try {
+        const { data: rec } = await supabase.from('professional_records').select('addendas').eq('id', req.params.id).single();
+        if (rec && rec.addendas && Array.isArray(rec.addendas)) {
+            const pendiente = rec.addendas.some(a => !a.admin_validated);
+            if (pendiente) return res.status(409).json({ success: false, message: '⚠️ Esta nota tiene ADDENDAS pendientes de validar. Revísalas y valídalas primero (sección Addendas).' });
+        }
         const { error } = await supabase.from('professional_records').update({ admin_validated: true, admin_validated_at: new Date().toISOString() }).eq('id', req.params.id);
         if (error) throw error;
         res.json({ success: true, message: 'Soporte validado correctamente' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// ==========================================
+// 📜 ADDENDAS (Lote 4): turnos cerrados y notas profesionales
+// ==========================================
+app.post('/api/shifts/:id/addenda', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { professionalId, descriptionOmitted, descriptionActual, signature } = req.body;
+        if (!professionalId || !descriptionOmitted || !descriptionActual || !signature) return res.status(400).json({ success: false, message: 'Datos de la addenda incompletos' });
+        const { data: prof } = await supabase.from('professionals').select('full_name, document_number').eq('id', professionalId).single();
+        if (!prof) return res.status(404).json({ success: false, message: 'Profesional no encontrado' });
+        const { data: shift, error: errS } = await supabase.from('shifts').select('id, is_closed, end_time, closing_addendas, professional_id').eq('id', id).single();
+        if (errS || !shift) return res.status(404).json({ success: false, message: 'Turno no encontrado' });
+        if (!shift.is_closed) return res.status(400).json({ success: false, message: 'Este turno aún está abierto' });
+        if (shift.professional_id !== professionalId) return res.status(403).json({ success: false, message: 'Solo el auxiliar dueño del turno puede declarar la addenda' });
+        if (shift.end_time) {
+            const horas = (Date.now() - new Date(shift.end_time).getTime()) / 3600000;
+            if (horas > 24) return res.status(409).json({ success: false, message: `⚠️ Venció el plazo de 24 horas para addendas (cierre fue hace ${Math.round(horas)}h). Comunícate con el administrador.` });
+        }
+        const nueva = { fecha: new Date().toISOString(), auxName: prof.full_name, auxDoc: prof.document_number, descriptionOmitted, descriptionActual, signature, admin_validated: false };
+        const addendas = Array.isArray(shift.closing_addendas) ? shift.closing_addendas : [];
+        addendas.push(nueva);
+        const { error } = await supabase.from('shifts').update({ closing_addendas: addendas }).eq('id', id);
+        if (error) throw error;
+        res.json({ success: true, message: '📜 Addenda registrada. Queda pendiente de validación por coordinación.' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.patch('/api/shifts/:id/addenda/:idx/validate', async (req, res) => {
+    try {
+        const { id, idx } = req.params;
+        const { data: shift } = await supabase.from('shifts').select('closing_addendas').eq('id', id).single();
+        if (!shift || !shift.closing_addendas || !shift.closing_addendas[parseInt(idx)]) return res.status(404).json({ success: false, message: 'Addenda no encontrada' });
+        shift.closing_addendas[parseInt(idx)].admin_validated = true;
+        const { error } = await supabase.from('shifts').update({ closing_addendas: shift.closing_addendas }).eq('id', id);
+        if (error) throw error;
+        res.json({ success: true, message: '✅ Addenda validada por coordinación' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.post('/api/professional-records/:id/addenda', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { professionalId, descriptionOmitted, descriptionActual, signature } = req.body;
+        if (!professionalId || !descriptionOmitted || !descriptionActual || !signature) return res.status(400).json({ success: false, message: 'Datos de la addenda incompletos' });
+        const { data: prof } = await supabase.from('professionals').select('full_name, document_number').eq('id', professionalId).single();
+        if (!prof) return res.status(404).json({ success: false, message: 'Profesional no encontrado' });
+        const { data: rec, error: errR } = await supabase.from('professional_records').select('id, created_at, addendas, professional_id').eq('id', id).single();
+        if (errR || !rec) return res.status(404).json({ success: false, message: 'Nota no encontrada' });
+        if (rec.professional_id !== professionalId) return res.status(403).json({ success: false, message: 'Solo el profesional autor de la nota puede declarar la addenda' });
+        const horas = (Date.now() - new Date(rec.created_at).getTime()) / 3600000;
+        if (horas > 24) return res.status(409).json({ success: false, message: `⚠️ Venció el plazo de 24 horas para addendas (la nota fue hace ${Math.round(horas)}h). Comunícate con el administrador.` });
+        const nueva = { fecha: new Date().toISOString(), profName: prof.full_name, profDoc: prof.document_number, descriptionOmitted, descriptionActual, signature, admin_validated: false };
+        const addendas = Array.isArray(rec.addendas) ? rec.addendas : [];
+        addendas.push(nueva);
+        const { error } = await supabase.from('professional_records').update({ addendas }).eq('id', id);
+        if (error) throw error;
+        res.json({ success: true, message: '📜 Addenda registrada. Queda pendiente de validación por coordinación.' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.patch('/api/professional-records/:id/addenda/:idx/validate', async (req, res) => {
+    try {
+        const { id, idx } = req.params;
+        const { data: rec } = await supabase.from('professional_records').select('addendas').eq('id', id).single();
+        if (!rec || !rec.addendas || !rec.addendas[parseInt(idx)]) return res.status(404).json({ success: false, message: 'Addenda no encontrada' });
+        rec.addendas[parseInt(idx)].admin_validated = true;
+        const { error } = await supabase.from('professional_records').update({ addendas: rec.addendas }).eq('id', id);
+        if (error) throw error;
+        res.json({ success: true, message: '✅ Addenda validada por coordinación' });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
@@ -450,6 +543,31 @@ app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res
         shifts.forEach(shift => { const start = new Date(shift.start_time); const end = shift.end_time ? new Date(shift.end_time) : new Date(start.getTime() + 12 * 3600000); let totalHours = (end - start) / (1000 * 60 * 60); if (isNaN(totalHours) || totalHours <= 0) totalHours = 0; let shiftBase = totalHours * hourlyRate; let nightBonus = 0; let sundayBonus = 0; if (start.getDay() === 0) { sundayBonus = shiftBase * sundayPct; } let nightHours = 0; for (let i = 0; i < totalHours; i++) { const hour = new Date(start.getTime() + i * 3600000).getHours(); if (hour >= nightStart || hour < nightEnd) { nightHours++; } } nightBonus = nightHours * hourlyRate * nightPct; const totalShiftPay = shiftBase + nightBonus + sundayBonus; totalAmount += totalShiftPay; details.push({ date: start.toLocaleDateString('es-CO'), patient: shift.patients?.full_name || 'N/A', shift_type: shift.shift_type, hours: totalHours.toFixed(1), base_pay: Math.round(shiftBase), night_bonus: Math.round(nightBonus), sunday_bonus: Math.round(sundayBonus), total: Math.round(totalShiftPay) }); });
         let subsidy = 0; if (totalAmount < (smmlv * 2)) { subsidy = parseFloat(params.subsidy_transport); totalAmount += subsidy; }
         res.json({ success: true, data: { params, shifts: details, totalAmount: Math.round(totalAmount), subsidyApplied: subsidy } });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// 💰 LIQUIDACIÓN POR VISITAS (Profesionales): notas validadas × tarifa por especialidad
+app.get('/api/finance/liquidation-visits/:professionalId/:month/:year', async (req, res) => {
+    try {
+        const { professionalId, month, year } = req.params;
+        const { data: prof, error: errP } = await supabase.from('professionals').select('full_name, specialties(name)').eq('id', professionalId).single();
+        if (errP || !prof) return res.status(404).json({ success: false, message: 'Profesional no encontrado' });
+        const tarifasPorEspecialidad = {
+            'MEDICINA': 60000, 'ENFERMERIA_JEFE': 50000, 'PSICOLOGIA': 50000, 'FISIOTERAPIA': 45000,
+            'FONOAUDIOLOGIA': 45000, 'TERAPIA_OCUPACIONAL': 45000, 'TERAPIA_RESPIRATORIA': 45000,
+            'NUTRICION': 45000, 'TRABAJO_SOCIAL': 40000
+        };
+        const especialidad = prof.specialties?.name || '';
+        const tarifa = parseFloat(process.env[`VISIT_FEE_${especialidad}`]) || tarifasPorEspecialidad[especialidad] || 0;
+        if (!tarifa) return res.status(400).json({ success: false, message: `No hay tarifa de visita configurada para la especialidad ${especialidad}. Configura la variable VISIT_FEE_${especialidad} en Render o agrégala al código.` });
+        const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`; const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59).toISOString();
+        const { data: notas, error: errN } = await supabase.from('professional_records').select('id, created_at, record_type, patients(full_name), admin_validated').eq('professional_id', professionalId).gte('created_at', startDate).lte('created_at', endDate).order('created_at', { ascending: true });
+        if (errN) throw errN;
+        const validadas = (notas || []).filter(n => n.admin_validated);
+        const pendientes = (notas || []).filter(n => !n.admin_validated);
+        const details = validadas.map(n => ({ date: new Date(n.created_at).toLocaleDateString('es-CO'), patient: n.patients?.full_name || 'N/A', record_type: n.record_type || 'Nota', amount: tarifa }));
+        const totalAmount = details.length * tarifa;
+        res.json({ success: true, data: { professional: { full_name: prof.full_name, specialty: especialidad, fee: tarifa }, visits: details, totalValidated: details.length, totalPending: pendientes.length, totalAmount } });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
