@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes, maximum-scale=1.0">
 <meta name="theme-color" content="#22c55e">
 <link rel="manifest" href="/manifest.json">
-<link rel="apple-touch-icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="https://i.imgur.com/01YZxey.jpeg">
 <title>Vital Hogar Pro</title>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -120,6 +120,8 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .view-toggle { display: flex; gap: 6px; margin-bottom: 8px; }
 .consent-ok { background: rgba(34,197,94,0.1); border: 1px solid var(--primary); border-radius: 8px; padding: 12px; font-size: 0.85rem; margin-bottom: 12px; }
 .consent-pending { background: rgba(245,158,11,0.1); border: 1px solid var(--warning); border-radius: 8px; padding: 12px; font-size: 0.85rem; margin-bottom: 12px; }
+.addenda-badge { background: rgba(245,158,11,0.15); border: 1px solid var(--warning); color: #fbbf24; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; }
+.open-shift-badge { background: rgba(239,68,68,0.15); border: 1px solid var(--danger); color: #fca5a5; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; }
 </style>
 
 <script>
@@ -164,7 +166,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
         <div class="grid">
             <div class="card stat-card"><h3><i class="fas fa-user-injured"></i> Pacientes</h3><h2 id="statPat">0</h2></div>
             <div class="card stat-card" style="border-left-color: var(--info);"><h3><i class="fas fa-user-md"></i> Profesionales</h3><h2 id="statProf" style="color:var(--info);">0</h2></div>
-            <div class="card stat-card" style="border-left-color: var(--warning);"><h3><i class="fas fa-file-medical"></i> Informes</h3><h2 id="statReports" style="color:var(--warning);">0</h2></div>
+            <div class="card stat-card" style="border-left-color: var(--warning);"><h3><i class="fas fa-hourglass-half"></i> Soportes Pendientes</h3><h2 id="statReports" style="color:var(--warning);">0</h2></div>
         </div>
         <div class="card">
             <h3 style="cursor:default;">📊 Estadísticas Generales</h3>
@@ -248,7 +250,12 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 <h3 style="cursor:default;">🧾 Notas de Evolución (Profesionales) — Soportes para Facturación</h3>
                 <table id="supportNotesTable"><thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th><th>Tipo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
             </div>
-            <p style="font-size:0.8rem; color:#94a3b8;">💡 Descarga los soportes (PDF con firmas desde la base de datos), valídalos — la validación queda guardada en la BD con fecha — y con ellos arma la Cuenta de Cobro en Finanzas.</p>
+            <div class="card" style="border-color: var(--danger);">
+                <h3 style="cursor:default; color: var(--danger);">👻 Turnos Abiertos (Sin Cerrar) — Requieren Gestión</h3>
+                <p style="font-size:0.8rem; color:#94a3b8;">Estos turnos fueron iniciados pero nunca cerrados. No generan soporte ni pago. Coordinación debe gestionarlos con el auxiliar.</p>
+                <div id="openShiftsList"></div>
+            </div>
+            <p style="font-size:0.8rem; color:#94a3b8;">💡 Descarga los soportes (PDF con firmas desde la base de datos), valídalos — la validación queda guardada en la BD. Si un soporte tiene ADDENDAS pendientes, no se podrá validar hasta revisarlas.</p>
         </div>
 
         <div id="admin_edu" class="hidden">
@@ -312,6 +319,12 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             <div class="card">
                 <h3 style="cursor:default;">🧾 Liquidación de Honorarios (Contratistas)</h3>
                 <div class="grid">
+                    <div class="form-group"><label>Tipo de Liquidación</label>
+                        <select id="liquidationType" onchange="toggleLiquidationType()">
+                            <option value="shifts">⏱️ Por Turnos (Horas — Auxiliares)</option>
+                            <option value="visits">🏥 Por Visitas (Notas validadas — Profesionales)</option>
+                        </select>
+                    </div>
                     <div class="form-group"><label>Profesional</label><select id="liquidationProf"><option value="">Seleccionar...</option></select></div>
                     <div class="form-group"><label>Mes</label>
                         <select id="liquidationMonth">
@@ -347,6 +360,11 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 
         <div id="admin_agenda" class="hidden">
             <div class="card">
+                <h3 style="cursor:default;">📅 Próximas Visitas Sugeridas por Profesionales</h3>
+                <p style="font-size:0.8rem; color:#94a3b8;">Estas son las fechas que los profesionales dejaron en sus notas de evolución como "Próxima visita". Úsalas para publicar los turnos siguientes.</p>
+                <div id="suggestedVisitsList"></div>
+            </div>
+            <div class="card">
                 <h3 style="cursor:default;">📅 Publicar Nuevo Turno / Visita</h3>
                 <div class="grid">
                     <div class="form-group"><label>Fecha</label><input type="date" id="schedDate"></div>
@@ -377,6 +395,11 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 
     <div id="auxPanel" class="hidden">
         <div id="auxPatientSelection" class="card">
+            <div class="card" style="border-color: var(--warning);">
+                <h3 style="cursor:default;">📜 Mis Turnos Cerrados <span style="font-size:0.75rem; color:#94a3b8;">(para addendas y re-descargar PDF)</span></h3>
+                <p style="font-size:0.8rem; color:#94a3b8;">⚠️ ¿Se te olvidó registrar algo en un turno de las últimas 24 horas? Decláralo aquí con una ADDENDA firmada. La responsabilidad asumida a tiempo protege tu trabajo.</p>
+                <div id="auxClosedShiftsList"></div>
+            </div>
             <h3 style="cursor:default;">📅 Turnos Disponibles para Aceptar</h3>
             <div id="auxScheduledList"></div>
             <hr style="border-color: var(--border); margin: 20px 0;">
@@ -540,8 +563,8 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             <div class="card">
                 <h3 style="cursor:default;">🔒 Cierre de Turno</h3>
                 <div class="form-group"><label>Estado de entrega</label><select id="patientDeliveredStatus"><option value="estable">🟢 Estable</option><option value="con_novedades">🟡 Con Novedades</option><option value="critico">🔴 Crítico</option></select></div>
-                <div class="form-group"><label>Descripción de entrega</label><textarea id="patientDeliveredNotes" rows="2"></textarea></div>
-                <div class="form-group"><label>Pendientes</label><input type="text" id="pendingTasks" placeholder="Tareas pendientes"></div>
+                <div class="form-group"><label>Descripción de entrega</label><div style="display:flex; gap:5px;"><textarea id="patientDeliveredNotes" rows="2"></textarea><button class="mic-btn" onclick="startDictation('patientDeliveredNotes')"><i class="fas fa-microphone"></i></button></div></div>
+                <div class="form-group"><label>Pendientes</label><div style="display:flex; gap:5px;"><input type="text" id="pendingTasks" placeholder="Tareas pendientes"><button class="mic-btn" onclick="startDictation('pendingTasks')"><i class="fas fa-microphone"></i></button></div></div>
                 <div class="legal-warning">
                     <h4>🚨 SALIDA DEL PACIENTE (RESPONSABILIDAD ARL)</h4>
                     <div style="margin: 10px 0;"><input type="checkbox" id="patientLeavesHome" style="width:auto; margin-right:10px;" onchange="toggleLeaveDetails(this)"><label for="patientLeavesHome" style="display:inline;">El paciente saldrá del domicilio</label></div>
@@ -593,6 +616,11 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     </div>
 
     <div id="profPanel" class="hidden">
+        <div class="card">
+            <h3 style="cursor:default;">📜 Mis Notas de Evolución <span style="font-size:0.75rem; color:#94a3b8;">(para addendas y re-descargar PDF)</span></h3>
+            <p style="font-size:0.8rem; color:#94a3b8;">⚠️ ¿Se te olvidó consignar algo en una nota de las últimas 24 horas? Decláralo con una ADDENDA firmada.</p>
+            <div id="profMyNotesList"></div>
+        </div>
         <div class="card"><h3 style="cursor:default;">📅 Visitas Domiciliarias Programadas para Ti</h3><div id="profScheduledList"></div></div>
         <div id="profPatientSelection" class="card"><h3 style="cursor:default;">Selecciona un Paciente para Valoración</h3><div id="profPatientList"></div></div>
         <div id="profClinicalForm" class="hidden">
@@ -792,6 +820,20 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     </div>
 </div>
 
+<div id="addendaModal" class="modal-overlay-confirm" onclick="if(event.target===this) closeAddendaModal()">
+    <div class="modal-confirm-box" style="border-color: var(--warning); max-width: 520px;">
+        <div class="modal-icon" style="background: rgba(245,158,11,0.15); color: var(--warning);"><i class="fas fa-file-pen"></i></div>
+        <h3 style="color: var(--warning);">📜 ADDENDA — Declaración de Omisión</h3>
+        <div id="addendaInfo" style="font-size:0.8rem; color:#94a3b8; margin-bottom:10px; text-align:center;"></div>
+        <div style="font-size:0.8rem; color:#94a3b8; margin-bottom:12px; background:var(--bg-dark); padding:10px; border-radius:8px; text-align:left;">⚖️ El sistema redactará una declaración formal con TU nombre indicando que omitiste registrar información. Esta queda con fecha y hora fijas, requiere tu firma digital, y será validada por coordinación. El error asumido a tiempo protege tu trabajo; el ocultado lo destruye.</div>
+        <div id="addendaFields" style="text-align:left;"></div>
+        <div class="modal-actions">
+            <button class="btn-primary btn-secondary" style="margin-top:0;" onclick="closeAddendaModal()">Cancelar</button>
+            <button class="btn-primary btn-warning" id="addendaSaveBtn" style="margin-top:0;">📜 Firmar y Registrar Addenda</button>
+        </div>
+    </div>
+</div>
+
 <div id="reviewModal" class="modal-overlay-confirm" onclick="if(event.target===this) event.stopPropagation()">
     <div class="modal-confirm-box" style="border-color: var(--warning);">
         <div class="modal-icon" style="background: rgba(245,158,11,0.15); color: var(--warning);"><i class="fas fa-clipboard-check"></i></div>
@@ -938,10 +980,12 @@ let lastShiftData = null, lastInvoiceData = null, lastLiquidationData = null, la
 let profsRegistry = [], patientsRegistry = [], finParamsId = null, tariffId = null;
 let sigHasInk = {};
 let sessionRecords = [], sessionAdverseEvents = [], scheduledShiftsMap = {};
-let _supportNotes = [];
+let _supportNotes = [], _supportShifts = [];
 let _editingProfId = null, _editingPatId = null;
 let profViewMode = 'active', patViewMode = 'active';
 let _consentsList = [], _consentPatientId = null;
+let _addendaTarget = null; // { type: 'shift'|'note', id }
+let _myClosedShifts = [], _myNotes = [];
 
 // ============ HELPERS ============
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
@@ -952,7 +996,6 @@ function escapeHtml(str) { if (str === null || str === undefined) return ''; ret
 function forgotPassword() { document.getElementById('forgotModal').classList.add('show'); }
 function closeForgotModal() { document.getElementById('forgotModal').classList.remove('show'); }
 
-// --- 🔐 API AUTENTICADA: envía el token JWT en cada petición y maneja sesión expirada ---
 async function apiFetch(url, options = {}) {
     const token = localStorage.getItem('vital_token');
     const headers = { ...(options.headers || {}), 'Content-Type': 'application/json' };
@@ -966,7 +1009,7 @@ async function apiFetch(url, options = {}) {
     return res;
 }
 
-// ============ LOGIN (sin token: es la puerta de entrada) ============
+// ============ LOGIN ============
 async function login() {
     const email = document.getElementById('loginEmail').value.trim(), password = document.getElementById('loginPassword').value;
     if (!email || !password) return showToast('Complete todos los campos', 'error');
@@ -988,16 +1031,16 @@ function initApp() {
     document.getElementById('userName').textContent = currentUser.full_name; document.getElementById('userRoleDisplay').textContent = currentUser.specialty_name;
     if (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE') {
         document.getElementById('adminPanel').classList.remove('hidden');
-        loadProfs(); loadPats(); loadConsents(); loadEduList(); loadScheduledShiftsAdmin(); loadFinanceData(); loadSupports(); updateStats();
+        loadProfs(); loadPats(); loadConsents(); loadEduList(); loadScheduledShiftsAdmin(); loadFinanceData(); loadSupports(); updateStats(); loadSuggestedVisits();
         updateSchedShiftType();
         refreshChat('adminMessageList'); setInterval(() => { if (!document.getElementById('admin_messages').classList.contains('hidden')) refreshChat('adminMessageList'); }, 7000);
     } else if (currentUser.specialty_name === 'AUXILIAR_ENFERMERIA') {
         document.getElementById('auxPanel').classList.remove('hidden');
-        loadAuxPatients(); loadAuxScheduledShifts(); refreshChat('auxMessageList');
+        loadAuxPatients(); loadAuxScheduledShifts(); loadMyClosedShifts(); refreshChat('auxMessageList');
         setInterval(() => { const body = document.getElementById('auxChatBody'); if (body && body.offsetParent) refreshChat('auxMessageList'); }, 7000);
     } else {
         document.getElementById('profPanel').classList.remove('hidden');
-        loadProfPatients(); loadProfScheduledShifts();
+        loadProfPatients(); loadProfScheduledShifts(); loadMyNotes();
     }
 }
 
@@ -1029,7 +1072,6 @@ function renderProfs() {
 async function archiveProf(id) { if(!confirm('¿Archivar este profesional? Desaparecerá de la lista activa pero podrás reactivarlo desde "Archivados".')) return; try { await apiFetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: false }) }); showToast('Profesional archivado'); loadProfs(); } catch(e) { if (e.message !== 'Sesión expirada') showToast('Error al archivar', 'error'); } }
 async function reactivateProf(id) { try { await apiFetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: true }) }); showToast('✅ Profesional reactivado'); loadProfs(); } catch(e) { if (e.message !== 'Sesión expirada') showToast('Error al reactivar', 'error'); } }
 
-// --- ✏️ MODAL EDICIÓN PROFESIONAL ---
 function openEditProfModal(id) {
     const p = profsRegistry.find(x => x.id === id); if (!p) return;
     _editingProfId = id;
@@ -1074,7 +1116,6 @@ function renderPats() {
 async function archivePatient(id) { if(!confirm('¿Archivar (dar de baja) este paciente? Podrás reactivarlo desde "Archivados".')) return; try { await apiFetch(`${API_URL}/api/patients/${id}/discharge`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ reason: 'Archivado por administración' }) }); showToast('Paciente archivado'); loadPats(); } catch(e) { if (e.message !== 'Sesión expirada') showToast('Error al archivar', 'error'); } }
 async function reactivatePatient(id) { try { await apiFetch(`${API_URL}/api/patients/${id}/reactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) }); showToast('✅ Paciente reactivado'); loadPats(); } catch(e) { if (e.message !== 'Sesión expirada') showToast('Error al reactivar', 'error'); } }
 
-// --- ✏️ MODAL EDICIÓN PACIENTE ---
 function openEditPatModal(id) {
     const p = patientsRegistry.find(x => x.id === id); if (!p) return;
     _editingPatId = id;
@@ -1093,7 +1134,7 @@ function openEditPatModal(id) {
 }
 function closeEditPatModal() { document.getElementById('editPatModal').classList.remove('show'); _editingPatId = null; }
 
-// --- 📋 CONSENTIMIENTO GENERAL DE INGRESO ---
+// --- 📋 CONSENTIMIENTO GENERAL ---
 async function loadConsents() {
     try {
         const r = await apiFetch(`${API_URL}/api/consents`); const d = await r.json();
@@ -1102,9 +1143,7 @@ async function loadConsents() {
         updateSchedConsentWarn();
     } catch (e) { if (e.message !== 'Sesión expirada') console.error(e); }
 }
-function getConsentFor(patientId) {
-    return _consentsList.find(c => c.patient_id === patientId && c.is_signed);
-}
+function getConsentFor(patientId) { return _consentsList.find(c => c.patient_id === patientId && c.is_signed); }
 function openConsentModal(patientId) {
     const p = patientsRegistry.find(x => x.id === patientId); if (!p) return showToast('Paciente no encontrado', 'error');
     _consentPatientId = patientId;
@@ -1120,18 +1159,18 @@ function openConsentModal(patientId) {
             <button class="btn-primary btn-warning" style="margin-top:0;" onclick="generateConsentPDF('${patientId}', true)"><i class="fas fa-file-pdf"></i> Descargar copia firmada (PDF)</button>`;
     } else {
         body.innerHTML = `
-            <div class="consent-pending">⚠️ <strong>Este paciente NO tiene consentimiento general de ingreso firmado.</strong><br>Este documento autoriza legalmente todos los cuidados rutinarios del servicio (medicamentos prescritos, curaciones, higiene, alimentación, movilización, control de sondas, etc.). Se firma una sola vez al ingresar.</div>
+            <div class="consent-pending">⚠️ <strong>Este paciente NO tiene consentimiento general de ingreso firmado.</strong><br>Este documento autoriza legalmente todos los cuidados rutinarios del servicio. Se firma una sola vez al ingresar.</div>
             <button class="btn-primary btn-info" style="margin-top:0;" onclick="generateConsentPDF('${patientId}', false)"><i class="fas fa-file-pdf"></i> 🖨️ Descargar PDF en blanco para firma física</button>
             <hr style="border-color: var(--border); margin: 14px 0;">
             <p style="font-size:0.85rem; color:#94a3b8; text-align:center;">Ya firmado en papel: registra los datos de quien firmó.</p>
-            <div class="form-group"><label>Nombre de quien firma (paciente o familiar responsable) *</label><input type="text" id="consFirmName"></div>
+            <div class="form-group"><label>Nombre de quien firma *</label><input type="text" id="consFirmName"></div>
             <div class="form-group"><label>Cédula de quien firma *</label><input type="text" id="consFirmId"></div>
             <div class="form-group"><label>Parentesco con el paciente *</label><select id="consFirmRel">${parentescos.map(x => `<option value="${x}">${x}</option>`).join('')}</select></div>
             <div class="grid">
                 <div class="form-group"><label>Firma digital (opcional)</label><canvas id="consFamSigCanvas" class="signature-canvas"></canvas><button class="btn-small btn-secondary" onclick="clearSig('consFamSigCanvas')">Borrar</button></div>
                 <div class="form-group"><label>Firma Vital Hogar (opcional)</label><canvas id="consAdminSigCanvas" class="signature-canvas"></canvas><button class="btn-small btn-secondary" onclick="clearSig('consAdminSigCanvas')">Borrar</button></div>
             </div>
-            <div style="margin-bottom:12px;"><input type="checkbox" id="consArchiveAck" style="width:auto; margin-right:10px;"><label for="consArchiveAck" style="display:inline; font-size:0.85rem;">Confirmo que el documento fue firmado físicamente por las partes y el original queda archivado en el expediente.</label></div>
+            <div style="margin-bottom:12px;"><input type="checkbox" id="consArchiveAck" style="width:auto; margin-right:10px;"><label for="consArchiveAck" style="display:inline; font-size:0.85rem;">Confirmo que el documento fue firmado físicamente y el original queda archivado en el expediente.</label></div>
             <button class="btn-primary" style="margin-top:0;" onclick="saveConsent()"><i class="fas fa-save"></i> ✅ Registrar como firmado</button>`;
         setTimeout(() => { initSigCanvas('consFamSigCanvas'); initSigCanvas('consAdminSigCanvas'); }, 50);
     }
@@ -1245,7 +1284,7 @@ function initAdminChart(values) {
     const ctx = document.getElementById('adminDashboardChart');
     if (!ctx || !window.Chart) return;
     if (window._adminChart) window._adminChart.destroy();
-    window._adminChart = new Chart(ctx, { type: 'bar', data: { labels: ['Pacientes', 'Profesionales', 'Informes'], datasets: [{ data: values, backgroundColor: ['#22c55e','#3b82f6','#f59e0b'], borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, x: { ticks: { color: '#94a3b8' }, grid: { display: false } } } } });
+    window._adminChart = new Chart(ctx, { type: 'bar', data: { labels: ['Pacientes', 'Profesionales', 'Soportes pend.'], datasets: [{ data: values, backgroundColor: ['#22c55e','#3b82f6','#f59e0b'], borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, x: { ticks: { color: '#94a3b8' }, grid: { display: false } } } } });
 }
 
 // ============ ADMIN: SOPORTES ============
@@ -1253,18 +1292,24 @@ async function loadSupports() {
     try {
         const r1 = await apiFetch(`${API_URL}/api/shifts/closed`); const d1 = await r1.json();
         const shifts = (d1.success ? d1.data : []) || [];
+        _supportShifts = shifts;
         document.querySelector('#supportShiftsTable tbody').innerHTML = shifts.length ? shifts.map(s => {
             const estado = s.admin_validated ? '✅ Validado' : '⏳ Pendiente';
+            const addendas = Array.isArray(s.closing_addendas) ? s.closing_addendas.length : 0;
+            const addendaBadge = addendas > 0 ? ` <span class="addenda-badge">📜 ${addendas} addenda(s)</span>` : '';
             const valBtn = s.admin_validated ? `<button class="btn-small btn-primary" disabled>Validado</button>` : `<button class="btn-small btn-primary" onclick="validateSupport('shift', '${s.id}', this)">Validar</button>`;
-            return `<tr><td>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${valBtn}</td></tr>`;
+            return `<tr><td>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}${addendaBadge}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${valBtn}</td></tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay turnos cerrados</td></tr>';
         const r2 = await apiFetch(`${API_URL}/api/professional-records/list`); const d2 = await r2.json();
         _supportNotes = (d2.success ? d2.data : []) || [];
         document.querySelector('#supportNotesTable tbody').innerHTML = _supportNotes.length ? _supportNotes.map(n => {
             const estado = n.admin_validated ? '✅ Validado' : '⏳ Pendiente';
+            const addendas = Array.isArray(n.addendas) ? n.addendas.length : 0;
+            const addendaBadge = addendas > 0 ? ` <span class="addenda-badge">📜 ${addendas} addenda(s)</span>` : '';
             const valBtn = n.admin_validated ? `<button class="btn-small btn-primary" disabled>Validado</button>` : `<button class="btn-small btn-primary" onclick="validateSupport('note', '${n.id}', this)">Validar</button>`;
-            return `<tr><td>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(n.patients?.full_name||'N/A')}</td><td>${escapeHtml(n.professionals?.full_name||'N/A')}</td><td style="font-size:0.8rem;">${escapeHtml(n.record_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${valBtn}</td></tr>`;
+            return `<tr><td>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(n.patients?.full_name||'N/A')}${addendaBadge}</td><td>${escapeHtml(n.professionals?.full_name||'N/A')}</td><td style="font-size:0.8rem;">${escapeHtml(n.record_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${valBtn}</td></tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay notas de evolución</td></tr>';
+        await loadOpenShifts();
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error cargando soportes', 'error'); } }
 }
 async function validateSupport(type, id, btn) {
@@ -1279,8 +1324,31 @@ async function validateSupport(type, id, btn) {
         } else showToast(d.message || 'Error al validar', 'error');
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
+async function loadOpenShifts() {
+    try {
+        const r = await apiFetch(`${API_URL}/api/scheduled-shifts`); // placeholder call for origin consistency
+    } catch (e) {}
+    try {
+        const r = await apiFetch(`${API_URL}/api/shifts/closed`);
+    } catch (e) {}
+    // Los turnos abiertos se derivan de la agenda + turnos activos: usamos el endpoint open-check por profesional conocido
+    try {
+        const auxiliares = profsRegistry.filter(p => p.specialties?.name === 'AUXILIAR_ENFERMERIA' && p.is_active !== false);
+        let open = [];
+        for (const aux of auxiliares) {
+            try {
+                const r = await apiFetch(`${API_URL}/api/shifts/open-check/${aux.id}`);
+                const d = await r.json();
+                if (d.success && d.data.length) open.push(...d.data.map(s => ({ ...s, auxName: aux.full_name })));
+            } catch (e2) {}
+        }
+        const el = document.getElementById('openShiftsList');
+        if (!el) return;
+        el.innerHTML = open.length ? open.map(s => `<div class="sub-activity" style="border-left-color: var(--danger);"><span class="open-shift-badge">SIN CERRAR</span><br><strong>${escapeHtml(s.patients?.full_name || 'Paciente')}</strong> — Auxiliar: <strong>${escapeHtml(s.auxName)}</strong><br>Iniciado: ${escapeHtml(new Date(s.start_time).toLocaleString('es-CO'))} · Tipo: ${escapeHtml(s.shift_type||'')}</div>`).join('') : '<p style="color:#94a3b8; font-size:0.85rem;">✅ No hay turnos abiertos sin cerrar. ¡Todo en orden!</p>';
+    } catch (e) { console.error(e); }
+}
 
-// --- 📜 Firmas legales con etiquetas según el tipo de documento ---
+// --- 📜 Firmas legales ---
 function drawLegalSignatures(doc, y, d) {
     if (y > 235) { doc.addPage(); y = 40; }
     doc.setFontSize(8); doc.setTextColor(80);
@@ -1299,6 +1367,31 @@ function drawLegalSignatures(doc, y, d) {
     doc.text(`Parentesco: ${d.famRel || '-'}`, 147.5, y + 19, null, null, 'center');
     doc.setFontSize(7); doc.setTextColor(120);
     doc.text(`Documento generado electrónicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Registro clínico oficial. Tratamiento de datos personales conforme a la Ley 1581 de 2012.`, 105, y + 27, null, null, 'center');
+}
+
+// --- 📜 Addendas en PDF (sección integrada) ---
+function drawAddendas(doc, y, addendas, whoLabel) {
+    if (!addendas || !addendas.length) return y;
+    if (y > 240) { doc.addPage(); y = 30; }
+    doc.autoTable({ startY: y, head: [['📜 ADDENDAS DE CIERRE (Declaraciones posteriores)']], body: [], headStyles: { fillColor: [245,158,11] }, styles: { fontSize: 8, cellWidth: 'wrap' }, margin: { left: 14, right: 14 } });
+    y = doc.lastAutoTable.finalY;
+    addendas.forEach((a, i) => {
+        if (y > 220) { doc.addPage(); y = 30; }
+        const texto = [
+            `ADDENDA #${i + 1} — ${new Date(a.fecha).toLocaleString('es-CO')}`,
+            `El ${whoLabel} ${a.auxName || a.profName || ''}, CC ${a.auxDoc || a.profDoc || ''}, declara en ejercicio de su deber de veracidad que:`,
+            `• OMITIÓ registrar: ${a.descriptionOmitted}`,
+            `• LO REALMENTE OCURRIDO: ${a.descriptionActual}`,
+            `Firma del declarante: (registrada digitalmente en el expediente)`,
+            a.admin_validated ? `✔ Revisado y validado por coordinación.` : `⏳ Pendiente de validación por coordinación.`
+        ];
+        const lines = doc.splitTextToSize(texto.join('\n'), 182);
+        doc.setFontSize(8); doc.setTextColor(60);
+        doc.text(lines, 14, y + 4);
+        y += lines.length * 3.5 + 8;
+    });
+    doc.setTextColor(0);
+    return y;
 }
 
 async function downloadSupportShiftPDF(shiftId) {
@@ -1322,6 +1415,7 @@ async function downloadSupportShiftPDF(shiftId) {
             doc.autoTable({ startY: y, head: [['Hora','PA','FC','FR','Temp','SpO2','Glu','EVA','Glasg','Braden']], body: records.map(rc => [String(rc.created_at||'').slice(11,16), rc.blood_pressure||'-', rc.heart_rate||'-', rc.respiratory_rate||'-', rc.temperature||'-', rc.spo2||'-', rc.glucose||'-', rc.eva_score??'-', (rc.glasgow_eyes||0)+(rc.glasgow_verbal||0)+(rc.glasgow_motor||0), rc.braden_score||'-']), headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
             y = doc.lastAutoTable.finalY + 6;
         }
+        y = drawAddendas(doc, y, shift.closing_addendas, 'auxiliar de enfermería');
         drawLegalSignatures(doc, y, { docType: 'auxiliar', auxName: sig?.auxiliary_name || shift.professionals?.full_name || '-', auxDoc: sig?.auxiliary_id_number || shift.professionals?.document_number || '-', auxCard: shift.professionals?.professional_card || '-', auxSig: sig?.auxiliary_signature || null, famName: sig?.family_name || '-', famDoc: sig?.family_id_number || '-', famRel: sig?.family_relationship || '-', famSig: sig?.family_signature || null });
         doc.save(`Soporte_Turno_${(shift.patients?.full_name||'paciente').replace(/\s+/g,'_')}_${shiftId.slice(0,8)}.pdf`);
         showToast('PDF generado desde la base de datos');
@@ -1349,6 +1443,7 @@ function downloadSupportNotePDF(noteId) {
         doc.autoTable({ startY: 74, head: [['Sección','Contenido']], body, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 55 } } });
         let y = doc.lastAutoTable.finalY + 12;
         const relDelTestigo = (rec.vital_signs?.testigoParentesco) || ((rec.family_name || '').includes('(') ? (rec.family_name || '').split('(').pop().replace(')', '').trim() : 'Testigo');
+        y = drawAddendas(doc, y, rec.addendas, 'profesional de la salud');
         drawLegalSignatures(doc, y, { docType: 'profesional', auxName: rec.professionals?.full_name || '-', auxDoc: rec.professionals?.document_number || '-', auxCard: rec.professionals?.professional_card || '-', auxSig: rec.professional_signature || null, famName: (rec.family_name || '-').split('(')[0].trim(), famDoc: rec.family_id || '-', famRel: relDelTestigo, famSig: rec.family_signature || null });
         doc.save(`Soporte_Nota_${(rec.patients?.full_name||'paciente').replace(/\s+/g,'_')}_${noteId.slice(0,8)}.pdf`);
         showToast('PDF generado desde la base de datos');
@@ -1427,8 +1522,34 @@ async function loadScheduledShiftsAdmin() {
         document.querySelector('#schedTable tbody').innerHTML = list.length ? list.map(s => `<tr><td>${escapeHtml(new Date(s.shift_date).toLocaleDateString('es-CO'))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${escapeHtml(s.status||'')}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">No hay turnos publicados</td></tr>';
     } catch (e) { if (e.message !== 'Sesión expirada') console.error(e); }
 }
+async function loadSuggestedVisits() {
+    try {
+        const r = await apiFetch(`${API_URL}/api/professional-records/list`); const d = await r.json();
+        const notas = (d.success ? d.data : []) || [];
+        const sugeridas = [];
+        notas.forEach(n => {
+            const vs = n.vital_signs || {};
+            // La próxima visita se guardó dentro del plan concatenado; intentamos extraer la fecha más reciente del texto
+            const plan = `${n.plan || ''}`;
+            const match = plan.match(/Próxima visita:\s*(\d{4}-\d{2}-\d{2})/i);
+            if (match) sugeridas.push({ fecha: match[1], paciente: n.patients?.full_name || 'N/A', profesional: n.professionals?.full_name || 'N/A', specialty: n.professionals?.specialties?.name || n.professionals?.specialty || '' });
+        });
+        sugeridas.sort((a, b) => a.fecha.localeCompare(b.fecha));
+        const el = document.getElementById('suggestedVisitsList'); if (!el) return;
+        el.innerHTML = sugeridas.length ? sugeridas.map(s => {
+            const hoy = new Date().toISOString().slice(0, 10);
+            const vencida = s.fecha < hoy;
+            return `<div class="sub-activity" ${vencida ? 'style="border-left-color: var(--warning); opacity:0.7;"' : 'style="border-left-color: var(--primary);"'}>📅 <strong>${escapeHtml(new Date(s.fecha + 'T12:00:00').toLocaleDateString('es-CO'))}</strong> — 🧑 ${escapeHtml(s.paciente)}<br><small>👤 ${escapeHtml(s.profesional)} ${vencida ? '· ⚠️ fecha ya vencida' : ''}</small></div>`;
+        }).join('') : '<p style="color:#94a3b8; font-size:0.85rem;">No hay próximas visitas sugeridas todavía. Aparecerán cuando los profesionales llenen "Próxima visita" en sus notas.</p>';
+    } catch (e) { if (e.message !== 'Sesión expirada') console.error(e); }
+}
 
 // ============ ADMIN: FINANZAS ============
+function toggleLiquidationType() {
+    const tipo = getVal('liquidationType');
+    const prof = profsRegistry.find(p => p.id === getVal('liquidationProf'));
+    showToast(tipo === 'visits' ? '🏥 Modo Visitas: cuenta notas VALIDADAS × tarifa de la especialidad' : '⏱️ Modo Turnos: calcula horas de turnos cerrados');
+}
 async function loadFinanceData() {
     try { const r = await apiFetch(`${API_URL}/api/finance/parameters`); const d = await r.json(); const p = d.data; if (p && p.id) { finParamsId = p.id; if (p.year) document.getElementById('finYear').value = p.year; if (p.smmlv) document.getElementById('finSmmlv').value = p.smmlv; if (p.subsidy_transport) document.getElementById('finSubsidy').value = p.subsidy_transport; if (p.night_surcharge_percentage) document.getElementById('finNightPct').value = p.night_surcharge_percentage; if (p.holiday_surcharge_percentage) document.getElementById('finSunPct').value = p.holiday_surcharge_percentage; } } catch (e) {}
     try { const r = await apiFetch(`${API_URL}/api/finance/tariffs`); const d = await r.json(); const t = d.data; if (t && t.id) { tariffId = t.id; ['6h_diurno','6h_nocturno','8h_diurno','8h_nocturno','12h_diurno','12h_nocturno','24h'].forEach(k => { const el = document.getElementById('t_' + k); if (el && t['t_' + k] != null) el.value = t['t_' + k]; }); } } catch (e) {}
@@ -1456,31 +1577,63 @@ async function saveClientTariffs() {
 async function calculateLiquidation() {
     const profId = getVal('liquidationProf');
     if (!profId) return showToast('Selecciona un profesional', 'error');
+    const tipo = getVal('liquidationType');
     const month = getVal('liquidationMonth') || '01', year = getVal('liquidationYear') || new Date().getFullYear();
-    try {
-        const r = await apiFetch(`${API_URL}/api/finance/liquidation/${profId}/${month}/${year}`); const d = await r.json();
-        if (d.success) { lastLiquidationData = { ...d.data, _month: month, _year: year }; renderLiquidation(lastLiquidationData); }
-        else showToast(d.message || 'Error al calcular', 'error');
-    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
+    if (tipo === 'visits') {
+        try {
+            const r = await apiFetch(`${API_URL}/api/finance/liquidation-visits/${profId}/${month}/${year}`); const d = await r.json();
+            if (d.success) { lastLiquidationData = { ...d.data, _month: month, _year: year, _tipo: 'visits' }; renderLiquidationVisits(lastLiquidationData); }
+            else showToast(d.message || 'Error al calcular', 'error');
+        } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
+    } else {
+        try {
+            const r = await apiFetch(`${API_URL}/api/finance/liquidation/${profId}/${month}/${year}`); const d = await r.json();
+            if (d.success) { lastLiquidationData = { ...d.data, _month: month, _year: year, _tipo: 'shifts' }; renderLiquidation(lastLiquidationData); }
+            else showToast(d.message || 'Error al calcular', 'error');
+        } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
+    }
 }
 function renderLiquidation(data) {
     const c = document.getElementById('liquidationResult'); c.classList.remove('hidden');
     const rows = (data.shifts || []).map(x => `<tr><td>${escapeHtml(x.date)}</td><td>${escapeHtml(x.patient)}</td><td>${escapeHtml(x.shift_type)}</td><td>${x.hours}h</td><td>${formatCurrency(x.base_pay)}</td><td>${formatCurrency(x.night_bonus)}</td><td>${formatCurrency(x.sunday_bonus)}</td><td><strong>${formatCurrency(x.total)}</strong></td></tr>`).join('');
-    c.innerHTML = `<h4 style="color:var(--primary);">Liquidación — ${MESES_ES[data._month]||''} ${data._year}</h4><table><thead><tr><th>Fecha</th><th>Paciente</th><th>Turno</th><th>Horas</th><th>Base</th><th>Nocturno</th><th>Dominical</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>${data.subsidyApplied ? `<p style="color:#94a3b8;">Incluye subsidio de transporte: ${formatCurrency(data.subsidyApplied)}</p>` : ''}<div style="text-align:right; margin-top:10px;"><h3 style="color:var(--primary);">Total: ${formatCurrency(data.totalAmount)}</h3><button class="btn-primary btn-warning" style="width:auto; display:inline-block; margin-top:8px;" onclick="generateLiquidationPDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button></div>`;
+    c.innerHTML = `<h4 style="color:var(--primary);">Liquidación por Turnos — ${MESES_ES[data._month]||''} ${data._year}</h4><table><thead><tr><th>Fecha</th><th>Paciente</th><th>Turno</th><th>Horas</th><th>Base</th><th>Nocturno</th><th>Dominical</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>${data.subsidyApplied ? `<p style="color:#94a3b8;">Incluye subsidio de transporte: ${formatCurrency(data.subsidyApplied)}</p>` : ''}<div style="text-align:right; margin-top:10px;"><h3 style="color:var(--primary);">Total: ${formatCurrency(data.totalAmount)}</h3><button class="btn-primary btn-warning" style="width:auto; display:inline-block; margin-top:8px;" onclick="generateLiquidationPDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button></div>`;
+}
+function renderLiquidationVisits(data) {
+    const c = document.getElementById('liquidationResult'); c.classList.remove('hidden');
+    const rows = (data.visits || []).map(x => `<tr><td>${escapeHtml(x.date)}</td><td>${escapeHtml(x.patient)}</td><td>${escapeHtml(x.record_type)}</td><td>${formatCurrency(x.amount)}</td></tr>`).join('');
+    c.innerHTML = `<h4 style="color:var(--primary);">Liquidación por Visitas — ${MESES_ES[data._month]||''} ${data._year}</h4><p style="font-size:0.85rem; color:#94a3b8;">👤 ${escapeHtml(data.professional?.full_name||'')} (${escapeHtml(data.professional?.specialty||'')}) · Tarifa por visita: ${formatCurrency(data.professional?.fee||0)}</p><table><thead><tr><th>Fecha</th><th>Paciente</th><th>Tipo de Nota</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table>${data.totalPending > 0 ? `<p style="color:var(--warning); font-size:0.85rem;">⚠️ Hay ${data.totalPending} nota(s) PENDIENTE(S) de validar que NO se incluyen. Valídalas en Soportes para que entren en la próxima liquidación.</p>` : ''}<div style="text-align:right; margin-top:10px;"><h3 style="color:var(--primary);">Total: ${formatCurrency(data.totalAmount)} (${data.totalValidated} visitas validadas)</h3><button class="btn-primary btn-warning" style="width:auto; display:inline-block; margin-top:8px;" onclick="generateLiquidationVisitsPDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button></div>`;
 }
 function generateLiquidationPDF() {
-    if (!lastLiquidationData) return;
+    if (!lastLiquidationData || lastLiquidationData._tipo !== 'shifts') return;
     const { jsPDF } = window.jspdf; const doc = new jsPDF();
     const profName = document.getElementById('liquidationProf').selectedOptions[0].text;
     try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
     doc.setFontSize(18); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
-    doc.setFontSize(12); doc.setTextColor(0); doc.text("Liquidación de Honorarios", 105, 30, null, null, "center");
+    doc.setFontSize(12); doc.setTextColor(0); doc.text("Liquidación de Honorarios (Por Turnos)", 105, 30, null, null, "center");
     doc.text(`Profesional: ${profName}`, 14, 45); doc.text(`Periodo: ${MESES_ES[lastLiquidationData._month]||''} ${lastLiquidationData._year}`, 14, 52);
     const rows = (lastLiquidationData.shifts || []).map(x => [x.date, x.patient, x.shift_type, x.hours, formatCurrency(x.base_pay), formatCurrency(x.night_bonus), formatCurrency(x.sunday_bonus), formatCurrency(x.total)]);
     doc.autoTable({ startY: 60, head: [['Fecha','Paciente','Turno','Horas','Base','Noct.','Dom.','Total']], body: rows, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8 } });
     const y = doc.lastAutoTable.finalY + 10;
     doc.setFontSize(13); doc.setTextColor(34,197,94); doc.text(`Total: ${formatCurrency(lastLiquidationData.totalAmount)}`, 14, y);
     doc.save(`Liquidacion_${profName}_${lastLiquidationData._month}_${lastLiquidationData._year}.pdf`); showToast('PDF generado');
+}
+function generateLiquidationVisitsPDF() {
+    if (!lastLiquidationData || lastLiquidationData._tipo !== 'visits') return;
+    const { jsPDF } = window.jspdf; const doc = new jsPDF();
+    const profName = document.getElementById('liquidationProf').selectedOptions[0].text;
+    try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
+    doc.setFontSize(18); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
+    doc.setFontSize(12); doc.setTextColor(0); doc.text("Liquidación de Honorarios (Por Visitas)", 105, 30, null, null, "center");
+    doc.setFontSize(10);
+    doc.text(`Profesional: ${profName} (${lastLiquidationData.professional?.specialty || '-'})`, 14, 45);
+    doc.text(`Tarifa por visita: ${formatCurrency(lastLiquidationData.professional?.fee || 0)}`, 14, 52);
+    doc.text(`Periodo: ${MESES_ES[lastLiquidationData._month]||''} ${lastLiquidationData._year}`, 14, 59);
+    const rows = (lastLiquidationData.visits || []).map(x => [x.date, x.patient, x.record_type, formatCurrency(x.amount)]);
+    doc.autoTable({ startY: 66, head: [['Fecha','Paciente','Tipo de Nota','Valor']], body: rows, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8 } });
+    const y = doc.lastAutoTable.finalY + 10;
+    doc.setFontSize(13); doc.setTextColor(34,197,94); doc.text(`Total: ${formatCurrency(lastLiquidationData.totalAmount)} (${lastLiquidationData.totalValidated} visitas validadas)`, 14, y);
+    if (lastLiquidationData.totalPending > 0) { doc.setFontSize(9); doc.setTextColor(220,38,38); doc.text(`⚠️ ${lastLiquidationData.totalPending} nota(s) pendiente(s) de validación NO incluidas.`, 14, y + 8); }
+    doc.save(`Liquidacion_Visitas_${profName}_${lastLiquidationData._month}_${lastLiquidationData._year}.pdf`); showToast('PDF generado');
 }
 
 async function calculateInvoice() {
@@ -1614,11 +1767,80 @@ function selectPatient(p) {
     document.getElementById('auxShiftStart').classList.remove('hidden');
 }
 
+// ============ AUXILIAR: MIS TURNOS CERRADOS (addendas) ============
+async function loadMyClosedShifts() {
+    try {
+        const r = await apiFetch(`${API_URL}/api/shifts/closed`); const d = await r.json();
+        _myClosedShifts = ((d.success ? d.data : []) || []).filter(s => s.professional_id === currentUser.id);
+        renderMyClosedShifts();
+    } catch (e) { if (e.message !== 'Sesión expirada') console.error(e); }
+}
+function renderMyClosedShifts() {
+    const el = document.getElementById('auxClosedShiftsList'); if (!el) return;
+    el.innerHTML = _myClosedShifts.length ? _myClosedShifts.slice(0, 15).map(s => {
+        const addendas = Array.isArray(s.closing_addendas) ? s.closing_addendas : [];
+        const horasDesdeCierre = s.end_time ? (Date.now() - new Date(s.end_time).getTime()) / 3600000 : 999;
+        const dentroDePlazo = horasDesdeCierre <= 24;
+        const badge = addendas.length ? `<span class="addenda-badge">📜 ${addendas.length} addenda(s)</span>` : '';
+        const addendaBtn = dentroDePlazo ? `<button class="btn-small btn-warning" onclick="openAddendaModal('shift', '${s.id}', '${escapeHtml(s.patients?.full_name||'')}', '${escapeHtml(new Date(s.end_time).toLocaleString('es-CO'))}')"><i class="fas fa-file-pen"></i> 📜 Declarar addenda</button>` : `<button class="btn-small btn-secondary" disabled title="Venció el plazo de 24 horas">📜 Plazo vencido</button>`;
+        return `<div class="sub-activity"><strong>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</strong> — ${escapeHtml(s.patients?.full_name||'')} ${badge}<br><small>Turno: ${escapeHtml(s.shift_type||'')} · ${dentroDePlazo ? '⏰ Addenda disponible' : '⏰ Plazo de 24h vencido'}</small><br><button class="btn-small btn-info" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn}</div>`;
+    }).join('') : '<p style="color:#94a3b8; font-size:0.85rem;">Aún no tienes turnos cerrados.</p>';
+}
+
+// ============ PROFESIONAL: MIS NOTAS (addendas) ============
+async function loadMyNotes() {
+    try {
+        const r = await apiFetch(`${API_URL}/api/professional-records/list`); const d = await r.json();
+        _myNotes = ((d.success ? d.data : []) || []).filter(n => n.professional_id === currentUser.id);
+        renderMyNotes();
+    } catch (e) { if (e.message !== 'Sesión expirada') console.error(e); }
+}
+function renderMyNotes() {
+    const el = document.getElementById('profMyNotesList'); if (!el) return;
+    el.innerHTML = _myNotes.length ? _myNotes.slice(0, 15).map(n => {
+        const addendas = Array.isArray(n.addendas) ? n.addendas : [];
+        const horasDesdeCreacion = (Date.now() - new Date(n.created_at).getTime()) / 3600000;
+        const dentroDePlazo = horasDesdeCreacion <= 24;
+        const badge = addendas.length ? `<span class="addenda-badge">📜 ${addendas.length} addenda(s)</span>` : '';
+        const addendaBtn = dentroDePlazo ? `<button class="btn-small btn-warning" onclick="openAddendaModal('note', '${n.id}', '${escapeHtml(n.patients?.full_name||'')}', '${escapeHtml(new Date(n.created_at).toLocaleString('es-CO'))}')"><i class="fas fa-file-pen"></i> 📜 Declarar addenda</button>` : `<button class="btn-small btn-secondary" disabled title="Venció el plazo de 24 horas">📜 Plazo vencido</button>`;
+        return `<div class="sub-activity"><strong>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</strong> — ${escapeHtml(n.patients?.full_name||'')} ${badge}<br><small>${escapeHtml(n.record_type||'Nota')} · ${dentroDePlazo ? '⏰ Addenda disponible' : '⏰ Plazo de 24h vencido'}</small><br><button class="btn-small btn-info" onclick="downloadMyNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn}</div>`;
+    }).join('') : '<p style="color:#94a3b8; font-size:0.85rem;">Aún no tienes notas de evolución.</p>';
+}
+function downloadMyNotePDF(noteId) {
+    const backupNotes = _supportNotes;
+    _supportNotes = _myNotes;
+    downloadSupportNotePDF(noteId);
+    _supportNotes = backupNotes;
+}
+
+// --- 📜 MODAL DE ADDENDA (declaración formal) ---
+function openAddendaModal(type, id, paciente, fechaDoc) {
+    _addendaTarget = { type, id };
+    document.getElementById('addendaInfo').innerHTML = `Turno/Nota de: <strong>${escapeHtml(paciente)}</strong> · Documento del: ${escapeHtml(fechaDoc)} · Plazo: 24h`;
+    document.getElementById('addendaFields').innerHTML = `
+        <div class="form-group"><label>¿Qué OMITISTE registrar? *</label><textarea id="addOmitted" rows="2" placeholder="Ej: La segunda administración de acetaminofén a las 4:00 p.m."></textarea></div>
+        <div class="form-group"><label>¿Qué REALMENTE OCURRIÓ? *</label><textarea id="addActual" rows="2" placeholder="Ej: El medicamento sí fue administrado a las 4:00 p.m. y el familiar estuvo presente"></textarea></div>
+        <div class="form-group"><label>✍️ Tu firma digital (obligatoria) *</label><canvas id="addSigCanvas" class="signature-canvas"></canvas><button class="btn-small btn-secondary" onclick="clearSig('addSigCanvas')">Borrar</button></div>
+        <p style="font-size:0.75rem; color:#94a3b8;">Al firmar, declaras formalmente que esta addenda es veraz. Quedará con fecha y hora fijas y será validada por coordinación.</p>`;
+    document.getElementById('addendaModal').classList.add('show');
+    setTimeout(() => initSigCanvas('addSigCanvas'), 50);
+}
+function closeAddendaModal() { document.getElementById('addendaModal').classList.remove('show'); _addendaTarget = null; }
+
 // ============ AUXILIAR: FLUJO DE TURNO ============
 function toggleCustomShift() { document.getElementById('customShiftTimes').classList.toggle('hidden', getVal('shiftType') !== 'personalizado'); }
 
 async function startShift() {
     if (!selectedPatient) return showToast('Selecciona un paciente primero', 'error');
+    // 🔒 Verificación previa: turnos abiertos (doble turno y huérfanos)
+    try {
+        const checkRes = await apiFetch(`${API_URL}/api/shifts/open-check/${currentUser.id}`);
+        const checkData = await checkRes.json();
+        if (checkData.success && checkData.data && checkData.data.length > 0) {
+            const s = checkData.data[0];
+            return showToast(`⚠️ Tienes un turno SIN CERRAR desde el ${new Date(s.start_time).toLocaleString('es-CO')} con ${s.patients?.full_name || 'un paciente'}. Ciérralo o avisa a coordinación antes de iniciar otro.`, 'error');
+        }
+    } catch (e) { /* si falla la verificación, continuamos (el server también bloquea) */ }
     const shiftType = getVal('shiftType');
     let customStart = null, customEnd = null;
     if (shiftType === 'personalizado') {
@@ -1890,7 +2112,7 @@ function backToAuxHome() {
     document.getElementById('auxShiftClosed').classList.add('hidden');
     document.getElementById('auxPatientSelection').classList.remove('hidden');
     selectedPatient = null;
-    loadAuxScheduledShifts(); loadAuxPatients();
+    loadAuxScheduledShifts(); loadAuxPatients(); loadMyClosedShifts();
 }
 function generateClosurePDF() {
     if (!lastShiftData) return showToast('No hay datos del turno', 'error');
@@ -2102,7 +2324,7 @@ async function saveProfRecord() {
     try {
         const r = await apiFetch(`${API_URL}/api/professional-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const d = await r.json();
-        if (d.success) { showToast('✅ Nota de evolución guardada'); document.getElementById('generateProfPDFBtn').classList.remove('hidden'); }
+        if (d.success) { showToast('✅ Nota de evolución guardada'); document.getElementById('generateProfPDFBtn').classList.remove('hidden'); loadMyNotes(); }
         else showToast(d.message || 'Error', 'error');
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
@@ -2239,6 +2461,25 @@ document.addEventListener('DOMContentLoaded', () => {
             if (d.success) { showToast('✅ Paciente actualizado'); closeEditPatModal(); loadPats(); }
             else showToast(d.message || 'Error al actualizar', 'error');
         } catch (e) { if (e.message !== 'Sesión expirada') showToast('Error de conexión', 'error'); }
+    });
+    const addendaSaveBtn = document.getElementById('addendaSaveBtn');
+    if (addendaSaveBtn) addendaSaveBtn.addEventListener('click', async () => {
+        if (!_addendaTarget) return;
+        const omitted = getVal('addOmitted').trim(), actual = getVal('addActual').trim();
+        if (!omitted || omitted.length < 10) return showToast('Describe lo omitido (mínimo 10 caracteres)', 'error');
+        if (!actual || actual.length < 10) return showToast('Describe lo realmente ocurrido (mínimo 10 caracteres)', 'error');
+        const sig = getSigData('addSigCanvas');
+        if (!sig) return showToast('⚖️ La firma digital es OBLIGATORIA. Firmar la addenda es asumir la declaración.', 'warning');
+        const ruta = _addendaTarget.type === 'shift' ? 'shifts' : 'professional-records';
+        try {
+            const r = await apiFetch(`${API_URL}/api/${ruta}/${_addendaTarget.id}/addenda`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ professionalId: currentUser.id, descriptionOmitted: omitted, descriptionActual: actual, signature: sig }) });
+            const d = await r.json();
+            if (d.success) {
+                showToast('📜 ' + d.message);
+                closeAddendaModal();
+                if (currentUser.specialty_name === 'AUXILIAR_ENFERMERIA') loadMyClosedShifts(); else loadMyNotes();
+            } else showToast(d.message || 'Error al registrar', 'error');
+        } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
     });
 });
 </script>
