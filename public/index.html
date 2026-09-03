@@ -121,7 +121,11 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .consent-ok { background: rgba(34,197,94,0.1); border: 1px solid var(--primary); border-radius: 8px; padding: 12px; font-size: 0.85rem; margin-bottom: 12px; }
 .consent-pending { background: rgba(245,158,11,0.1); border: 1px solid var(--warning); border-radius: 8px; padding: 12px; font-size: 0.85rem; margin-bottom: 12px; }
 .addenda-badge { background: rgba(245,158,11,0.15); border: 1px solid var(--warning); color: #fbbf24; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; }
+.addenda-badge.validated { background: rgba(34,197,94,0.15); border-color: var(--primary); color: var(--primary); }
 .open-shift-badge { background: rgba(239,68,68,0.15); border: 1px solid var(--danger); color: #fca5a5; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; }
+.addenda-item { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 10px; font-size: 0.85rem; text-align: left; }
+.addenda-item.validated { border-color: var(--primary); }
+.addenda-item.pending { border-color: var(--warning); }
 </style>
 
 <script>
@@ -255,7 +259,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 <p style="font-size:0.8rem; color:#94a3b8;">Estos turnos fueron iniciados pero nunca cerrados. No generan soporte ni pago. Coordinación debe gestionarlos con el auxiliar.</p>
                 <div id="openShiftsList"></div>
             </div>
-            <p style="font-size:0.8rem; color:#94a3b8;">💡 Descarga los soportes (PDF con firmas desde la base de datos), valídalos — la validación queda guardada en la BD. Si un soporte tiene ADDENDAS pendientes, no se podrá validar hasta revisarlas.</p>
+            <p style="font-size:0.8rem; color:#94a3b8;">💡 Flujo: descarga el PDF → revisa las ADDENDAS (botón 📜) y valídalas → recién entonces valida el soporte. La validación queda guardada en la BD.</p>
         </div>
 
         <div id="admin_edu" class="hidden">
@@ -834,6 +838,17 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     </div>
 </div>
 
+<div id="addendaReviewModal" class="modal-overlay-confirm" onclick="if(event.target===this) closeAddendaReviewModal()">
+    <div class="modal-confirm-box" style="border-color: var(--info); max-width: 560px;">
+        <div class="modal-icon" style="background: rgba(59,130,246,0.15); color: var(--info);"><i class="fas fa-clipboard-list"></i></div>
+        <h3 style="color: var(--info);">📜 Revisión de Addendas</h3>
+        <div id="addendaReviewBody" style="text-align:left;"></div>
+        <div class="modal-actions">
+            <button class="btn-primary btn-secondary" style="margin-top:0;" onclick="closeAddendaReviewModal()">Cerrar</button>
+        </div>
+    </div>
+</div>
+
 <div id="reviewModal" class="modal-overlay-confirm" onclick="if(event.target===this) event.stopPropagation()">
     <div class="modal-confirm-box" style="border-color: var(--warning);">
         <div class="modal-icon" style="background: rgba(245,158,11,0.15); color: var(--warning);"><i class="fas fa-clipboard-check"></i></div>
@@ -984,8 +999,9 @@ let _supportNotes = [], _supportShifts = [];
 let _editingProfId = null, _editingPatId = null;
 let profViewMode = 'active', patViewMode = 'active';
 let _consentsList = [], _consentPatientId = null;
-let _addendaTarget = null; // { type: 'shift'|'note', id }
+let _addendaTarget = null;
 let _myClosedShifts = [], _myNotes = [];
+let _addendaReviewTarget = null; // { type: 'shift'|'note', id }
 
 // ============ HELPERS ============
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
@@ -995,6 +1011,15 @@ function togglePass(id, btn) { const i = document.getElementById(id); i.type = i
 function escapeHtml(str) { if (str === null || str === undefined) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function forgotPassword() { document.getElementById('forgotModal').classList.add('show'); }
 function closeForgotModal() { document.getElementById('forgotModal').classList.remove('show'); }
+function addendaBadgeHtml(arr) {
+    if (!arr || !arr.length) return '';
+    const val = arr.filter(a => a.admin_validated).length;
+    const pend = arr.length - val;
+    let parts = [];
+    if (val) parts.push(`✔ ${val}`);
+    if (pend) parts.push(`⏳ ${pend}`);
+    return ` <span class="addenda-badge ${pend === 0 ? 'validated' : ''}">📜 ${arr.length} addenda(s) (${parts.join(' · ')})</span>`;
+}
 
 async function apiFetch(url, options = {}) {
     const token = localStorage.getItem('vital_token');
@@ -1295,19 +1320,19 @@ async function loadSupports() {
         _supportShifts = shifts;
         document.querySelector('#supportShiftsTable tbody').innerHTML = shifts.length ? shifts.map(s => {
             const estado = s.admin_validated ? '✅ Validado' : '⏳ Pendiente';
-            const addendas = Array.isArray(s.closing_addendas) ? s.closing_addendas.length : 0;
-            const addendaBadge = addendas > 0 ? ` <span class="addenda-badge">📜 ${addendas} addenda(s)</span>` : '';
+            const addendas = Array.isArray(s.closing_addendas) ? s.closing_addendas : [];
             const valBtn = s.admin_validated ? `<button class="btn-small btn-primary" disabled>Validado</button>` : `<button class="btn-small btn-primary" onclick="validateSupport('shift', '${s.id}', this)">Validar</button>`;
-            return `<tr><td>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}${addendaBadge}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${valBtn}</td></tr>`;
+            const addendaBtn = addendas.length ? `<button class="btn-small btn-info" onclick="openAddendaReview('shift', '${s.id}')"><i class="fas fa-clipboard-list"></i> 📜 Addendas</button>` : '';
+            return `<tr><td>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}${addendaBadgeHtml(addendas)}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn} ${valBtn}</td></tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay turnos cerrados</td></tr>';
         const r2 = await apiFetch(`${API_URL}/api/professional-records/list`); const d2 = await r2.json();
         _supportNotes = (d2.success ? d2.data : []) || [];
         document.querySelector('#supportNotesTable tbody').innerHTML = _supportNotes.length ? _supportNotes.map(n => {
             const estado = n.admin_validated ? '✅ Validado' : '⏳ Pendiente';
-            const addendas = Array.isArray(n.addendas) ? n.addendas.length : 0;
-            const addendaBadge = addendas > 0 ? ` <span class="addenda-badge">📜 ${addendas} addenda(s)</span>` : '';
+            const addendas = Array.isArray(n.addendas) ? n.addendas : [];
             const valBtn = n.admin_validated ? `<button class="btn-small btn-primary" disabled>Validado</button>` : `<button class="btn-small btn-primary" onclick="validateSupport('note', '${n.id}', this)">Validar</button>`;
-            return `<tr><td>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(n.patients?.full_name||'N/A')}${addendaBadge}</td><td>${escapeHtml(n.professionals?.full_name||'N/A')}</td><td style="font-size:0.8rem;">${escapeHtml(n.record_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${valBtn}</td></tr>`;
+            const addendaBtn = addendas.length ? `<button class="btn-small btn-info" onclick="openAddendaReview('note', '${n.id}')"><i class="fas fa-clipboard-list"></i> 📜 Addendas</button>` : '';
+            return `<tr><td>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(n.patients?.full_name||'N/A')}${addendaBadgeHtml(addendas)}</td><td>${escapeHtml(n.professionals?.full_name||'N/A')}</td><td style="font-size:0.8rem;">${escapeHtml(n.record_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn} ${valBtn}</td></tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay notas de evolución</td></tr>';
         await loadOpenShifts();
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error cargando soportes', 'error'); } }
@@ -1324,14 +1349,86 @@ async function validateSupport(type, id, btn) {
         } else showToast(d.message || 'Error al validar', 'error');
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
+
+// --- 📜 REVISIÓN Y VALIDACIÓN DE ADDENDAS (ADMIN) ---
+function openAddendaReview(type, id) {
+    const item = type === 'shift' ? _supportShifts.find(s => s.id === id) : _supportNotes.find(n => n.id === id);
+    if (!item) return showToast('Soporte no encontrado', 'error');
+    const addendas = type === 'shift' ? (item.closing_addendas || []) : (item.addendas || []);
+    if (!addendas.length) return showToast('Este soporte no tiene addendas', 'info');
+    _addendaReviewTarget = { type, id };
+    const quien = type === 'shift' ? 'auxiliar' : 'profesional';
+    const nombre = type === 'shift' ? (item.professionals?.full_name || 'Auxiliar') : (item.professionals?.full_name || 'Profesional');
+    document.getElementById('addendaReviewBody').innerHTML = addendas.map((a, i) => {
+        const cls = a.admin_validated ? 'validated' : 'pending';
+        const estadoTxt = a.admin_validated ? '<span style="color:var(--primary); font-weight:bold;">✔ Validada por coordinación</span>' : '<span style="color:var(--warning); font-weight:bold;">⏳ Pendiente de validación</span>';
+        return `<div class="addenda-item ${cls}">
+            <strong>ADDENDA #${i + 1}</strong> — ${new Date(a.fecha).toLocaleString('es-CO')}<br>
+            <small>Declarante: ${escapeHtml(a.auxName || a.profName || nombre)} — CC ${escapeHtml(a.auxDoc || a.profDoc || '')}</small>
+            <div style="background:var(--bg-dark); padding:10px; border-radius:6px; margin:8px 0;">
+                <strong>⚠️ OMITIÓ registrar:</strong><br>${escapeHtml(a.descriptionOmitted)}<br><br>
+                <strong>✔ LO REALMENTE OCURRIDO:</strong><br>${escapeHtml(a.descriptionActual)}
+            </div>
+            <div style="text-align:center; margin-bottom:8px;">${estadoTxt}</div>
+            ${a.admin_validated ? '' : `<button class="btn-primary btn-primary" style="margin-top:0;" onclick="validateOneAddenda(${i}, this)"><i class="fas fa-check"></i> ✔ Validar esta addenda</button>`}
+        </div>`;
+    }).join('') + `<p style="font-size:0.75rem; color:#94a3b8; text-align:center;">El soporte podrá validarse cuando TODAS sus addendas estén validadas.</p>`;
+    document.getElementById('addendaReviewModal').classList.add('show');
+}
+function closeAddendaReviewModal() { document.getElementById('addendaReviewModal').classList.remove('show'); _addendaReviewTarget = null; }
+async function validateOneAddenda(idx, btn) {
+    if (!_addendaReviewTarget) return;
+    const { type, id } = _addendaReviewTarget;
+    const ruta = type === 'shift' ? 'shifts' : 'professional-records';
+    try {
+        const r = await apiFetch(`${API_URL}/api/${ruta}/${id}/addenda/${idx}/validate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) });
+        const d = await r.json();
+        if (d.success) {
+            showToast('✅ ' + d.message);
+            // Actualizar en memoria
+            const item = type === 'shift' ? _supportShifts.find(s => s.id === id) : _supportNotes.find(n => n.id === id);
+            const arr = type === 'shift' ? (item.closing_addendas || []) : (item.addendas || []);
+            if (arr[idx]) arr[idx].admin_validated = true;
+            // Refrescar el modal y las tablas
+            openAddendaReview(type, id);
+            refreshSupportRows();
+        } else showToast(d.message || 'Error al validar', 'error');
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
+}
+function refreshSupportRows() {
+    // Refresca solo las celdas de estado y badges de las tablas de soportes sin recargar todo
+    const rowsShifts = document.querySelectorAll('#supportShiftsTable tbody tr');
+    _supportShifts.forEach((s, i) => {
+        const row = rowsShifts[i]; if (!row) return;
+        const addendas = Array.isArray(s.closing_addendas) ? s.closing_addendas : [];
+        const pend = addendas.filter(a => !a.admin_validated).length;
+        row.querySelector('td:nth-child(2)').innerHTML = `${escapeHtml(s.patients?.full_name||'N/A')}${addendaBadgeHtml(addendas)}`;
+        const valBtnCell = row.querySelector('td:nth-child(6)');
+        const estadoCell = row.querySelector('td:nth-child(5)');
+        if (pend === 0 && !s.admin_validated) {
+            estadoCell.textContent = '⏳ Pendiente';
+            if (valBtnCell && !valBtnCell.querySelector('.btn-primary:not([disabled])')) {
+                valBtnCell.insertAdjacentHTML('beforeend', ` <button class="btn-small btn-primary" onclick="validateSupport('shift', '${s.id}', this)">Validar</button>`);
+            }
+        }
+    });
+    const rowsNotes = document.querySelectorAll('#supportNotesTable tbody tr');
+    _supportNotes.forEach((n, i) => {
+        const row = rowsNotes[i]; if (!row) return;
+        const addendas = Array.isArray(n.addendas) ? n.addendas : [];
+        const pend = addendas.filter(a => !a.admin_validated).length;
+        row.querySelector('td:nth-child(2)').innerHTML = `${escapeHtml(n.patients?.full_name||'N/A')}${addendaBadgeHtml(addendas)}`;
+        const valBtnCell = row.querySelector('td:nth-child(6)');
+        const estadoCell = row.querySelector('td:nth-child(5)');
+        if (pend === 0 && !n.admin_validated) {
+            estadoCell.textContent = '⏳ Pendiente';
+            if (valBtnCell && !valBtnCell.querySelector('.btn-primary:not([disabled])')) {
+                valBtnCell.insertAdjacentHTML('beforeend', ` <button class="btn-small btn-primary" onclick="validateSupport('note', '${n.id}', this)">Validar</button>`);
+            }
+        }
+    });
+}
 async function loadOpenShifts() {
-    try {
-        const r = await apiFetch(`${API_URL}/api/scheduled-shifts`); // placeholder call for origin consistency
-    } catch (e) {}
-    try {
-        const r = await apiFetch(`${API_URL}/api/shifts/closed`);
-    } catch (e) {}
-    // Los turnos abiertos se derivan de la agenda + turnos activos: usamos el endpoint open-check por profesional conocido
     try {
         const auxiliares = profsRegistry.filter(p => p.specialties?.name === 'AUXILIAR_ENFERMERIA' && p.is_active !== false);
         let open = [];
@@ -1369,7 +1466,6 @@ function drawLegalSignatures(doc, y, d) {
     doc.text(`Documento generado electrónicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Registro clínico oficial. Tratamiento de datos personales conforme a la Ley 1581 de 2012.`, 105, y + 27, null, null, 'center');
 }
 
-// --- 📜 Addendas en PDF (sección integrada) ---
 function drawAddendas(doc, y, addendas, whoLabel) {
     if (!addendas || !addendas.length) return y;
     if (y > 240) { doc.addPage(); y = 30; }
@@ -1529,7 +1625,6 @@ async function loadSuggestedVisits() {
         const sugeridas = [];
         notas.forEach(n => {
             const vs = n.vital_signs || {};
-            // La próxima visita se guardó dentro del plan concatenado; intentamos extraer la fecha más reciente del texto
             const plan = `${n.plan || ''}`;
             const match = plan.match(/Próxima visita:\s*(\d{4}-\d{2}-\d{2})/i);
             if (match) sugeridas.push({ fecha: match[1], paciente: n.patients?.full_name || 'N/A', profesional: n.professionals?.full_name || 'N/A', specialty: n.professionals?.specialties?.name || n.professionals?.specialty || '' });
@@ -1547,7 +1642,6 @@ async function loadSuggestedVisits() {
 // ============ ADMIN: FINANZAS ============
 function toggleLiquidationType() {
     const tipo = getVal('liquidationType');
-    const prof = profsRegistry.find(p => p.id === getVal('liquidationProf'));
     showToast(tipo === 'visits' ? '🏥 Modo Visitas: cuenta notas VALIDADAS × tarifa de la especialidad' : '⏱️ Modo Turnos: calcula horas de turnos cerrados');
 }
 async function loadFinanceData() {
@@ -1781,9 +1875,8 @@ function renderMyClosedShifts() {
         const addendas = Array.isArray(s.closing_addendas) ? s.closing_addendas : [];
         const horasDesdeCierre = s.end_time ? (Date.now() - new Date(s.end_time).getTime()) / 3600000 : 999;
         const dentroDePlazo = horasDesdeCierre <= 24;
-        const badge = addendas.length ? `<span class="addenda-badge">📜 ${addendas.length} addenda(s)</span>` : '';
         const addendaBtn = dentroDePlazo ? `<button class="btn-small btn-warning" onclick="openAddendaModal('shift', '${s.id}', '${escapeHtml(s.patients?.full_name||'')}', '${escapeHtml(new Date(s.end_time).toLocaleString('es-CO'))}')"><i class="fas fa-file-pen"></i> 📜 Declarar addenda</button>` : `<button class="btn-small btn-secondary" disabled title="Venció el plazo de 24 horas">📜 Plazo vencido</button>`;
-        return `<div class="sub-activity"><strong>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</strong> — ${escapeHtml(s.patients?.full_name||'')} ${badge}<br><small>Turno: ${escapeHtml(s.shift_type||'')} · ${dentroDePlazo ? '⏰ Addenda disponible' : '⏰ Plazo de 24h vencido'}</small><br><button class="btn-small btn-info" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn}</div>`;
+        return `<div class="sub-activity"><strong>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</strong> — ${escapeHtml(s.patients?.full_name||'')}${addendaBadgeHtml(addendas)}<br><small>Turno: ${escapeHtml(s.shift_type||'')} · ${dentroDePlazo ? '⏰ Addenda disponible' : '⏰ Plazo de 24h vencido'}</small><br><button class="btn-small btn-info" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn}</div>`;
     }).join('') : '<p style="color:#94a3b8; font-size:0.85rem;">Aún no tienes turnos cerrados.</p>';
 }
 
@@ -1801,9 +1894,8 @@ function renderMyNotes() {
         const addendas = Array.isArray(n.addendas) ? n.addendas : [];
         const horasDesdeCreacion = (Date.now() - new Date(n.created_at).getTime()) / 3600000;
         const dentroDePlazo = horasDesdeCreacion <= 24;
-        const badge = addendas.length ? `<span class="addenda-badge">📜 ${addendas.length} addenda(s)</span>` : '';
         const addendaBtn = dentroDePlazo ? `<button class="btn-small btn-warning" onclick="openAddendaModal('note', '${n.id}', '${escapeHtml(n.patients?.full_name||'')}', '${escapeHtml(new Date(n.created_at).toLocaleString('es-CO'))}')"><i class="fas fa-file-pen"></i> 📜 Declarar addenda</button>` : `<button class="btn-small btn-secondary" disabled title="Venció el plazo de 24 horas">📜 Plazo vencido</button>`;
-        return `<div class="sub-activity"><strong>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</strong> — ${escapeHtml(n.patients?.full_name||'')} ${badge}<br><small>${escapeHtml(n.record_type||'Nota')} · ${dentroDePlazo ? '⏰ Addenda disponible' : '⏰ Plazo de 24h vencido'}</small><br><button class="btn-small btn-info" onclick="downloadMyNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn}</div>`;
+        return `<div class="sub-activity"><strong>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</strong> — ${escapeHtml(n.patients?.full_name||'')}${addendaBadgeHtml(addendas)}<br><small>${escapeHtml(n.record_type||'Nota')} · ${dentroDePlazo ? '⏰ Addenda disponible' : '⏰ Plazo de 24h vencido'}</small><br><button class="btn-small btn-info" onclick="downloadMyNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn}</div>`;
     }).join('') : '<p style="color:#94a3b8; font-size:0.85rem;">Aún no tienes notas de evolución.</p>';
 }
 function downloadMyNotePDF(noteId) {
@@ -1832,7 +1924,6 @@ function toggleCustomShift() { document.getElementById('customShiftTimes').class
 
 async function startShift() {
     if (!selectedPatient) return showToast('Selecciona un paciente primero', 'error');
-    // 🔒 Verificación previa: turnos abiertos (doble turno y huérfanos)
     try {
         const checkRes = await apiFetch(`${API_URL}/api/shifts/open-check/${currentUser.id}`);
         const checkData = await checkRes.json();
