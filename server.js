@@ -145,7 +145,7 @@ app.patch('/api/professionals/:id', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// 📧 CAMBIO DE CORREO (solo admin)
+// 📧 CAMBIO DE CORREO
 app.patch('/api/professionals/:id/change-email', async (req, res) => {
     try {
         const { newEmail, newEmailConfirm } = req.body;
@@ -218,6 +218,58 @@ app.patch('/api/patients/:id/reactivate', async (req, res) => {
 });
 
 // ==========================================
+// 📋 FICHA DE CUIDADO DEL PACIENTE (NUEVO)
+// ==========================================
+app.get('/api/care-profile/:patientId', async (req, res) => {
+    try {
+        const { data, error } = await supabase.from('patient_care_profiles').select('*, professionals(full_name)').eq('patient_id', req.params.patientId).maybeSingle();
+        if (error) throw error;
+        res.json({ success: true, data: data || null });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.post('/api/care-profile/:patientId', async (req, res) => {
+    try {
+        const { patientId } = req.params;
+        const { routines, particularities, alerts, medicationManager, createdBy } = req.body;
+        const payload = { routines: routines || null, particularities: particularities || null, alerts: alerts || null, medication_manager: medicationManager || null, created_by: createdBy || null, updated_at: new Date().toISOString() };
+        const { data: existing } = await supabase.from('patient_care_profiles').select('id').eq('patient_id', patientId).maybeSingle();
+        if (existing) {
+            const { error } = await supabase.from('patient_care_profiles').update(payload).eq('patient_id', patientId);
+            if (error) throw error;
+            res.json({ success: true, message: '📋 Ficha de cuidado actualizada' });
+        } else {
+            const { error } = await supabase.from('patient_care_profiles').insert([{ patient_id: patientId, ...payload }]);
+            if (error) throw error;
+            res.json({ success: true, message: '📋 Ficha de cuidado creada' });
+        }
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// ==========================================
+// 🤝 PASE DE TURNO — datos de entrega del último turno cerrado (NUEVO)
+// ==========================================
+app.get('/api/shifts/handoff/:patientId', async (req, res) => {
+    try {
+        const { data: lastShift } = await supabase.from('shifts')
+            .select('id, end_time, patient_delivered_status, patient_delivered_notes, pending_tasks, exceptional_closure, professionals(full_name)')
+            .eq('patient_id', req.params.patientId)
+            .eq('is_closed', true)
+            .order('end_time', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        if (!lastShift) return res.json({ success: true, data: null });
+        const { data: lastSbar } = await supabase.from('clinical_records')
+            .select('sbar_situation, sbar_background, sbar_assessment, sbar_recommendation, created_at')
+            .eq('shift_id', lastShift.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
+        res.json({ success: true, data: { shift: lastShift, sbar: lastSbar || null } });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// ==========================================
 // 5. CONSENTIMIENTO GENERAL
 // ==========================================
 app.get('/api/consents', async (req, res) => {
@@ -250,6 +302,7 @@ app.delete('/api/patients/:id', async (req, res) => {
         const { id } = req.params;
         await supabase.from('admission_consents').delete().eq('patient_id', id);
         await supabase.from('treatment_plans').delete().eq('patient_id', id);
+        await supabase.from('patient_care_profiles').delete().eq('patient_id', id);
         await supabase.from('clinical_records').delete().eq('patient_id', id);
         await supabase.from('professional_records').delete().eq('patient_id', id);
         await supabase.from('adverse_events').delete().eq('patient_id', id);
@@ -320,10 +373,10 @@ app.get('/api/shifts/open-check/:profId', async (req, res) => {
 });
 
 app.post('/api/shifts/start', async (req, res) => {
-    try { const { patientId, professionalId, shiftType, patientStatus, patientNotes, customStartTime, customEndTime } = req.body; if (!patientId || !professionalId || !shiftType) return res.status(400).json({ success: false, message: 'Datos incompletos' });
+    try { const { patientId, professionalId, shiftType, patientStatus, patientNotes, customStartTime, customEndTime, handoffConfirmed } = req.body; if (!patientId || !professionalId || !shiftType) return res.status(400).json({ success: false, message: 'Datos incompletos' });
         const { data: openShifts } = await supabase.from('shifts').select('id, start_time, patients(full_name)').eq('professional_id', professionalId).eq('is_closed', false);
         if (openShifts && openShifts.length > 0) return res.status(409).json({ success: false, message: `⚠️ Ya tienes un turno abierto desde el ${new Date(openShifts[0].start_time).toLocaleString('es-CO')} con el paciente ${openShifts[0].patients?.full_name || 'N/A'}. Ciérralo antes de iniciar otro.` });
-        const { data, error } = await supabase.from('shifts').insert([{ patient_id: patientId, professional_id: professionalId, shift_type: shiftType, start_time: customStartTime ? new Date(customStartTime).toISOString() : new Date().toISOString(), end_time: customEndTime ? new Date(customEndTime).toISOString() : null, patient_received_status: patientStatus || null, patient_received_notes: patientNotes || null, is_closed: false }]).select().single(); if (error) throw error; res.json({ success: true, message: 'Turno iniciado', data: { id: data.id } });
+        const { data, error } = await supabase.from('shifts').insert([{ patient_id: patientId, professional_id: professionalId, shift_type: shiftType, start_time: customStartTime ? new Date(customStartTime).toISOString() : new Date().toISOString(), end_time: customEndTime ? new Date(customEndTime).toISOString() : null, patient_received_status: patientStatus || null, patient_received_notes: patientNotes || null, is_closed: false, handoff_confirmed: handoffConfirmed || null }]).select().single(); if (error) throw error; res.json({ success: true, message: 'Turno iniciado', data: { id: data.id } });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
@@ -373,7 +426,7 @@ app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
 });
 
 // ==========================================
-// 🔓 CIERRE EXCEPCIONAL POR COORDINACIÓN (NUEVO)
+// 🔓 CIERRE EXCEPCIONAL POR COORDINACIÓN
 // ==========================================
 app.post('/api/shifts/:id/exceptional-close', async (req, res) => {
     try {
@@ -382,7 +435,7 @@ app.post('/api/shifts/:id/exceptional-close', async (req, res) => {
         if (!professionalId || !reason || !whatHappened || !signature) return res.status(400).json({ success: false, message: 'Datos del cierre excepcional incompletos' });
         const { data: prof } = await supabase.from('professionals').select('full_name, document_number').eq('id', professionalId).single();
         if (!prof) return res.status(404).json({ success: false, message: 'Profesional no encontrado' });
-        const { data: shift, error: errS } = await supabase.from('shifts').select('id, is_closed, professional_id, patient_id').eq('id', id).single();
+        const { data: shift, error: errS } = await supabase.from('shifts').select('id, is_closed, professional_id').eq('id', id).single();
         if (errS || !shift) return res.status(404).json({ success: false, message: 'Turno no encontrado' });
         if (shift.is_closed) return res.status(400).json({ success: false, message: 'Este turno ya está cerrado' });
         if (shift.professional_id !== professionalId) return res.status(403).json({ success: false, message: 'Solo el auxiliar dueño del turno puede declarar el cierre excepcional' });
@@ -555,7 +608,7 @@ app.post('/api/adverse-events', async (req, res) => {
 });
 
 // ==========================================
-// 🎯 PLANES DE TRATAMIENTO (NUEVO)
+// 🎯 PLANES DE TRATAMIENTO
 // ==========================================
 app.get('/api/treatment-plans', async (req, res) => {
     try {
@@ -580,7 +633,6 @@ app.post('/api/treatment-plans', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// Uso de sesión: cuenta las notas del profesional en la especialidad del plan desde la creación del plan
 app.get('/api/treatment-plans/usage/:planId', async (req, res) => {
     try {
         const { data: plan } = await supabase.from('treatment_plans').select('*').eq('id', req.params.planId).single();
@@ -629,7 +681,6 @@ app.post('/api/professional-records', async (req, res) => {
     try {
         const { patientId, professionalId, recordType, weight, height, imc, vitalSigns, subjective, objective, analysis, plan, photoData, professionalSignature, familySignature, familyName, familyId } = req.body;
         if (!patientId || !professionalId) return res.status(400).json({ success: false, message: 'Datos incompletos' });
-        // 🎯 Verificar plan de tratamiento activo para este paciente+profesional
         let planInfo = null;
         const { data: plans } = await supabase.from('treatment_plans').select('*').eq('patient_id', patientId).eq('professional_id', professionalId).eq('is_active', true);
         if (plans && plans.length) {
@@ -716,11 +767,28 @@ app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
 });
 
 // ==========================================
-// 12. AGENDA Y MENSAJERÍA
+// 12. AGENDA (con validación de solapamiento)
 // ==========================================
 app.get('/api/scheduled-shifts', async (req, res) => { try { const { data, error } = await supabase.from('scheduled_shifts').select('*, patients(full_name), professionals(full_name)').order('shift_date', { ascending: true }); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
 app.get('/api/scheduled-shifts/professional/:profId', async (req, res) => { try { const { data, error } = await supabase.from('scheduled_shifts').select('*, patients(*, altitude_profiles(city_name))').eq('professional_id', req.params.profId).eq('status', 'Programado').order('shift_date', { ascending: true }); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
-app.post('/api/scheduled-shifts', async (req, res) => { try { const { patientId, professionalId, shiftDate, shiftType } = req.body; if (!patientId || !professionalId || !shiftDate || !shiftType) return res.status(400).json({ success: false, message: 'Datos de agenda incompletos' }); const { error } = await supabase.from('scheduled_shifts').insert([{ patient_id: patientId, professional_id: professionalId, shift_date: shiftDate, shift_type: shiftType, status: 'Programado' }]); if (error) throw error; res.json({ success: true, message: 'Turno programado exitosamente' }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
+app.post('/api/scheduled-shifts', async (req, res) => {
+    try {
+        const { patientId, professionalId, shiftDate, shiftType } = req.body;
+        if (!patientId || !professionalId || !shiftDate || !shiftType) return res.status(400).json({ success: false, message: 'Datos de agenda incompletos' });
+        // 🆕 VALIDACIÓN DE SOLAPAMIENTO: el profesional ya tiene un turno publicado ese día
+        const { data: existing } = await supabase.from('scheduled_shifts')
+            .select('id, shift_type, patients(full_name)')
+            .eq('professional_id', professionalId)
+            .eq('shift_date', shiftDate)
+            .eq('status', 'Programado');
+        if (existing && existing.length > 0) {
+            return res.status(409).json({ success: false, message: `⚠️ SOLAPAMIENTO: esa persona ya tiene un turno publicado el ${new Date(shiftDate + 'T12:00:00').toLocaleDateString('es-CO')} (${existing[0].shift_type} con ${existing[0].patients?.full_name || 'un paciente'}). No puede cubrir dos pacientes a la vez.` });
+        }
+        const { error } = await supabase.from('scheduled_shifts').insert([{ patient_id: patientId, professional_id: professionalId, shift_date: shiftDate, shift_type: shiftType, status: 'Programado' }]);
+        if (error) throw error;
+        res.json({ success: true, message: 'Turno programado exitosamente' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
 
 app.get('/api/messages', async (req, res) => { try { const { data, error } = await supabase.from('internal_messages').select('*, patients(full_name)').order('created_at', { ascending: true }).limit(100); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
 app.post('/api/messages', async (req, res) => { try { const { patientId, shiftId, senderId, senderName, message, isAlert } = req.body; if (!senderId || !message) return res.status(400).json({ success: false, message: 'Mensaje vacío o sin remitente' }); const { error } = await supabase.from('internal_messages').insert([{ patient_id: patientId || null, shift_id: shiftId || null, sender_id: senderId, sender_name: senderName || 'Usuario', message: message, is_alert: isAlert || false, is_read: false }]); if (error) throw error; res.json({ success: true, message: 'Mensaje enviado' }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
