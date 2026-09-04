@@ -126,6 +126,13 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .addenda-item { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin-bottom: 10px; font-size: 0.85rem; text-align: left; }
 .addenda-item.validated { border-color: var(--primary); }
 .addenda-item.pending { border-color: var(--warning); }
+.plan-progress { background: var(--bg-dark); border-radius: 8px; padding: 12px; margin-bottom: 10px; border: 1px solid var(--border); }
+.plan-bar { background: var(--border); border-radius: 10px; height: 12px; overflow: hidden; margin: 6px 0; }
+.plan-bar-fill { height: 100%; background: var(--primary); border-radius: 10px; transition: width 0.4s; }
+.plan-bar-fill.warn { background: var(--warning); }
+.plan-banner { background: rgba(59,130,246,0.12); border: 2px solid var(--info); border-radius: 12px; padding: 14px; margin-bottom: 16px; font-size: 0.95rem; }
+.plan-banner.warn { background: rgba(245,158,11,0.12); border-color: var(--warning); }
+.exceptional-badge { background: rgba(239,68,68,0.15); border: 1px solid var(--danger); color: #fca5a5; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; }
 </style>
 
 <script>
@@ -179,6 +186,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
         <div class="tabs" id="adminTabs">
             <div class="tab active" onclick="showAdminTab('prof', this)">👥 Profesionales</div>
             <div class="tab" onclick="showAdminTab('pat', this)">🏥 Pacientes</div>
+            <div class="tab" onclick="showAdminTab('plans', this)">🎯 Planes</div>
             <div class="tab" onclick="showAdminTab('supports', this)">🧾 Soportes</div>
             <div class="tab" onclick="showAdminTab('edu', this)">🎓 Educación</div>
             <div class="tab" onclick="showAdminTab('reports', this)">📄 Informes</div>
@@ -244,6 +252,35 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
             </div>
         </div>
 
+        <div id="admin_plans" class="hidden">
+            <div class="card">
+                <h3 style="cursor:default;">🎯 Nuevo Plan de Tratamiento</h3>
+                <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:10px;">Los planes los crean <strong>Administración y Enfermería Jefe</strong>. Cada nota guardada por el profesional descuenta una sesión automáticamente. Las notas FUERA de plan quedan marcadas para tu revisión.</p>
+                <div class="grid">
+                    <div class="form-group"><label>Paciente *</label><select id="planPatient"><option value="">Seleccionar...</option></select></div>
+                    <div class="form-group"><label>Profesional asignado (opcional)</label><select id="planProf"><option value="">Cualquiera de la especialidad</option></select></div>
+                    <div class="form-group"><label>Especialidad del plan *</label>
+                        <select id="planSpec">
+                            <option value="PSICOLOGIA">Psicología</option><option value="MEDICINA">Medicina</option>
+                            <option value="FISIOTERAPIA">Fisioterapia</option><option value="FONOAUDIOLOGIA">Fonoaudiología</option>
+                            <option value="TERAPIA_OCUPACIONAL">Terapia Ocupacional</option><option value="TERAPIA_RESPIRATORIA">Terapia Respiratoria</option>
+                            <option value="NUTRICION">Nutrición</option><option value="TRABAJO_SOCIAL">Trabajo Social</option>
+                            <option value="ENFERMERIA_JEFE">Enfermería Jefe</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Sesiones autorizadas *</label><input type="number" id="planSessions" min="1" placeholder="Ej: 8"></div>
+                    <div class="form-group"><label>Vigente hasta (opcional)</label><input type="date" id="planValid"></div>
+                    <div class="form-group"><label>Notas del plan</label><input type="text" id="planNotes" placeholder="Ej: Autorización EPS #12345"></div>
+                </div>
+                <button class="btn-primary" onclick="createPlan()"><i class="fas fa-bullseye"></i> Crear Plan</button>
+            </div>
+            <div class="card">
+                <h3 style="cursor:default;">📋 Planes Activos</h3>
+                <button class="btn-small btn-info" onclick="loadPlans()"><i class="fas fa-sync"></i> Actualizar</button>
+                <div id="plansList"></div>
+            </div>
+        </div>
+
         <div id="admin_supports" class="hidden">
             <div class="card">
                 <h3 style="cursor:default;">🧾 Turnos Cerrados (Auxiliares) — Soportes para Facturación</h3>
@@ -255,11 +292,10 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 <table id="supportNotesTable"><thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th><th>Tipo</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
             </div>
             <div class="card" style="border-color: var(--danger);">
-                <h3 style="cursor:default; color: var(--danger);">👻 Turnos Abiertos (Sin Cerrar) — Requieren Gestión</h3>
-                <p style="font-size:0.8rem; color:#94a3b8;">Estos turnos fueron iniciados pero nunca cerrados. No generan soporte ni pago. Coordinación debe gestionarlos con el auxiliar.</p>
+                <h3 style="cursor:default; color: var(--danger);">👻 Turnos Abiertos (Sin Cerrar)</h3>
+                <p style="font-size:0.8rem; color:#94a3b8;">Turnos iniciados y nunca cerrados de forma normal. No generan soporte ni pago hasta que se gestionen.</p>
                 <div id="openShiftsList"></div>
             </div>
-            <p style="font-size:0.8rem; color:#94a3b8;">💡 Flujo: descarga el PDF → revisa las ADDENDAS (botón 📜) y valídalas → recién entonces valida el soporte. La validación queda guardada en la BD.</p>
         </div>
 
         <div id="admin_edu" class="hidden">
@@ -324,7 +360,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 <h3 style="cursor:default;">🧾 Liquidación de Honorarios (Contratistas)</h3>
                 <div class="grid">
                     <div class="form-group"><label>Tipo de Liquidación</label>
-                        <select id="liquidationType" onchange="toggleLiquidationType()">
+                        <select id="liquidationType">
                             <option value="shifts">⏱️ Por Turnos (Horas — Auxiliares)</option>
                             <option value="visits">🏥 Por Visitas (Notas validadas — Profesionales)</option>
                         </select>
@@ -365,7 +401,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
         <div id="admin_agenda" class="hidden">
             <div class="card">
                 <h3 style="cursor:default;">📅 Próximas Visitas Sugeridas por Profesionales</h3>
-                <p style="font-size:0.8rem; color:#94a3b8;">Estas son las fechas que los profesionales dejaron en sus notas de evolución como "Próxima visita". Úsalas para publicar los turnos siguientes.</p>
+                <p style="font-size:0.8rem; color:#94a3b8;">Fechas que los profesionales dejaron en sus notas como "Próxima visita". Úsalas para publicar los turnos siguientes.</p>
                 <div id="suggestedVisitsList"></div>
             </div>
             <div class="card">
@@ -379,7 +415,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                     </div>
                 </div>
                 <div id="schedConsentWarn" class="hidden" style="font-size:0.8rem; margin-top:-8px; margin-bottom:10px;"></div>
-                <p style="font-size:0.8rem; color:#94a3b8;">💡 Si eliges un especialista (no auxiliar), se agenda automáticamente como <strong>Visita Domiciliaria</strong>: la duración real se registra en su nota de evolución. Los turnos de 6h-24h son para auxiliares de enfermería.</p>
+                <p style="font-size:0.8rem; color:#94a3b8;">💡 Si eliges un especialista (no auxiliar), se agenda automáticamente como <strong>Visita Domiciliaria</strong>: la duración real se registra en su nota de evolución.</p>
                 <button class="btn-primary" onclick="createScheduledShift()"><i class="fas fa-calendar-plus"></i> Publicar</button>
             </div>
             <div class="card"><h3 style="cursor:default;">Turnos y Visitas Publicados</h3><table id="schedTable"><thead><tr><th>Fecha</th><th>Paciente</th><th>Profesional</th><th>Tipo</th><th>Estado</th></tr></thead><tbody></tbody></table></div>
@@ -400,8 +436,8 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     <div id="auxPanel" class="hidden">
         <div id="auxPatientSelection" class="card">
             <div class="card" style="border-color: var(--warning);">
-                <h3 style="cursor:default;">📜 Mis Turnos Cerrados <span style="font-size:0.75rem; color:#94a3b8;">(para addendas y re-descargar PDF)</span></h3>
-                <p style="font-size:0.8rem; color:#94a3b8;">⚠️ ¿Se te olvidó registrar algo en un turno de las últimas 24 horas? Decláralo aquí con una ADDENDA firmada. La responsabilidad asumida a tiempo protege tu trabajo.</p>
+                <h3 style="cursor:default;">📜 Mis Turnos Cerrados</h3>
+                <p style="font-size:0.8rem; color:#94a3b8;">⚠️ ¿Se te olvidó registrar algo en un turno de las últimas 24 horas? Decláralo con una ADDENDA firmada.</p>
                 <div id="auxClosedShiftsList"></div>
             </div>
             <h3 style="cursor:default;">📅 Turnos Disponibles para Aceptar</h3>
@@ -621,7 +657,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 
     <div id="profPanel" class="hidden">
         <div class="card">
-            <h3 style="cursor:default;">📜 Mis Notas de Evolución <span style="font-size:0.75rem; color:#94a3b8;">(para addendas y re-descargar PDF)</span></h3>
+            <h3 style="cursor:default;">📜 Mis Notas de Evolución</h3>
             <p style="font-size:0.8rem; color:#94a3b8;">⚠️ ¿Se te olvidó consignar algo en una nota de las últimas 24 horas? Decláralo con una ADDENDA firmada.</p>
             <div id="profMyNotesList"></div>
         </div>
@@ -630,6 +666,8 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
         <div id="profClinicalForm" class="hidden">
             <div class="card">
                 <h3 style="cursor:default;">Nota de Evolución - <span id="profPatientName" style="color: var(--primary);"></span></h3>
+
+                <div id="planBanner" class="plan-banner hidden"></div>
 
                 <div id="profVitalsSection" class="hidden">
                     <h4>Signos Vitales y Antropometría</h4>
@@ -824,12 +862,30 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     </div>
 </div>
 
+<div id="exceptionalModal" class="modal-overlay-confirm" onclick="if(event.target===this) event.stopPropagation()">
+    <div class="modal-confirm-box" style="border-color: var(--danger); max-width: 520px;">
+        <div class="modal-icon" style="background: rgba(239,68,68,0.15); color: var(--danger);"><i class="fas fa-triangle-exclamation"></i></div>
+        <h3 style="color: var(--danger);">🔓 CIERRE EXCEPCIONAL DE TURNO</h3>
+        <div id="exceptionalInfo" style="font-size:0.8rem; color:#94a3b8; margin-bottom:10px; text-align:center;"></div>
+        <div style="font-size:0.8rem; color:#fbbf24; margin-bottom:12px; background:var(--bg-dark); padding:10px; border-radius:8px; text-align:left;">⚖️ Este turno se cerrará SIN las firmas del día (no se pueden fingir). Tu declaración formal quedará registrada con fecha y hora, y la coordinación deberá APROBARLA. Úsalo solo cuando genuinamente no fue posible cerrar de forma normal.</div>
+        <div style="text-align:left;">
+            <div class="form-group"><label>¿Por qué NO se pudo cerrar el turno? *</label><textarea id="excReason" rows="2" placeholder="Ej: Se descargó completamente mi celular y no tenía cómo cargarlo"></textarea></div>
+            <div class="form-group"><label>¿Qué ocurrió realmente con el paciente? *</label><textarea id="excWhat" rows="3" placeholder="Ej: El paciente estuvo estable durante todo el turno. Lo entregué al familiar a las 8:00 p.m., quien confirmó que todo estaba bien."></textarea></div>
+            <div class="form-group"><label>✍️ Tu firma digital (obligatoria) *</label><canvas id="excSigCanvas" class="signature-canvas"></canvas><button class="btn-small btn-secondary" onclick="clearSig('excSigCanvas')">Borrar</button></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-primary btn-secondary" style="margin-top:0;" onclick="closeExceptionalModal()">Cancelar</button>
+            <button class="btn-primary btn-danger" id="excSaveBtn" style="margin-top:0;">🔓 Firmar y Cerrar Excepcionalmente</button>
+        </div>
+    </div>
+</div>
+
 <div id="addendaModal" class="modal-overlay-confirm" onclick="if(event.target===this) closeAddendaModal()">
     <div class="modal-confirm-box" style="border-color: var(--warning); max-width: 520px;">
         <div class="modal-icon" style="background: rgba(245,158,11,0.15); color: var(--warning);"><i class="fas fa-file-pen"></i></div>
         <h3 style="color: var(--warning);">📜 ADDENDA — Declaración de Omisión</h3>
         <div id="addendaInfo" style="font-size:0.8rem; color:#94a3b8; margin-bottom:10px; text-align:center;"></div>
-        <div style="font-size:0.8rem; color:#94a3b8; margin-bottom:12px; background:var(--bg-dark); padding:10px; border-radius:8px; text-align:left;">⚖️ El sistema redactará una declaración formal con TU nombre indicando que omitiste registrar información. Esta queda con fecha y hora fijas, requiere tu firma digital, y será validada por coordinación. El error asumido a tiempo protege tu trabajo; el ocultado lo destruye.</div>
+        <div style="font-size:0.8rem; color:#94a3b8; margin-bottom:12px; background:var(--bg-dark); padding:10px; border-radius:8px; text-align:left;">⚖️ El sistema redactará una declaración formal con TU nombre indicando que omitiste registrar información. Esta queda con fecha y hora fijas, requiere tu firma digital, y será validada por coordinación.</div>
         <div id="addendaFields" style="text-align:left;"></div>
         <div class="modal-actions">
             <button class="btn-primary btn-secondary" style="margin-top:0;" onclick="closeAddendaModal()">Cancelar</button>
@@ -855,7 +911,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
         <h3 id="reviewTitle" style="color: var(--warning);">🔒 Revisión de Cierre de Turno</h3>
         <div id="reviewSummary" style="background: var(--bg-dark); padding: 12px; border-radius: 8px; font-size: 0.85rem; margin-bottom: 12px; text-align: left;"></div>
         <div id="reviewAlerts"></div>
-        <p style="font-size:0.75rem; color:#94a3b8; text-align:center;">⚖️ La firma del familiar debe ser HOY. Un registro posterior al cuidado pierde validez legal. Las advertencias que ignores quedarán registradas con fecha y hora.</p>
+        <p style="font-size:0.75rem; color:#94a3b8; text-align:center;">⚖️ La firma del familiar debe ser HOY. Las advertencias que ignores quedarán registradas con fecha y hora.</p>
         <div class="modal-actions">
             <button class="btn-primary btn-secondary" style="margin-top:0;" onclick="closeReviewModal()">← Volver y completar</button>
             <button class="btn-primary" id="reviewConfirmBtn" style="margin-top:0;">Confirmar Cierre</button>
@@ -879,10 +935,28 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
         <div class="modal-icon" style="background: rgba(59,130,246,0.15); color: var(--info);"><i class="fas fa-user-pen"></i></div>
         <h3 style="color: var(--info);">Editar Profesional</h3>
         <div id="editProfFields" style="text-align:left;"></div>
-        <p style="font-size:0.75rem; color:#94a3b8;">⚠️ La contraseña solo se cambia si escribes una nueva. El correo no se puede modificar (es el identificador de acceso).</p>
+        <button class="btn-primary btn-warning" style="margin-top:6px;" onclick="openChangeEmailModal()"><i class="fas fa-envelope-open-text"></i> 📧 Cambiar correo de acceso</button>
+        <p style="font-size:0.75rem; color:#94a3b8;">⚠️ La contraseña solo se cambia si escribes una nueva.</p>
         <div class="modal-actions">
             <button class="btn-primary btn-secondary" style="margin-top:0;" onclick="closeEditProfModal()">Cancelar</button>
             <button class="btn-primary" id="editProfSaveBtn" style="margin-top:0;">💾 Guardar Cambios</button>
+        </div>
+    </div>
+</div>
+
+<div id="changeEmailModal" class="modal-overlay-confirm" onclick="if(event.target===this) closeChangeEmailModal()">
+    <div class="modal-confirm-box" style="border-color: var(--danger); max-width: 460px;">
+        <div class="modal-icon" style="background: rgba(239,68,68,0.15); color: var(--danger);"><i class="fas fa-envelope-open-text"></i></div>
+        <h3 style="color: var(--danger);">📧 Cambiar Correo de Acceso</h3>
+        <p style="font-size:0.85rem;">Estás cambiando la <strong>identidad de acceso</strong> de <strong id="ceName"></strong>. Si te equivocas, quedará sin acceso.</p>
+        <div style="text-align:left;">
+            <div class="form-group"><label>Correo nuevo *</label><input type="email" id="ceNew1" autocomplete="off"></div>
+            <div class="form-group"><label>Repite el correo nuevo *</label><input type="email" id="ceNew2" autocomplete="off"></div>
+            <div style="margin-bottom:12px;"><input type="checkbox" id="ceNotifyAck" style="width:auto; margin-right:10px;"><label for="ceNotifyAck" style="display:inline; font-size:0.85rem;">Confirmo que notificaré al usuario su nuevo correo de acceso.</label></div>
+        </div>
+        <div class="modal-actions">
+            <button class="btn-primary btn-secondary" style="margin-top:0;" onclick="closeChangeEmailModal()">Cancelar</button>
+            <button class="btn-primary btn-danger" id="ceSaveBtn" style="margin-top:0;">📧 Confirmar Cambio</button>
         </div>
     </div>
 </div>
@@ -1002,9 +1076,12 @@ let _consentsList = [], _consentPatientId = null;
 let _addendaTarget = null;
 let _myClosedShifts = [], _myNotes = [];
 let _addendaReviewTarget = null;
+let _exceptionalShiftId = null;
+let _plansList = [], _activePlanForPatient = null;
+let _changeEmailProfId = null;
 
 // ============ HELPERS ============
-function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
+function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 4500); }
 function getVal(id) { const el = document.getElementById(id); return el ? el.value : ''; }
 function formatCurrency(v) { return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(v || 0); }
 function togglePass(id, btn) { const i = document.getElementById(id); i.type = i.type === 'password' ? 'text' : 'password'; btn.textContent = i.type === 'password' ? '👁️' : '🙈'; }
@@ -1056,7 +1133,7 @@ function initApp() {
     document.getElementById('userName').textContent = currentUser.full_name; document.getElementById('userRoleDisplay').textContent = currentUser.specialty_name;
     if (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE') {
         document.getElementById('adminPanel').classList.remove('hidden');
-        loadProfs(); loadPats(); loadConsents(); loadEduList(); loadScheduledShiftsAdmin(); loadFinanceData(); loadSupports(); updateStats(); loadSuggestedVisits();
+        loadProfs(); loadPats(); loadConsents(); loadEduList(); loadScheduledShiftsAdmin(); loadFinanceData(); loadSupports(); updateStats(); loadSuggestedVisits(); loadPlans();
         updateSchedShiftType();
         refreshChat('adminMessageList'); setInterval(() => { if (!document.getElementById('admin_messages').classList.contains('hidden')) refreshChat('adminMessageList'); }, 7000);
     } else if (currentUser.specialty_name === 'AUXILIAR_ENFERMERIA') {
@@ -1070,7 +1147,7 @@ function initApp() {
 }
 
 // ============ ADMIN: NAVEGACIÓN ============
-function showAdminTab(tab, btn) { ['admin_prof','admin_pat','admin_supports','admin_edu','admin_reports','admin_finance','admin_agenda','admin_messages'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById('admin_'+tab).classList.remove('hidden'); document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); if (tab === 'supports') loadSupports(); }
+function showAdminTab(tab, btn) { ['admin_prof','admin_pat','admin_plans','admin_supports','admin_edu','admin_reports','admin_finance','admin_agenda','admin_messages'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById('admin_'+tab).classList.remove('hidden'); document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); if (tab === 'supports') loadSupports(); if (tab === 'plans') loadPlans(); }
 
 // --- PROFESIONALES ---
 async function loadProfs() {
@@ -1105,12 +1182,24 @@ function openEditProfModal(id) {
         <div class="form-group"><label>Nombre Completo *</label><input type="text" id="epName" value="${escapeHtml(p.full_name||'')}"></div>
         <div class="form-group"><label>Cédula *</label><input type="text" id="epDoc" value="${escapeHtml(p.document_number||'')}"></div>
         <div class="form-group"><label>Tarjeta Profesional / RETHUS *</label><input type="text" id="epCard" value="${escapeHtml(p.professional_card||'')}"></div>
-        <div class="form-group"><label>Correo (no editable)</label><input type="text" id="epEmail" value="${escapeHtml(p.email || 'No disponible')}" readonly style="opacity:0.6;"></div>
+        <div class="form-group"><label>Correo (no editable desde aquí)</label><input type="text" id="epEmail" value="${escapeHtml(p.email || 'No disponible')}" readonly style="opacity:0.6;"></div>
         <div class="form-group"><label>Especialidad</label><select id="epSpec">${specOptions.map(s => `<option value="${s}" ${s === (p.specialties?.name||'') ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
         <div class="form-group"><label>🔑 Nueva Contraseña (déjalo vacío para no cambiarla)</label><input type="text" id="epPass" placeholder="Solo escribe aquí si quieres cambiarla"></div>`;
     document.getElementById('editProfModal').classList.add('show');
 }
 function closeEditProfModal() { document.getElementById('editProfModal').classList.remove('show'); _editingProfId = null; }
+
+// --- 📧 CAMBIO DE CORREO ---
+function openChangeEmailModal() {
+    if (!_editingProfId) return;
+    const p = profsRegistry.find(x => x.id === _editingProfId); if (!p) return;
+    _changeEmailProfId = _editingProfId;
+    document.getElementById('ceName').textContent = p.full_name;
+    document.getElementById('ceNew1').value = ''; document.getElementById('ceNew2').value = '';
+    document.getElementById('ceNotifyAck').checked = false;
+    document.getElementById('changeEmailModal').classList.add('show');
+}
+function closeChangeEmailModal() { document.getElementById('changeEmailModal').classList.remove('show'); _changeEmailProfId = null; }
 
 // --- PACIENTES ---
 async function loadPats() {
@@ -1283,6 +1372,8 @@ function fillSelects() {
     setOpts('liquidationProf', profs, p => p.full_name);
     setOpts('schedProf', profs, p => p.full_name);
     setOpts('eduResp', profs, p => p.full_name);
+    setOpts('planPatient', pats, p => p.full_name);
+    setOpts('planProf', profs, p => p.full_name);
     updateSchedConsentWarn();
 }
 
@@ -1312,6 +1403,52 @@ function initAdminChart(values) {
     window._adminChart = new Chart(ctx, { type: 'bar', data: { labels: ['Pacientes', 'Profesionales', 'Soportes pend.'], datasets: [{ data: values, backgroundColor: ['#22c55e','#3b82f6','#f59e0b'], borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, x: { ticks: { color: '#94a3b8' }, grid: { display: false } } } } });
 }
 
+// ============ 🎯 PLANES DE TRATAMIENTO ============
+async function loadPlans() {
+    try {
+        const r = await apiFetch(`${API_URL}/api/treatment-plans`); const d = await r.json();
+        _plansList = (d.success ? d.data : []) || [];
+        renderPlans();
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error cargando planes', 'error'); } }
+}
+function renderPlans() {
+    const el = document.getElementById('plansList'); if (!el) return;
+    const activos = _plansList.filter(p => p.is_active);
+    if (!activos.length) { el.innerHTML = '<p style="color:#94a3b8;">No hay planes de tratamiento activos. Crea uno arriba.</p>'; return; }
+    el.innerHTML = activos.map(p => {
+        const usadas = p.sessions_used || 0;
+        const pct = Math.min(100, Math.round((usadas / p.sessions_authorized) * 100));
+        const fuera = usadas > p.sessions_authorized;
+        const barCls = fuera ? 'warn' : '';
+        const estado = fuera ? `<span style="color:var(--danger); font-weight:bold;">⚠️ ${usadas - p.sessions_authorized} FUERA DE PLAN</span>` : (usadas === p.sessions_authorized ? '<span style="color:var(--warning); font-weight:bold;">Última sesión alcanzada</span>' : '<span style="color:var(--primary);">En curso</span>');
+        const profName = p.professionals?.full_name || 'Cualquiera de la especialidad';
+        return `<div class="plan-progress"><strong>🧑 ${escapeHtml(p.patients?.full_name||'Paciente')}</strong> — ${escapeHtml(p.specialty_code)}<br>
+        <small>👤 ${escapeHtml(profName)} · ${p.sessions_authorized} autorizadas · ${p.valid_until ? 'Vence: ' + new Date(p.valid_until + 'T12:00:00').toLocaleDateString('es-CO') : 'Sin fecha límite'}</small>
+        <div class="plan-bar"><div class="plan-bar-fill ${barCls}" style="width:${pct}%"></div></div>
+        <strong>${usadas} / ${p.sessions_authorized}</strong> sesiones usadas · ${estado}
+        <br><button class="btn-small btn-secondary" onclick="deactivatePlan('${p.id}')">Desactivar plan</button></div>`;
+    }).join('');
+}
+async function createPlan() {
+    const patientId = getVal('planPatient'), specialtyCode = getVal('planSpec'), sessions = Number(getVal('planSessions'));
+    if (!patientId || !specialtyCode || !sessions || sessions < 1) return showToast('Completa: paciente, especialidad y sesiones autorizadas', 'error');
+    try {
+        const r = await apiFetch(`${API_URL}/api/treatment-plans`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ patientId, professionalId: getVal('planProf') || null, specialtyCode, sessionsAuthorized: sessions, validUntil: getVal('planValid') || null, notes: getVal('planNotes') || null, createdBy: currentUser.id }) });
+        const d = await r.json();
+        if (d.success) { showToast('🎯 ' + d.message); loadPlans(); }
+        else showToast(d.message || 'Error al crear plan', 'error');
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
+}
+async function deactivatePlan(id) {
+    if (!confirm('¿Desactivar este plan de tratamiento? El profesional dejará de ver el banner.')) return;
+    try {
+        const r = await apiFetch(`${API_URL}/api/treatment-plans/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) });
+        const d = await r.json();
+        if (d.success) { showToast('Plan desactivado'); loadPlans(); }
+        else showToast(d.message || 'Error', 'error');
+    } catch (e) { if (e.message !== 'Sesión expirada') showToast('Error de conexión', 'error'); }
+}
+
 // ============ ADMIN: SOPORTES ============
 async function loadSupports() {
     try {
@@ -1319,20 +1456,28 @@ async function loadSupports() {
         const shifts = (d1.success ? d1.data : []) || [];
         _supportShifts = shifts;
         document.querySelector('#supportShiftsTable tbody').innerHTML = shifts.length ? shifts.map(s => {
-            const estado = s.admin_validated ? '✅ Validado' : '⏳ Pendiente';
+            const excepcional = s.exceptional_closure;
+            const aprobado = s.admin_approved_exceptional;
+            let estado = s.admin_validated ? '✅ Validado' : '⏳ Pendiente';
+            if (excepcional && !aprobado) estado = `<span class="exceptional-badge">🔓 CIERRE EXCEPCIONAL — Pendiente de aprobación</span>`;
+            else if (excepcional && aprobado) estado += ` <span class="exceptional-badge" style="border-color:var(--warning);">🔓 Cierre excepcional aprobado</span>`;
             const addendas = Array.isArray(s.closing_addendas) ? s.closing_addendas : [];
-            const valBtn = s.admin_validated ? `<button class="btn-small btn-primary" disabled>Validado</button>` : `<button class="btn-small btn-primary" onclick="validateSupport('shift', '${s.id}', this)">Validar</button>`;
+            const valBtn = s.admin_validated ? `<button class="btn-small btn-primary" disabled>Validado</button>` : (excepcional && !aprobado ? `<button class="btn-small btn-secondary" disabled title="Aprueba primero el cierre excepcional">Validar</button>` : `<button class="btn-small btn-primary" onclick="validateSupport('shift', '${s.id}', this)">Validar</button>`);
             const addendaBtn = addendas.length ? `<button class="btn-small btn-info" onclick="openAddendaReview('shift', '${s.id}')"><i class="fas fa-clipboard-list"></i> 📜 Addendas</button>` : '';
-            return `<tr><td>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}${addendaBadgeHtml(addendas)}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn} ${valBtn}</td></tr>`;
+            const excepcionalBtn = (excepcional && !aprobado) ? `<button class="btn-small btn-danger" onclick="openExceptionalReview('${s.id}')"><i class="fas fa-unlock"></i> Revisar cierre</button>` : '';
+            return `<tr><td>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}${addendaBadgeHtml(addendas)}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn} ${excepcionalBtn} ${valBtn}</td></tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay turnos cerrados</td></tr>';
         const r2 = await apiFetch(`${API_URL}/api/professional-records/list`); const d2 = await r2.json();
         _supportNotes = (d2.success ? d2.data : []) || [];
         document.querySelector('#supportNotesTable tbody').innerHTML = _supportNotes.length ? _supportNotes.map(n => {
-            const estado = n.admin_validated ? '✅ Validado' : '⏳ Pendiente';
+            const vs = n.vital_signs || {};
+            const fueraDePlan = vs.planInfo && vs.planInfo.outside;
+            const estado = n.admin_validated ? '✅ Validado' : '⏳ Pendiente' + (fueraDePlan ? ' ⚠️' : '');
+            const planBadge = fueraDePlan ? ` <span class="exceptional-badge" style="border-color:var(--warning);">🎯 FUERA DE PLAN</span>` : '';
             const addendas = Array.isArray(n.addendas) ? n.addendas : [];
             const valBtn = n.admin_validated ? `<button class="btn-small btn-primary" disabled>Validado</button>` : `<button class="btn-small btn-primary" onclick="validateSupport('note', '${n.id}', this)">Validar</button>`;
             const addendaBtn = addendas.length ? `<button class="btn-small btn-info" onclick="openAddendaReview('note', '${n.id}')"><i class="fas fa-clipboard-list"></i> 📜 Addendas</button>` : '';
-            return `<tr><td>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(n.patients?.full_name||'N/A')}${addendaBadgeHtml(addendas)}</td><td>${escapeHtml(n.professionals?.full_name||'N/A')}</td><td style="font-size:0.8rem;">${escapeHtml(n.record_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn} ${valBtn}</td></tr>`;
+            return `<tr><td>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(n.patients?.full_name||'N/A')}${addendaBadgeHtml(addendas)}${planBadge}</td><td>${escapeHtml(n.professionals?.full_name||'N/A')}</td><td style="font-size:0.8rem;">${escapeHtml(n.record_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn} ${valBtn}</td></tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay notas de evolución</td></tr>';
         await loadOpenShifts();
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error cargando soportes', 'error'); } }
@@ -1350,79 +1495,22 @@ async function validateSupport(type, id, btn) {
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 
-// --- 📜 REVISIÓN Y VALIDACIÓN DE ADDENDAS (ADMIN) ---
-function openAddendaReview(type, id) {
-    const item = type === 'shift' ? _supportShifts.find(s => s.id === id) : _supportNotes.find(n => n.id === id);
-    if (!item) return showToast('Soporte no encontrado', 'error');
-    const addendas = type === 'shift' ? (item.closing_addendas || []) : (item.addendas || []);
-    if (!addendas.length) return showToast('Este soporte no tiene addendas', 'info');
-    _addendaReviewTarget = { type, id };
-    const nombre = item.professionals?.full_name || 'Profesional';
-    document.getElementById('addendaReviewBody').innerHTML = addendas.map((a, i) => {
-        const cls = a.admin_validated ? 'validated' : 'pending';
-        const estadoTxt = a.admin_validated ? '<span style="color:var(--primary); font-weight:bold;">✔ Validada por coordinación</span>' : '<span style="color:var(--warning); font-weight:bold;">⏳ Pendiente de validación</span>';
-        return `<div class="addenda-item ${cls}">
-            <strong>ADDENDA #${i + 1}</strong> — ${new Date(a.fecha).toLocaleString('es-CO')}<br>
-            <small>Declarante: ${escapeHtml(a.auxName || a.profName || nombre)} — CC ${escapeHtml(a.auxDoc || a.profDoc || '')}</small>
-            <div style="background:var(--bg-dark); padding:10px; border-radius:6px; margin:8px 0;">
-                <strong>⚠️ OMITIÓ registrar:</strong><br>${escapeHtml(a.descriptionOmitted)}<br><br>
-                <strong>✔ LO REALMENTE OCURRIDO:</strong><br>${escapeHtml(a.descriptionActual)}
-            </div>
-            <div style="text-align:center; margin-bottom:8px;">${estadoTxt}</div>
-            ${a.admin_validated ? '' : `<button class="btn-primary" style="margin-top:0;" onclick="validateOneAddenda(${i}, this)"><i class="fas fa-check"></i> ✔ Validar esta addenda</button>`}
-        </div>`;
-    }).join('') + `<p style="font-size:0.75rem; color:#94a3b8; text-align:center;">El soporte podrá validarse cuando TODAS sus addendas estén validadas.</p>`;
-    document.getElementById('addendaReviewModal').classList.add('show');
+// --- 🔓 REVISIÓN DE CIERRE EXCEPCIONAL (ADMIN) ---
+function openExceptionalReview(shiftId) {
+    const s = _supportShifts.find(x => x.id === shiftId);
+    if (!s || !s.exceptional_closure) return showToast('Cierre excepcional no encontrado', 'error');
+    const e = s.exceptional_closure;
+    if (confirm(`DECLARACIÓN DEL AUXILIAR ${e.auxName} (CC ${e.auxDoc}):\n\n¿POR QUÉ no se cerró?:\n${e.reason}\n\n¿QUÉ OCURRIÓ con el paciente?:\n${e.whatHappened}\n\nFecha de la declaración: ${new Date(e.fecha).toLocaleString('es-CO')}\n\n¿APRUEBAS este cierre excepcional? (Las firmas del día NO fueron obtenidas)`)) {
+        approveExceptional(shiftId);
+    }
 }
-function closeAddendaReviewModal() { document.getElementById('addendaReviewModal').classList.remove('show'); _addendaReviewTarget = null; }
-async function validateOneAddenda(idx, btn) {
-    if (!_addendaReviewTarget) return;
-    const { type, id } = _addendaReviewTarget;
-    const ruta = type === 'shift' ? 'shifts' : 'professional-records';
+async function approveExceptional(shiftId) {
     try {
-        const r = await apiFetch(`${API_URL}/api/${ruta}/${id}/addenda/${idx}/validate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) });
+        const r = await apiFetch(`${API_URL}/api/shifts/${shiftId}/approve-exceptional`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) });
         const d = await r.json();
-        if (d.success) {
-            showToast('✅ ' + d.message);
-            const item = type === 'shift' ? _supportShifts.find(s => s.id === id) : _supportNotes.find(n => n.id === id);
-            const arr = type === 'shift' ? (item.closing_addendas || []) : (item.addendas || []);
-            if (arr[idx]) arr[idx].admin_validated = true;
-            openAddendaReview(type, id);
-            refreshSupportRows();
-        } else showToast(d.message || 'Error al validar', 'error');
+        if (d.success) { showToast('✅ ' + d.message); loadSupports(); }
+        else showToast(d.message || 'Error', 'error');
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
-}
-function refreshSupportRows() {
-    const rowsShifts = document.querySelectorAll('#supportShiftsTable tbody tr');
-    _supportShifts.forEach((s, i) => {
-        const row = rowsShifts[i]; if (!row) return;
-        const addendas = Array.isArray(s.closing_addendas) ? s.closing_addendas : [];
-        const pend = addendas.filter(a => !a.admin_validated).length;
-        row.querySelector('td:nth-child(2)').innerHTML = `${escapeHtml(s.patients?.full_name||'N/A')}${addendaBadgeHtml(addendas)}`;
-        const valBtnCell = row.querySelector('td:nth-child(6)');
-        const estadoCell = row.querySelector('td:nth-child(5)');
-        if (pend === 0 && !s.admin_validated) {
-            estadoCell.textContent = '⏳ Pendiente';
-            if (valBtnCell && !valBtnCell.querySelector('.btn-primary:not([disabled])')) {
-                valBtnCell.insertAdjacentHTML('beforeend', ` <button class="btn-small btn-primary" onclick="validateSupport('shift', '${s.id}', this)">Validar</button>`);
-            }
-        }
-    });
-    const rowsNotes = document.querySelectorAll('#supportNotesTable tbody tr');
-    _supportNotes.forEach((n, i) => {
-        const row = rowsNotes[i]; if (!row) return;
-        const addendas = Array.isArray(n.addendas) ? n.addendas : [];
-        const pend = addendas.filter(a => !a.admin_validated).length;
-        row.querySelector('td:nth-child(2)').innerHTML = `${escapeHtml(n.patients?.full_name||'N/A')}${addendaBadgeHtml(addendas)}`;
-        const valBtnCell = row.querySelector('td:nth-child(6)');
-        const estadoCell = row.querySelector('td:nth-child(5)');
-        if (pend === 0 && !n.admin_validated) {
-            estadoCell.textContent = '⏳ Pendiente';
-            if (valBtnCell && !valBtnCell.querySelector('.btn-primary:not([disabled])')) {
-                valBtnCell.insertAdjacentHTML('beforeend', ` <button class="btn-small btn-primary" onclick="validateSupport('note', '${n.id}', this)">Validar</button>`);
-            }
-        }
-    });
 }
 async function loadOpenShifts() {
     try {
@@ -1441,7 +1529,7 @@ async function loadOpenShifts() {
     } catch (e) { console.error(e); }
 }
 
-// --- 📜 Firmas legales (SIN EMOJIS: compatibles con PDF) ---
+// --- 📜 Firmas legales (sin emojis, texto plano PDF) ---
 function drawLegalSignatures(doc, y, d) {
     if (y > 235) { doc.addPage(); y = 40; }
     doc.setFontSize(8); doc.setTextColor(80);
@@ -1459,10 +1547,9 @@ function drawLegalSignatures(doc, y, d) {
     doc.text(`${d.famName} — CC ${d.famDoc}`, 147.5, y + 15, null, null, 'center');
     doc.text(`Parentesco: ${d.famRel || '-'}`, 147.5, y + 19, null, null, 'center');
     doc.setFontSize(7); doc.setTextColor(120);
-    doc.text(`Documento generado electronicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Registro clinico oficial. Tratamiento de datos personales conforme a la Ley 1581 de 2012.`, 105, y + 27, null, null, 'center');
+    doc.text(`Documento generado electronicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Registro clinico oficial. Ley 1581 de 2012.`, 105, y + 27, null, null, 'center');
 }
 
-// --- 📜 Addendas en PDF (SIN EMOJIS: texto plano 100% legible) ---
 function drawAddendas(doc, y, addendas, whoLabel) {
     if (!addendas || !addendas.length) return y;
     if (y > 240) { doc.addPage(); y = 30; }
@@ -1502,13 +1589,34 @@ async function downloadSupportShiftPDF(shiftId) {
         doc.text(`Auxiliar: ${sig?.auxiliary_name || shift.professionals?.full_name || '-'} — CC ${sig?.auxiliary_id_number || shift.professionals?.document_number || '-'}`, 14, 44);
         doc.text(`Registro ReTHUS: ${shift.professionals?.professional_card || '(pendiente)'}`, 14, 50);
         doc.text(`Turno: ${shift.shift_type || '-'} | Inicio: ${new Date(shift.start_time).toLocaleString('es-CO')} | Cierre: ${shift.end_time ? new Date(shift.end_time).toLocaleString('es-CO') : '-'}`, 14, 56);
-        doc.text(`Recepcion: ${shift.patient_received_status || '-'} | Entrega: ${shift.patient_delivered_status || '-'} | Pendientes: ${shift.pending_tasks || 'Ninguno'}`, 14, 62);
-        let y = 68;
+        doc.text(`Recepcion: ${shift.patient_received_status || '-'} | Entrega: ${shift.patient_delivered_status || '-'}`, 14, 62);
+        if (shift.exceptional_closure) {
+            doc.setTextColor(220,38,38);
+            doc.text("ADVERTENCIA: CIERRE EXCEPCIONAL - las firmas del dia no fueron obtenidas.", 14, 68, { maxWidth: 182 });
+            doc.setTextColor(0);
+        }
+        let y = shift.exceptional_closure ? 76 : 68;
         if (records && records.length) {
             doc.autoTable({ startY: y, head: [['Hora','PA','FC','FR','Temp','SpO2','Glu','EVA','Glasg','Braden']], body: records.map(rc => [String(rc.created_at||'').slice(11,16), rc.blood_pressure||'-', rc.heart_rate||'-', rc.respiratory_rate||'-', rc.temperature||'-', rc.spo2||'-', rc.glucose||'-', rc.eva_score??'-', (rc.glasgow_eyes||0)+(rc.glasgow_verbal||0)+(rc.glasgow_motor||0), rc.braden_score||'-']), headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
             y = doc.lastAutoTable.finalY + 6;
         }
         y = drawAddendas(doc, y, shift.closing_addendas, 'auxiliar de enfermeria');
+        if (shift.exceptional_closure) {
+            const e = shift.exceptional_closure;
+            const texto = [
+                `CIERRE EXCEPCIONAL - ${new Date(e.fecha).toLocaleString('es-CO')}`,
+                `El auxiliar ${e.auxName}, CC ${e.auxDoc}, declara que NO fue posible el cierre normal:`,
+                `- RAZON: ${e.reason}`,
+                `- LO OCURRIDO CON EL PACIENTE: ${e.whatHappened}`,
+                shift.admin_approved_exceptional ? `[APROBADO] Validado por coordinacion.` : `[PENDIENTE] Falta aprobacion de coordinacion.`
+            ];
+            const lines = doc.splitTextToSize(texto.join('\n'), 182);
+            if (y > 220) { doc.addPage(); y = 30; }
+            doc.setFontSize(8); doc.setTextColor(60);
+            doc.text(lines, 14, y + 4);
+            y += lines.length * 3.5 + 8;
+            doc.setTextColor(0);
+        }
         drawLegalSignatures(doc, y, { docType: 'auxiliar', auxName: sig?.auxiliary_name || shift.professionals?.full_name || '-', auxDoc: sig?.auxiliary_id_number || shift.professionals?.document_number || '-', auxCard: shift.professionals?.professional_card || '-', auxSig: sig?.auxiliary_signature || null, famName: sig?.family_name || '-', famDoc: sig?.family_id_number || '-', famRel: sig?.family_relationship || '-', famSig: sig?.family_signature || null });
         doc.save(`Soporte_Turno_${(shift.patients?.full_name||'paciente').replace(/\s+/g,'_')}_${shiftId.slice(0,8)}.pdf`);
         showToast('PDF generado desde la base de datos');
@@ -1532,6 +1640,9 @@ function downloadSupportNotePDF(noteId) {
         doc.text(`Motivo: ${vs.motivo || '-'} | Duracion: ${vs.duracion || '-'} (${vs.visitaInicio || '?'} a ${vs.visitaFin || '?'})`, 14, 62);
         if (rec.imc) doc.text(`PA ${vs.bp || '-'} · FC ${vs.hr || '-'} · Peso ${rec.weight || '-'} kg · IMC ${rec.imc}`, 14, 68);
         const consRows = vs.consentimiento ? [['Consentimiento - Intervencion informada', vs.consentimiento.procedimiento || '-'], ['Consentimiento - Aceptacion', 'El paciente/cuidador fue informado de riesgos, beneficios y alternativas, y otorgo su consentimiento.']] : [];
+        if (vs.planInfo) {
+            consRows.push(['Plan de tratamiento', `Sesion ${vs.planInfo.used + 1} de ${vs.planInfo.authorized} autorizadas${vs.planInfo.outside ? ' — FUERA DE PLAN (sesion adicional)' : ''}`]);
+        }
         const body = [['S - Subjetivo', rec.subjective || '-'], ['O - Objetivo', rec.objective || '-'], ['A - Analisis', rec.analysis || '-'], ['P - Plan', rec.plan || '-'], ...consRows];
         doc.autoTable({ startY: 74, head: [['Seccion','Contenido']], body, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 55 } } });
         let y = doc.lastAutoTable.finalY + 12;
@@ -1631,15 +1742,11 @@ async function loadSuggestedVisits() {
             const hoy = new Date().toISOString().slice(0, 10);
             const vencida = s.fecha < hoy;
             return `<div class="sub-activity" ${vencida ? 'style="border-left-color: var(--warning); opacity:0.7;"' : 'style="border-left-color: var(--primary);"'}>📅 <strong>${escapeHtml(new Date(s.fecha + 'T12:00:00').toLocaleDateString('es-CO'))}</strong> — 🧑 ${escapeHtml(s.paciente)}<br><small>👤 ${escapeHtml(s.profesional)} ${vencida ? '· ⚠️ fecha ya vencida' : ''}</small></div>`;
-        }).join('') : '<p style="color:#94a3b8; font-size:0.85rem;">No hay próximas visitas sugeridas todavía. Aparecerán cuando los profesionales llenen "Próxima visita" en sus notas.</p>';
+        }).join('') : '<p style="color:#94a3b8; font-size:0.85rem;">No hay próximas visitas sugeridas todavía.</p>';
     } catch (e) { if (e.message !== 'Sesión expirada') console.error(e); }
 }
 
 // ============ ADMIN: FINANZAS ============
-function toggleLiquidationType() {
-    const tipo = getVal('liquidationType');
-    showToast(tipo === 'visits' ? '🏥 Modo Visitas: cuenta notas VALIDADAS × tarifa de la especialidad' : '⏱️ Modo Turnos: calcula horas de turnos cerrados');
-}
 async function loadFinanceData() {
     try { const r = await apiFetch(`${API_URL}/api/finance/parameters`); const d = await r.json(); const p = d.data; if (p && p.id) { finParamsId = p.id; if (p.year) document.getElementById('finYear').value = p.year; if (p.smmlv) document.getElementById('finSmmlv').value = p.smmlv; if (p.subsidy_transport) document.getElementById('finSubsidy').value = p.subsidy_transport; if (p.night_surcharge_percentage) document.getElementById('finNightPct').value = p.night_surcharge_percentage; if (p.holiday_surcharge_percentage) document.getElementById('finSunPct').value = p.holiday_surcharge_percentage; } } catch (e) {}
     try { const r = await apiFetch(`${API_URL}/api/finance/tariffs`); const d = await r.json(); const t = d.data; if (t && t.id) { tariffId = t.id; ['6h_diurno','6h_nocturno','8h_diurno','8h_nocturno','12h_diurno','12h_nocturno','24h'].forEach(k => { const el = document.getElementById('t_' + k); if (el && t['t_' + k] != null) el.value = t['t_' + k]; }); } } catch (e) {}
@@ -1691,7 +1798,7 @@ function renderLiquidation(data) {
 function renderLiquidationVisits(data) {
     const c = document.getElementById('liquidationResult'); c.classList.remove('hidden');
     const rows = (data.visits || []).map(x => `<tr><td>${escapeHtml(x.date)}</td><td>${escapeHtml(x.patient)}</td><td>${escapeHtml(x.record_type)}</td><td>${formatCurrency(x.amount)}</td></tr>`).join('');
-    c.innerHTML = `<h4 style="color:var(--primary);">Liquidación por Visitas — ${MESES_ES[data._month]||''} ${data._year}</h4><p style="font-size:0.85rem; color:#94a3b8;">👤 ${escapeHtml(data.professional?.full_name||'')} (${escapeHtml(data.professional?.specialty||'')}) · Tarifa por visita: ${formatCurrency(data.professional?.fee||0)}</p><table><thead><tr><th>Fecha</th><th>Paciente</th><th>Tipo de Nota</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table>${data.totalPending > 0 ? `<p style="color:var(--warning); font-size:0.85rem;">⚠️ Hay ${data.totalPending} nota(s) PENDIENTE(S) de validar que NO se incluyen. Valídalas en Soportes para que entren en la próxima liquidación.</p>` : ''}<div style="text-align:right; margin-top:10px;"><h3 style="color:var(--primary);">Total: ${formatCurrency(data.totalAmount)} (${data.totalValidated} visitas validadas)</h3><button class="btn-primary btn-warning" style="width:auto; display:inline-block; margin-top:8px;" onclick="generateLiquidationVisitsPDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button></div>`;
+    c.innerHTML = `<h4 style="color:var(--primary);">Liquidación por Visitas — ${MESES_ES[data._month]||''} ${data._year}</h4><p style="font-size:0.85rem; color:#94a3b8;">👤 ${escapeHtml(data.professional?.full_name||'')} (${escapeHtml(data.professional?.specialty||'')}) · Tarifa por visita: ${formatCurrency(data.professional?.fee||0)}</p><table><thead><tr><th>Fecha</th><th>Paciente</th><th>Tipo de Nota</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table>${data.totalPending > 0 ? `<p style="color:var(--warning); font-size:0.85rem;">⚠️ Hay ${data.totalPending} nota(s) PENDIENTE(S) de validar que NO se incluyen.</p>` : ''}<div style="text-align:right; margin-top:10px;"><h3 style="color:var(--primary);">Total: ${formatCurrency(data.totalAmount)} (${data.totalValidated} visitas validadas)</h3><button class="btn-primary btn-warning" style="width:auto; display:inline-block; margin-top:8px;" onclick="generateLiquidationVisitsPDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button></div>`;
 }
 function generateLiquidationPDF() {
     if (!lastLiquidationData || lastLiquidationData._tipo !== 'shifts') return;
@@ -1872,7 +1979,8 @@ function renderMyClosedShifts() {
         const horasDesdeCierre = s.end_time ? (Date.now() - new Date(s.end_time).getTime()) / 3600000 : 999;
         const dentroDePlazo = horasDesdeCierre <= 24;
         const addendaBtn = dentroDePlazo ? `<button class="btn-small btn-warning" onclick="openAddendaModal('shift', '${s.id}', '${escapeHtml(s.patients?.full_name||'')}', '${escapeHtml(new Date(s.end_time).toLocaleString('es-CO'))}')"><i class="fas fa-file-pen"></i> 📜 Declarar addenda</button>` : `<button class="btn-small btn-secondary" disabled title="Venció el plazo de 24 horas">📜 Plazo vencido</button>`;
-        return `<div class="sub-activity"><strong>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</strong> — ${escapeHtml(s.patients?.full_name||'')}${addendaBadgeHtml(addendas)}<br><small>Turno: ${escapeHtml(s.shift_type||'')} · ${dentroDePlazo ? '⏰ Addenda disponible' : '⏰ Plazo de 24h vencido'}</small><br><button class="btn-small btn-info" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn}</div>`;
+        const exc = s.exceptional_closure ? ` <span class="exceptional-badge">🔓 Cierre excepcional${s.admin_approved_exceptional ? ' aprobado' : ' pendiente'}</span>` : '';
+        return `<div class="sub-activity"><strong>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</strong> — ${escapeHtml(s.patients?.full_name||'')}${addendaBadgeHtml(addendas)}${exc}<br><small>Turno: ${escapeHtml(s.shift_type||'')}</small><br><button class="btn-small btn-info" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn}</div>`;
     }).join('') : '<p style="color:#94a3b8; font-size:0.85rem;">Aún no tienes turnos cerrados.</p>';
 }
 
@@ -1891,7 +1999,7 @@ function renderMyNotes() {
         const horasDesdeCreacion = (Date.now() - new Date(n.created_at).getTime()) / 3600000;
         const dentroDePlazo = horasDesdeCreacion <= 24;
         const addendaBtn = dentroDePlazo ? `<button class="btn-small btn-warning" onclick="openAddendaModal('note', '${n.id}', '${escapeHtml(n.patients?.full_name||'')}', '${escapeHtml(new Date(n.created_at).toLocaleString('es-CO'))}')"><i class="fas fa-file-pen"></i> 📜 Declarar addenda</button>` : `<button class="btn-small btn-secondary" disabled title="Venció el plazo de 24 horas">📜 Plazo vencido</button>`;
-        return `<div class="sub-activity"><strong>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</strong> — ${escapeHtml(n.patients?.full_name||'')}${addendaBadgeHtml(addendas)}<br><small>${escapeHtml(n.record_type||'Nota')} · ${dentroDePlazo ? '⏰ Addenda disponible' : '⏰ Plazo de 24h vencido'}</small><br><button class="btn-small btn-info" onclick="downloadMyNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn}</div>`;
+        return `<div class="sub-activity"><strong>${escapeHtml(new Date(n.created_at).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</strong> — ${escapeHtml(n.patients?.full_name||'')}${addendaBadgeHtml(addendas)}<br><small>${escapeHtml(n.record_type||'Nota')}</small><br><button class="btn-small btn-info" onclick="downloadMyNotePDF('${n.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn}</div>`;
     }).join('') : '<p style="color:#94a3b8; font-size:0.85rem;">Aún no tienes notas de evolución.</p>';
 }
 function downloadMyNotePDF(noteId) {
@@ -1908,26 +2016,52 @@ function openAddendaModal(type, id, paciente, fechaDoc) {
     document.getElementById('addendaFields').innerHTML = `
         <div class="form-group"><label>¿Qué OMITISTE registrar? *</label><textarea id="addOmitted" rows="2" placeholder="Ej: La segunda administración de acetaminofén a las 4:00 p.m."></textarea></div>
         <div class="form-group"><label>¿Qué REALMENTE OCURRIÓ? *</label><textarea id="addActual" rows="2" placeholder="Ej: El medicamento sí fue administrado a las 4:00 p.m. y el familiar estuvo presente"></textarea></div>
-        <div class="form-group"><label>✍️ Tu firma digital (obligatoria) *</label><canvas id="addSigCanvas" class="signature-canvas"></canvas><button class="btn-small btn-secondary" onclick="clearSig('addSigCanvas')">Borrar</button></div>
-        <p style="font-size:0.75rem; color:#94a3b8;">Al firmar, declaras formalmente que esta addenda es veraz. Quedará con fecha y hora fijas y será validada por coordinación.</p>`;
+        <div class="form-group"><label>✍️ Tu firma digital (obligatoria) *</label><canvas id="addSigCanvas" class="signature-canvas"></canvas><button class="btn-small btn-secondary" onclick="clearSig('addSigCanvas')">Borrar</button></div>`;
     document.getElementById('addendaModal').classList.add('show');
     setTimeout(() => initSigCanvas('addSigCanvas'), 50);
 }
 function closeAddendaModal() { document.getElementById('addendaModal').classList.remove('show'); _addendaTarget = null; }
+
+// --- 🔓 CIERRE EXCEPCIONAL (AUXILIAR) ---
+function openExceptionalModal(shiftId, paciente, fecha) {
+    _exceptionalShiftId = shiftId;
+    document.getElementById('exceptionalInfo').innerHTML = `Turno de: <strong>${escapeHtml(paciente)}</strong> · Iniciado: ${escapeHtml(fecha)}`;
+    document.getElementById('excReason').value = ''; document.getElementById('excWhat').value = '';
+    document.getElementById('exceptionalModal').classList.add('show');
+    setTimeout(() => initSigCanvas('excSigCanvas'), 50);
+}
+function closeExceptionalModal() { document.getElementById('exceptionalModal').classList.remove('show'); _exceptionalShiftId = null; }
+async function saveExceptionalClose() {
+    if (!_exceptionalShiftId) return;
+    const reason = getVal('excReason').trim(), what = getVal('excWhat').trim();
+    if (!reason || reason.length < 10) return showToast('Explica por qué no se pudo cerrar (mínimo 10 caracteres)', 'error');
+    if (!what || what.length < 10) return showToast('Describe qué ocurrió con el paciente (mínimo 10 caracteres)', 'error');
+    const sig = getSigData('excSigCanvas');
+    if (!sig) return showToast('⚖️ La firma digital es OBLIGATORIA — es tu declaración formal.', 'warning');
+    try {
+        const r = await apiFetch(`${API_URL}/api/shifts/${_exceptionalShiftId}/exceptional-close`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ professionalId: currentUser.id, reason, whatHappened: what, signature: sig }) });
+        const d = await r.json();
+        if (d.success) { showToast('📋 ' + d.message); closeExceptionalModal(); backToAuxHome(); }
+        else showToast(d.message || 'Error', 'error');
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
+}
 
 // ============ AUXILIAR: FLUJO DE TURNO ============
 function toggleCustomShift() { document.getElementById('customShiftTimes').classList.toggle('hidden', getVal('shiftType') !== 'personalizado'); }
 
 async function startShift() {
     if (!selectedPatient) return showToast('Selecciona un paciente primero', 'error');
+    let blockedShift = null;
     try {
         const checkRes = await apiFetch(`${API_URL}/api/shifts/open-check/${currentUser.id}`);
         const checkData = await checkRes.json();
-        if (checkData.success && checkData.data && checkData.data.length > 0) {
-            const s = checkData.data[0];
-            return showToast(`⚠️ Tienes un turno SIN CERRAR desde el ${new Date(s.start_time).toLocaleString('es-CO')} con ${s.patients?.full_name || 'un paciente'}. Ciérralo o avisa a coordinación antes de iniciar otro.`, 'error');
-        }
+        if (checkData.success && checkData.data && checkData.data.length > 0) blockedShift = checkData.data[0];
     } catch (e) {}
+    if (blockedShift) {
+        const ok = confirm(`⚠️ Tienes un turno SIN CERRAR desde el ${new Date(blockedShift.start_time).toLocaleString('es-CO')} con ${blockedShift.patients?.full_name || 'un paciente'}.\n\n¿Pudiste cerrarlo de forma normal? Si no, puedes declarar un CIERRE EXCEPCIONAL (quedará registrado tu porqué y requerirá aprobación de coordinación).\n\nOK = Declarar cierre excepcional\nCancelar = Volver atrás`);
+        if (ok) openExceptionalModal(blockedShift.id, blockedShift.patients?.full_name || 'Paciente', new Date(blockedShift.start_time).toLocaleString('es-CO'));
+        return;
+    }
     const shiftType = getVal('shiftType');
     let customStart = null, customEnd = null;
     if (shiftType === 'personalizado') {
@@ -2284,6 +2418,27 @@ function selectProfPatient(p) {
     document.getElementById('profClinicalForm').classList.remove('hidden');
     initSigCanvas('profSigCanvas'); initSigCanvas('famProfSigCanvas');
     renderDynamicProfForm(currentUser.specialty_name);
+    checkPlanBanner();
+}
+// 🎯 Verificar si el paciente tiene plan activo de esta especialidad
+async function checkPlanBanner() {
+    const banner = document.getElementById('planBanner');
+    if (!banner) return;
+    banner.classList.add('hidden');
+    banner.className = 'plan-banner hidden';
+    try {
+        const r = await apiFetch(`${API_URL}/api/treatment-plans`); const d = await r.json();
+        const plans = (d.success ? d.data : []).filter(p => p.patient_id === selectedPatient.id && p.is_active && p.specialty_code === currentUser.specialty_name);
+        if (!plans.length) return;
+        const plan = plans[0];
+        const usageRes = await apiFetch(`${API_URL}/api/treatment-plans/usage/${plan.id}`);
+        const usage = (await usageRes.json()).data;
+        const fuera = usage.used >= usage.authorized;
+        const ultima = usage.used === usage.authorized - 1;
+        banner.classList.remove('hidden');
+        banner.className = `plan-banner ${fuera ? 'warn' : ''}`;
+        banner.innerHTML = `🎯 <strong>PLAN DE TRATAMIENTO (${escapeHtml(plan.specialty_code)}):</strong> sesión <strong>${usage.used + 1} de ${usage.authorized}</strong> autorizadas. Restantes: <strong>${usage.remaining}</strong>. ${fuera ? '⚠️ <strong>Esta sesión quedará FUERA DE PLAN</strong> — te pediremos justificación al guardar.' : (ultima ? '⚠️ Esta es la ÚLTIMA sesión autorizada.' : '')}`;
+    } catch (e) { console.error(e); }
 }
 function renderDynamicProfForm(specialty) {
     ['profVitalsSection','profSOAPSection','profVisitData','profPsychFields','profPhysioFields','profNutriFields','profFonoFields','profTOFields','profTRFields','profTSFields'].forEach(id => { const el = document.getElementById(id); if (el) el.classList.add('hidden'); });
@@ -2348,6 +2503,14 @@ async function saveProfRecord() {
     if (!getVal('profFamName') || !getVal('profFamId')) return showToast('Datos del familiar testigo incompletos', 'error');
     const sp = currentUser.specialty_name;
     const cups = CUPS_VISITA_DOMICILIARIA[sp] || '';
+    // 🎯 Si hay plan activo y esta sesión está FUERA de plan, pedir justificación
+    let fueraDePlan = false, justificacion = null;
+    if (_activePlanForPatient && _activePlanForPatient.outside) {
+        fueraDePlan = true;
+        justificacion = prompt(`⚠️ Esta sesión quedará FUERA DE PLAN (sesión ${_activePlanForPatient.used + 1} de ${_activePlanForPatient.authorized} autorizadas).\n\nJustifica la sesión adicional (quedará registrada para revisión de coordinación):`);
+        if (!justificacion || justificacion.trim().length < 10) return showToast('Debes justificar la sesión fuera de plan (mínimo 10 caracteres)', 'warning');
+        justificacion = justificacion.trim();
+    }
     let S = '', O = '', A = '', P = '';
     const secciones = [];
     if (sp === 'PSICOLOGIA') {
@@ -2397,6 +2560,7 @@ async function saveProfRecord() {
         secciones.push(['S — Subjetivo', S], ['O — Objetivo', O], ['A — Análisis', A], ['P — Plan', P]);
     }
     secciones.push(['Consentimiento — Intervención informada', getVal('profConsentProcedure')], ['Consentimiento — Aceptación', 'El paciente/cuidador fue informado de riesgos, beneficios y alternativas, y otorgó su consentimiento.']);
+    if (fueraDePlan) secciones.push(['Sesión FUERA DE PLAN — Justificación del profesional', justificacion]);
     const famRelRaw = getVal('profFamRel').trim();
     const payload = {
         patientId: selectedPatient.id, professionalId: currentUser.id,
@@ -2411,7 +2575,11 @@ async function saveProfRecord() {
     try {
         const r = await apiFetch(`${API_URL}/api/professional-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const d = await r.json();
-        if (d.success) { showToast('✅ Nota de evolución guardada'); document.getElementById('generateProfPDFBtn').classList.remove('hidden'); loadMyNotes(); }
+        if (d.success) {
+            showToast('✅ Nota guardada' + (d.data?.planWarning ? ' — ' + d.data.planWarning : ''), d.data?.planWarning ? 'warning' : 'success');
+            document.getElementById('generateProfPDFBtn').classList.remove('hidden');
+            loadMyNotes();
+        }
         else showToast(d.message || 'Error', 'error');
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
@@ -2500,7 +2668,7 @@ async function deletePatient(id) {
     showConfirmModal({
         title: 'Eliminar Paciente',
         message: `Vas a eliminar permanentemente a "${pat.full_name}".`,
-        warning: '⚠️ Se borrarán TAMBIÉN todos sus turnos, registros clínicos y consentimientos. Usa solo con datos de PRUEBA. Para pacientes reales usa "Archivar".',
+        warning: '⚠️ Se borrarán TAMBIÉN todos sus turnos, registros, consentimientos y planes. Usa solo con datos de PRUEBA. Para pacientes reales usa "Archivar".',
         requireText: 'ELIMINAR',
         onConfirm: async () => {
             try {
@@ -2556,7 +2724,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!omitted || omitted.length < 10) return showToast('Describe lo omitido (mínimo 10 caracteres)', 'error');
         if (!actual || actual.length < 10) return showToast('Describe lo realmente ocurrido (mínimo 10 caracteres)', 'error');
         const sig = getSigData('addSigCanvas');
-        if (!sig) return showToast('⚖️ La firma digital es OBLIGATORIA. Firmar la addenda es asumir la declaración.', 'warning');
+        if (!sig) return showToast('⚖️ La firma digital es OBLIGATORIA.', 'warning');
         const ruta = _addendaTarget.type === 'shift' ? 'shifts' : 'professional-records';
         try {
             const r = await apiFetch(`${API_URL}/api/${ruta}/${_addendaTarget.id}/addenda`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ professionalId: currentUser.id, descriptionOmitted: omitted, descriptionActual: actual, signature: sig }) });
@@ -2567,6 +2735,21 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (currentUser.specialty_name === 'AUXILIAR_ENFERMERIA') loadMyClosedShifts(); else loadMyNotes();
             } else showToast(d.message || 'Error al registrar', 'error');
         } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
+    });
+    const excSaveBtn = document.getElementById('excSaveBtn');
+    if (excSaveBtn) excSaveBtn.addEventListener('click', saveExceptionalClose);
+    const ceSaveBtn = document.getElementById('ceSaveBtn');
+    if (ceSaveBtn) ceSaveBtn.addEventListener('click', async () => {
+        if (!_changeEmailProfId) return;
+        const e1 = getVal('ceNew1').trim(), e2 = getVal('ceNew2').trim();
+        if (!e1 || !e2) return showToast('Escribe el correo nuevo en ambos campos', 'error');
+        if (!document.getElementById('ceNotifyAck').checked) return showToast('Confirma que notificarás al usuario', 'warning');
+        try {
+            const r = await apiFetch(`${API_URL}/api/professionals/${_changeEmailProfId}/change-email`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ newEmail: e1, newEmailConfirm: e2 }) });
+            const d = await r.json();
+            if (d.success) { showToast('📧 ' + d.message); closeChangeEmailModal(); closeEditProfModal(); loadProfs(); }
+            else showToast(d.message || 'Error', 'error');
+        } catch (e) { if (e.message !== 'Sesión expirada') showToast('Error de conexión', 'error'); }
     });
 });
 </script>
