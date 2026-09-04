@@ -65,8 +65,7 @@ async function authMiddleware(req, res, next) {
 const adminOnly = (req, res, next) => req.prof.specialties?.name === 'ADMINISTRACION' ? next() : fail(res, 'Solo Administración', 403);
 const plansRole = (req, res, next) => ['ADMINISTRACION', 'ENFERMERIA_JEFE'].includes(req.prof.specialties?.name) ? next() : fail(res, 'Solo Administración o Enfermería Jefe', 403);
 
-// Las contraseñas viven en Supabase Auth (auth.users). Si existe SUPABASE_ANON_KEY
-// se usa; si no, la service_role funciona igual para validar email+contraseña.
+// Las contraseñas viven en Supabase Auth (auth.users)
 const AUTH_KEY = SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY;
 async function authSignIn(email, password) {
   const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
@@ -130,7 +129,6 @@ app.post('/api/professionals', adminOnly, h(async (req, res) => {
   if (!spec) return fail(res, 'Especialidad inválida');
   const { data: au, error: auErr } = await sb.auth.admin.createUser({ email: em, password, email_confirm: true });
   if (auErr) return fail(res, 'No se pudo crear el acceso: ' + auErr.message);
-  // Perfil en public.users copiando el formato role/status de un usuario existente
   const { data: tpl } = await sb.from('users').select('role, status').limit(1).maybeSingle();
   const userRow = { name: fullName, email: em, cedula: documentNumber, rethus: professionalCard };
   if (tpl) { userRow.role = tpl.role; userRow.status = tpl.status; }
@@ -163,10 +161,15 @@ app.patch('/api/professionals/:id/deactivate', adminOnly, h(async (req, res) => 
   if (error) return fail(res, 'Error: ' + error.message);
   ok(res, null, active ? 'Profesional reactivado' : 'Profesional archivado');
 }));
+// ELIMINAR: borra el profesional + su perfil en users + su cuenta de acceso en Auth.
+// Las FKs apuntan a ON DELETE SET NULL (SQL de referencias), así no se rompe el historial.
 app.delete('/api/professionals/:id', adminOnly, h(async (req, res) => {
+  const { data: prof } = await sb.from('professionals').select('user_id, auth_user_id').eq('id', req.params.id).single();
   const { error } = await sb.from('professionals').delete().eq('id', req.params.id);
-  if (error) return fail(res, 'No se pudo eliminar: ' + error.message);
-  ok(res, null, 'Profesional eliminado permanentemente');
+  if (error) return fail(res, 'No se pudo eliminar: ' + error.message + ' (¿corriste el SQL de referencias SET NULL?)');
+  if (prof?.user_id) { try { await sb.from('users').delete().eq('id', prof.user_id); } catch (e2) { console.warn('users no borrado:', e2.message); } }
+  if (prof?.auth_user_id) { try { await sb.auth.admin.deleteUser(prof.auth_user_id); } catch (e3) { console.warn('auth no borrado:', e3.message); } }
+  ok(res, null, 'Profesional eliminado permanentemente (incluido su acceso)');
 }));
 
 // ---------- 📧 CAMBIO DE CORREO (solo Admin, doble confirmación; escribe en Auth + users) ----------
@@ -185,7 +188,7 @@ app.patch('/api/professionals/:id/change-email', adminOnly, h(async (req, res) =
   }
   const { error } = await sb.from('users').update({ email: e }).eq('id', prof.user_id);
   if (error) return fail(res, 'No se pudo actualizar el perfil: ' + error.message);
-  try { await sb.from('email_changes').insert({ correo_anterior: prof.full_name ? undefined : undefined, correo_nuevo: e, confirmado_1: true, confirmado_2: true, realizado_por: req.prof.id, notificado: true }); } catch {}
+  try { await sb.from('email_changes').insert({ correo_nuevo: e, confirmado_1: true, confirmado_2: true, realizado_por: req.prof.id, notificado: true }); } catch {}
   ok(res, null, `Correo de ${prof.full_name} actualizado a ${e}. Notifica al usuario su nuevo acceso.`);
 }));
 
