@@ -1,8 +1,12 @@
 // ============================================================
-// VITAL HOGAR PRO — API completa sobre Supabase
-// Adaptada al esquema real: admission_consents, internal_messages,
-// financial_parameters, client_tariffs, treatment_plans (join manual)
-// Estructura: /server.js  y  /public/index.html
+// VITAL HOGAR PRO — API completa (Vercel serverless)
+// ARQUITECTURA REAL del proyecto:
+//   auth.users     → correos + contraseñas (Supabase Auth)
+//   public.users   → perfiles (name, email, cedula, rethus, role, status)
+//   professionals  → datos laborales (user_id → users, specialty_id → specialties)
+//   Tablas reales: admission_consents, internal_messages,
+//   financial_parameters, client_tariffs, treatment_plans (join manual)
+// Estructura: /server.js  +  /public/index.html
 // ============================================================
 import express from 'express';
 import cors from 'cors';
@@ -14,8 +18,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, JWT_SECRET, PORT = 3000 } = process.env;
-if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !JWT_SECRET) { console.error('Faltan variables en .env'); process.exit(1); }
+const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, JWT_SECRET, PORT = 3000 } = process.env;
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !JWT_SECRET) { console.error('Faltan variables: SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY / JWT_SECRET'); process.exit(1); }
 
 const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 const app = express();
@@ -33,7 +37,7 @@ const in24h = (iso) => iso && (Date.now() - new Date(iso).getTime()) <= 24 * 360
 function nightHours(s, e) { let m = 0; const d = new Date(s); while (d < e) { const hh = d.getHours(); if (hh >= 20 || hh < 6) m++; d.setMinutes(d.getMinutes() + 1); } return m / 60; }
 function sundayHours(s, e) { let m = 0; const d = new Date(s); while (d < e) { if (d.getDay() === 0) m++; d.setMinutes(d.getMinutes() + 1); } return m / 60; }
 
-// Finanzas: filas "activas" en tus tablas existentes (financial_parameters / client_tariffs)
+// Finanzas: filas "activas" en tus tablas reales
 async function getActiveFinance() {
   let { data } = await sb.from('financial_parameters').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(1);
   if (data && data.length) return data[0];
@@ -47,7 +51,7 @@ async function getActiveTariffs() {
   return c;
 }
 
-// ---------- auth ----------
+// ---------- auth (middleware + helpers de Supabase Auth) ----------
 async function authMiddleware(req, res, next) {
   try {
     const token = (req.headers.authorization || '').replace('Bearer ', '');
@@ -61,16 +65,52 @@ async function authMiddleware(req, res, next) {
 const adminOnly = (req, res, next) => req.prof.specialties?.name === 'ADMINISTRACION' ? next() : fail(res, 'Solo Administración', 403);
 const plansRole = (req, res, next) => ['ADMINISTRACION', 'ENFERMERIA_JEFE'].includes(req.prof.specialties?.name) ? next() : fail(res, 'Solo Administración o Enfermería Jefe', 403);
 
-// ---------- LOGIN (público) ----------
+// Las contraseñas viven en Supabase Auth (auth.users). Si existe SUPABASE_ANON_KEY
+// se usa; si no, la service_role funciona igual para validar email+contraseña.
+const AUTH_KEY = SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY;
+async function authSignIn(email, password) {
+  const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    method: 'POST',
+    headers: { apikey: AUTH_KEY, Authorization: `Bearer ${AUTH_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, password })
+  });
+  const d = await r.json().catch(() => ({}));
+  if (r.ok && d.user) return { ok: true, user: d.user };
+  return { ok: false, error: d.error_description || d.msg || d.error || 'Credenciales inválidas' };
+}
+async function findProfAfterAuth(authUser) {
+  const email = (authUser.email || '').toLowerCase();
+  let { data: p } = await sb.from('professionals').select(PROFASEL).eq('auth_user_id', authUser.id).maybeSingle();
+  if (p) return p;
+  const { data: u } = await sb.from('users').select('id').ilike('email', email).maybeSingle();
+  if (!u) return null;
+  ({ data: p } = await sb.from('professionals').select(PROFASEL).eq('user_id', u.id).maybeSingle());
+  return p;
+}
+async function getAuthUserId(prof) {
+  if (prof.auth_user_id) return prof.auth_user_id;
+  if (!prof.user_id) return null;
+  const { data: u } = await sb.from('users').select('email').eq('id', prof.user_id).maybeSingle();
+  if (!u?.email) return null;
+  const { data: { users } } = await sb.auth.admin.listUsers({ perPage: 1000 });
+  const found = (users || []).find(x => (x.email || '').toLowerCase() === u.email.toLowerCase());
+  if (found) await sb.from('professionals').update({ auth_user_id: found.id }).eq('id', prof.id);
+  return found?.id || null;
+}
+
+// ---------- LOGIN (público, contra Supabase Auth) ----------
 app.post('/api/auth/login', h(async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
   if (!email || !password) return fail(res, 'Complete todos los campos');
-  const { data: prof } = await sb.from('professionals').select(PROFASEL).eq('email', email).single();
-  if (!prof || !(await bcrypt.compare(password, prof.password_hash || ''))) return fail(res, 'Credenciales inválidas', 401);
+  const auth = await authSignIn(email, password);
+  if (!auth.ok) return fail(res, 'Credenciales inválidas', 401);
+  const prof = await findProfAfterAuth(auth.user);
+  if (!prof) return fail(res, 'Usuario sin perfil de profesional. Contacta al administrador.', 403);
   if (prof.is_active === false) return fail(res, 'Usuario archivado. Contacta al administrador.', 403);
-  const token = jwt.sign({ id: prof.id, email: prof.email }, JWT_SECRET, { expiresIn: '12h' });
-  const user = { id: prof.id, full_name: prof.full_name, email: prof.email, document_number: prof.document_number, professional_card: prof.professional_card, specialty_name: prof.specialties?.name, specialties: prof.specialties };
+  if (!prof.auth_user_id) await sb.from('professionals').update({ auth_user_id: auth.user.id }).eq('id', prof.id);
+  const token = jwt.sign({ id: prof.id, email }, JWT_SECRET, { expiresIn: '12h' });
+  const user = { id: prof.id, full_name: prof.full_name, email, document_number: prof.document_number, professional_card: prof.professional_card, specialty_name: prof.specialties?.name, specialties: prof.specialties };
   ok(res, { token, user }, 'Bienvenido');
 }));
 
@@ -88,7 +128,15 @@ app.post('/api/professionals', adminOnly, h(async (req, res) => {
   const em = String(email).trim().toLowerCase();
   const { data: spec } = await sb.from('specialties').select('id').eq('name', specialtyName).single();
   if (!spec) return fail(res, 'Especialidad inválida');
-  const { data: created, error } = await sb.from('professionals').insert({ full_name: fullName, document_number: documentNumber, professional_card: professionalCard, email: em, password_hash: await bcrypt.hash(password, 10), specialty_id: spec.id }).select(PROFASEL).single();
+  const { data: au, error: auErr } = await sb.auth.admin.createUser({ email: em, password, email_confirm: true });
+  if (auErr) return fail(res, 'No se pudo crear el acceso: ' + auErr.message);
+  // Perfil en public.users copiando el formato role/status de un usuario existente
+  const { data: tpl } = await sb.from('users').select('role, status').limit(1).maybeSingle();
+  const userRow = { name: fullName, email: em, cedula: documentNumber, rethus: professionalCard };
+  if (tpl) { userRow.role = tpl.role; userRow.status = tpl.status; }
+  const { data: uRow, error: uErr } = await sb.from('users').insert(userRow).select('id').single();
+  if (uErr) { try { await sb.auth.admin.deleteUser(au.user.id); } catch {} return fail(res, 'No se pudo crear el perfil de usuario: ' + uErr.message); }
+  const { data: created, error } = await sb.from('professionals').insert({ full_name: fullName, document_number: documentNumber, professional_card: professionalCard, user_id: uRow.id, auth_user_id: au.user.id, specialty_id: spec.id }).select(PROFASEL).single();
   if (error) return fail(res, 'Error guardando: ' + error.message);
   ok(res, created, 'Profesional creado con acceso');
 }));
@@ -99,9 +147,14 @@ app.patch('/api/professionals/:id', adminOnly, h(async (req, res) => {
   if (documentNumber) upd.document_number = documentNumber;
   if (professionalCard) upd.professional_card = professionalCard;
   if (specialtyName) { const { data: spec } = await sb.from('specialties').select('id').eq('name', specialtyName).single(); if (!spec) return fail(res, 'Especialidad inválida'); upd.specialty_id = spec.id; }
-  if (newPassword) upd.password_hash = await bcrypt.hash(newPassword, 10);
   const { data: prof, error } = await sb.from('professionals').update(upd).eq('id', req.params.id).select(PROFASEL).single();
   if (error) return fail(res, 'Error actualizando: ' + error.message);
+  if (newPassword) {
+    const authId = await getAuthUserId(prof);
+    if (!authId) return fail(res, 'No encontré la cuenta de acceso de este usuario');
+    const { error: pErr } = await sb.auth.admin.updateUserById(authId, { password: newPassword });
+    if (pErr) return fail(res, 'Perfil actualizado, pero la contraseña falló: ' + pErr.message);
+  }
   ok(res, prof, 'Profesional actualizado' + (newPassword ? ' (contraseña incluida)' : ''));
 }));
 app.patch('/api/professionals/:id/deactivate', adminOnly, h(async (req, res) => {
@@ -116,22 +169,23 @@ app.delete('/api/professionals/:id', adminOnly, h(async (req, res) => {
   ok(res, null, 'Profesional eliminado permanentemente');
 }));
 
-// ---------- 📧 CAMBIO DE CORREO (solo Admin, doble confirmación, registro) ----------
+// ---------- 📧 CAMBIO DE CORREO (solo Admin, doble confirmación; escribe en Auth + users) ----------
 app.patch('/api/professionals/:id/change-email', adminOnly, h(async (req, res) => {
   const e = String(req.body?.newEmail || '').trim().toLowerCase();
   const e2 = String(req.body?.newEmailConfirm || '').trim().toLowerCase();
   if (!e || !e2) return fail(res, 'Escribe el correo nuevo en ambos campos');
   if (e !== e2) return fail(res, 'Los correos no coinciden (doble confirmación)');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) return fail(res, 'Correo inválido');
-  const { data: prof } = await sb.from('professionals').select('id, email, full_name').eq('id', req.params.id).single();
+  const { data: prof } = await sb.from('professionals').select('id, full_name, auth_user_id, user_id').eq('id', req.params.id).single();
   if (!prof) return fail(res, 'Profesional no encontrado', 404);
-  if (prof.email.toLowerCase() === e) return fail(res, 'El correo nuevo es igual al actual');
-  const anterior = prof.email;
-  const { error } = await sb.from('professionals').update({ email: e }).eq('id', prof.id);
-  if (error) return fail(res, 'No se pudo actualizar: ' + error.message);
-  // Registro del cambio (no fatal si la tabla email_changes aún no existe)
-  const { error: logErr } = await sb.from('email_changes').insert({ correo_anterior: anterior, correo_nuevo: e, confirmado_1: true, confirmado_2: true, realizado_por: req.prof.id, notificado: true });
-  if (logErr) console.warn('email_changes no registrado:', logErr.message);
+  const authId = await getAuthUserId(prof);
+  if (authId) {
+    const { error: auErr } = await sb.auth.admin.updateUserById(authId, { email: e, email_confirm: true });
+    if (auErr) return fail(res, 'No se pudo actualizar el acceso: ' + auErr.message);
+  }
+  const { error } = await sb.from('users').update({ email: e }).eq('id', prof.user_id);
+  if (error) return fail(res, 'No se pudo actualizar el perfil: ' + error.message);
+  try { await sb.from('email_changes').insert({ correo_anterior: prof.full_name ? undefined : undefined, correo_nuevo: e, confirmado_1: true, confirmado_2: true, realizado_por: req.prof.id, notificado: true }); } catch {}
   ok(res, null, `Correo de ${prof.full_name} actualizado a ${e}. Notifica al usuario su nuevo acceso.`);
 }));
 
@@ -170,7 +224,7 @@ app.get('/api/patients/:id/daily-history', h(async (req, res) => {
   ok(res, { records: data || [] });
 }));
 
-// ---------- CONSENTIMIENTOS (usa tu tabla admission_consents) ----------
+// ---------- CONSENTIMIENTOS (tabla admission_consents) ----------
 app.get('/api/consents', h(async (req, res) => {
   const { data, error } = await sb.from('admission_consents').select('*').order('created_at', { ascending: false });
   if (error) return fail(res, 'BD: ' + error.message, 500);
@@ -193,7 +247,7 @@ app.get('/api/dashboard/stats', h(async (req, res) => {
   ok(res, { patients: patients || 0, professionals: professionals || 0, pendingReports: (shPend || 0) + (noPend || 0) });
 }));
 
-// ---------- 🎯 PLANES DE TRATAMIENTO (join manual — sin depender de FKs) ----------
+// ---------- 🎯 PLANES DE TRATAMIENTO (solo Admin + Enfermería Jefe; join manual) ----------
 app.get('/api/treatment-plans', h(async (req, res) => {
   const { data: plans, error } = await sb.from('treatment_plans').select('*').order('created_at', { ascending: false });
   if (error) return fail(res, 'BD: ' + error.message, 500);
@@ -454,8 +508,8 @@ app.get('/api/reports/:patId/:month/:year', h(async (req, res) => {
 }));
 
 app.use((req, res) => fail(res, 'Ruta no encontrada: ' + req.method + ' ' + req.path, 404));
+
 // Vercel serverless necesita el manejador exportado:
 export default app;
-
 // Servidor local (npm start en tu PC) — Vercel lo ignora:
-if (!process.env.VERCEL) app.listen(PORT, () => console.log(`✅ API local en http://localhost:${PORT}`));
+if (!process.env.VERCEL) app.listen(PORT, () => console.log(`✅ Vital Hogar Pro API en http://localhost:${PORT}`));
