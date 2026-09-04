@@ -1001,7 +1001,7 @@ let profViewMode = 'active', patViewMode = 'active';
 let _consentsList = [], _consentPatientId = null;
 let _addendaTarget = null;
 let _myClosedShifts = [], _myNotes = [];
-let _addendaReviewTarget = null; // { type: 'shift'|'note', id }
+let _addendaReviewTarget = null;
 
 // ============ HELPERS ============
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 3500); }
@@ -1222,18 +1222,18 @@ function generateConsentPDF(patientId, isCopy) {
     doc.setFontSize(16); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 18, null, null, "center");
     doc.setFontSize(11); doc.setTextColor(0);
     doc.text("CONSENTIMIENTO INFORMADO GENERAL DE INGRESO", 105, 28, null, null, "center");
-    doc.text("SERVICIO DE ATENCIÓN DOMICILIARIA EN SALUD", 105, 34, null, null, "center");
+    doc.text("SERVICIO DE ATENCION DOMICILIARIA EN SALUD", 105, 34, null, null, "center");
     doc.setFontSize(9);
     let y = 44;
     doc.text(`Paciente: ${p.full_name || '-'} — CC ${p.document_number || '-'}${p.altitude_profiles?.city_name ? ' — Ciudad: ' + p.altitude_profiles.city_name : ''}`, 14, y); y += 10;
     const clausulas = [
-        'Por medio del presente documento, quien suscribe, en su condición de paciente o familiar/representante responsable, manifiesto que:',
-        '1. He sido informado(a) del servicio de atención domiciliaria que presta VITAL HOGAR PRO, incluyendo su propósito, alcance y el personal que lo ejecutará (auxiliares de enfermería y profesionales de la salud).',
-        '2. AUTORIZO de manera general, previa, expresa e informada (Ley 23 de 1981, Resolución 3100 de 2019), la realización de los cuidados rutinarios del servicio, entre otros: administración de medicamentos prescritos por el médico tratante por cualquier vía indicada; control de signos vitales y glucometrías capilares; curación y cuidado de heridas; baño, higiene y confort, cambio de pañal y ropa de cama; alimentación por vía oral, enteral (sonda) o parenteral según indicación médica; movilización, cambios posturales y deambulación asistida; control y vigilancia de sondas (Foley, Nelaton, nasogástrica); oxigenoterapia y nebulizaciones según prescripción; y acompañamiento y soporte emocional básico.',
-        '3. Entiendo que los procedimientos NO incluidos en el numeral 2 (como el cambio de sondas u otros procedimientos invasivos no previstos) requieren consentimiento específico adicional, el cual será solicitado en el momento por el profesional correspondiente.',
-        '4. Conozco mis derechos según la Ley 1581 de 2012 sobre protección de datos personales y autorizo el tratamiento de los datos de salud del paciente exclusivamente para fines de la prestación del servicio, facturación y cumplimiento legal.',
-        '5. Manifiesto que puedo revocar este consentimiento en cualquier momento, por escrito y sin penalización, informando a la administración de VITAL HOGAR PRO.',
-        '6. Me comprometo a informar de manera veraz el estado de salud del paciente y cualquier condición relevante para su seguridad durante la atención.'
+        'Por medio del presente documento, quien suscribe, en su condicion de paciente o familiar/representante responsable, manifiesto que:',
+        '1. He sido informado(a) del servicio de atencion domiciliaria que presta VITAL HOGAR PRO, incluyendo su proposito, alcance y el personal que lo ejecutara (auxiliares de enfermeria y profesionales de la salud).',
+        '2. AUTORIZO de manera general, previa, expresa e informada (Ley 23 de 1981, Resolucion 3100 de 2019), la realizacion de los cuidados rutinarios del servicio, entre otros: administracion de medicamentos prescritos por el medico tratante por cualquier via indicada; control de signos vitales y glucometrias capilares; curacion y cuidado de heridas; bano, higiene y confort, cambio de panal y ropa de cama; alimentacion por via oral, enteral (sonda) o parenteral segun indicacion medica; movilizacion, cambios posturales y deambulacion asistida; control y vigilancia de sondas (Foley, Nelaton, nasogastrica); oxigenoterapia y nebulizaciones segun prescripcion; y acompanamiento y soporte emocional basico.',
+        '3. Entiendo que los procedimientos NO incluidos en el numeral 2 (como el cambio de sondas u otros procedimientos invasivos no previstos) requieren consentimiento especifico adicional, el cual sera solicitado en el momento por el profesional correspondiente.',
+        '4. Conozco mis derechos segun la Ley 1581 de 2012 sobre proteccion de datos personales y autorizo el tratamiento de los datos de salud del paciente exclusivamente para fines de la prestacion del servicio, facturacion y cumplimiento legal.',
+        '5. Manifiesto que puedo revocar este consentimiento en cualquier momento, por escrito y sin penalizacion, informando a la administracion de VITAL HOGAR PRO.',
+        '6. Me comprometo a informar de manera veraz el estado de salud del paciente y cualquier condicion relevante para su seguridad durante la atencion.'
     ];
     clausulas.forEach(t => {
         const lines = doc.splitTextToSize(t, 182);
@@ -1254,7 +1254,7 @@ function generateConsentPDF(patientId, isCopy) {
         doc.text('Por VITAL HOGAR PRO', 147.5, y + 11, null, null, 'center');
         doc.text('Representante legal / Administrador', 147.5, y + 15, null, null, 'center');
         doc.setFontSize(7); doc.setTextColor(120);
-        doc.text(`Documento generado electrónicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Registro oficial del expediente del paciente. Ley 1581 de 2012.`, 105, y + 26, null, null, 'center');
+        doc.text(`Documento generado electronicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Registro oficial del expediente del paciente. Ley 1581 de 2012.`, 105, y + 26, null, null, 'center');
     } else {
         doc.setFontSize(8); doc.setTextColor(80);
         doc.setDrawColor(0);
@@ -1267,7 +1267,7 @@ function generateConsentPDF(patientId, isCopy) {
         doc.text('Nombre y sello: ________________________', 150, y + 20, null, null, 'center');
         doc.text('Fecha de ingreso al servicio: ____ / ____ / ________', 150, y + 24, null, null, 'center');
         doc.setFontSize(7); doc.setTextColor(120);
-        doc.text(`Documento generado electrónicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Ley 1581 de 2012.`, 105, y + 30, null, null, 'center');
+        doc.text(`Documento generado electronicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Ley 1581 de 2012.`, 105, y + 30, null, null, 'center');
     }
     doc.save(`Consentimiento_Ingreso_${(p.full_name||'paciente').replace(/\s+/g,'_')}_${Date.now()}.pdf`);
     showToast('PDF generado');
@@ -1357,8 +1357,7 @@ function openAddendaReview(type, id) {
     const addendas = type === 'shift' ? (item.closing_addendas || []) : (item.addendas || []);
     if (!addendas.length) return showToast('Este soporte no tiene addendas', 'info');
     _addendaReviewTarget = { type, id };
-    const quien = type === 'shift' ? 'auxiliar' : 'profesional';
-    const nombre = type === 'shift' ? (item.professionals?.full_name || 'Auxiliar') : (item.professionals?.full_name || 'Profesional');
+    const nombre = item.professionals?.full_name || 'Profesional';
     document.getElementById('addendaReviewBody').innerHTML = addendas.map((a, i) => {
         const cls = a.admin_validated ? 'validated' : 'pending';
         const estadoTxt = a.admin_validated ? '<span style="color:var(--primary); font-weight:bold;">✔ Validada por coordinación</span>' : '<span style="color:var(--warning); font-weight:bold;">⏳ Pendiente de validación</span>';
@@ -1370,7 +1369,7 @@ function openAddendaReview(type, id) {
                 <strong>✔ LO REALMENTE OCURRIDO:</strong><br>${escapeHtml(a.descriptionActual)}
             </div>
             <div style="text-align:center; margin-bottom:8px;">${estadoTxt}</div>
-            ${a.admin_validated ? '' : `<button class="btn-primary btn-primary" style="margin-top:0;" onclick="validateOneAddenda(${i}, this)"><i class="fas fa-check"></i> ✔ Validar esta addenda</button>`}
+            ${a.admin_validated ? '' : `<button class="btn-primary" style="margin-top:0;" onclick="validateOneAddenda(${i}, this)"><i class="fas fa-check"></i> ✔ Validar esta addenda</button>`}
         </div>`;
     }).join('') + `<p style="font-size:0.75rem; color:#94a3b8; text-align:center;">El soporte podrá validarse cuando TODAS sus addendas estén validadas.</p>`;
     document.getElementById('addendaReviewModal').classList.add('show');
@@ -1385,18 +1384,15 @@ async function validateOneAddenda(idx, btn) {
         const d = await r.json();
         if (d.success) {
             showToast('✅ ' + d.message);
-            // Actualizar en memoria
             const item = type === 'shift' ? _supportShifts.find(s => s.id === id) : _supportNotes.find(n => n.id === id);
             const arr = type === 'shift' ? (item.closing_addendas || []) : (item.addendas || []);
             if (arr[idx]) arr[idx].admin_validated = true;
-            // Refrescar el modal y las tablas
             openAddendaReview(type, id);
             refreshSupportRows();
         } else showToast(d.message || 'Error al validar', 'error');
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 function refreshSupportRows() {
-    // Refresca solo las celdas de estado y badges de las tablas de soportes sin recargar todo
     const rowsShifts = document.querySelectorAll('#supportShiftsTable tbody tr');
     _supportShifts.forEach((s, i) => {
         const row = rowsShifts[i]; if (!row) return;
@@ -1445,12 +1441,12 @@ async function loadOpenShifts() {
     } catch (e) { console.error(e); }
 }
 
-// --- 📜 Firmas legales ---
+// --- 📜 Firmas legales (SIN EMOJIS: compatibles con PDF) ---
 function drawLegalSignatures(doc, y, d) {
     if (y > 235) { doc.addPage(); y = 40; }
     doc.setFontSize(8); doc.setTextColor(80);
-    doc.text('Declaración de conformidad: El familiar/cuidador suscrito declara haber recibido los servicios y cuidados descritos en este documento durante el turno indicado, y se declara conforme con ellos.', 14, y, { maxWidth: 182 }); y += 16;
-    const leftLabel = d.docType === 'profesional' ? 'Firma del Profesional' : 'Firma Auxiliar de Enfermería';
+    doc.text('Declaracion de conformidad: El familiar/cuidador suscrito declara haber recibido los servicios y cuidados descritos en este documento durante el turno indicado, y se declara conforme con ellos.', 14, y, { maxWidth: 182 }); y += 16;
+    const leftLabel = d.docType === 'profesional' ? 'Firma del Profesional' : 'Firma Auxiliar de Enfermeria';
     const leftExtra = d.docType === 'profesional' ? `Tarjeta Profesional: ${d.auxCard || '(pendiente)'}` : `ReTHUS: ${d.auxCard || '(pendiente)'}`;
     if (d.auxSig) { try { doc.addImage(d.auxSig, 'JPEG', 30, y - 12, 55, 16); } catch(e) {} }
     doc.setDrawColor(0); doc.line(30, y + 6, 85, y + 6);
@@ -1463,23 +1459,24 @@ function drawLegalSignatures(doc, y, d) {
     doc.text(`${d.famName} — CC ${d.famDoc}`, 147.5, y + 15, null, null, 'center');
     doc.text(`Parentesco: ${d.famRel || '-'}`, 147.5, y + 19, null, null, 'center');
     doc.setFontSize(7); doc.setTextColor(120);
-    doc.text(`Documento generado electrónicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Registro clínico oficial. Tratamiento de datos personales conforme a la Ley 1581 de 2012.`, 105, y + 27, null, null, 'center');
+    doc.text(`Documento generado electronicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Registro clinico oficial. Tratamiento de datos personales conforme a la Ley 1581 de 2012.`, 105, y + 27, null, null, 'center');
 }
 
+// --- 📜 Addendas en PDF (SIN EMOJIS: texto plano 100% legible) ---
 function drawAddendas(doc, y, addendas, whoLabel) {
     if (!addendas || !addendas.length) return y;
     if (y > 240) { doc.addPage(); y = 30; }
-    doc.autoTable({ startY: y, head: [['📜 ADDENDAS DE CIERRE (Declaraciones posteriores)']], body: [], headStyles: { fillColor: [245,158,11] }, styles: { fontSize: 8, cellWidth: 'wrap' }, margin: { left: 14, right: 14 } });
+    doc.autoTable({ startY: y, head: [['ADDENDAS DE CIERRE (Declaraciones posteriores)']], body: [], headStyles: { fillColor: [245,158,11] }, styles: { fontSize: 8, cellWidth: 'wrap' }, margin: { left: 14, right: 14 } });
     y = doc.lastAutoTable.finalY;
     addendas.forEach((a, i) => {
         if (y > 220) { doc.addPage(); y = 30; }
         const texto = [
-            `ADDENDA #${i + 1} — ${new Date(a.fecha).toLocaleString('es-CO')}`,
+            `ADDENDA No. ${i + 1} — ${new Date(a.fecha).toLocaleString('es-CO')}`,
             `El ${whoLabel} ${a.auxName || a.profName || ''}, CC ${a.auxDoc || a.profDoc || ''}, declara en ejercicio de su deber de veracidad que:`,
-            `• OMITIÓ registrar: ${a.descriptionOmitted}`,
-            `• LO REALMENTE OCURRIDO: ${a.descriptionActual}`,
+            `- OMITIO registrar: ${a.descriptionOmitted}`,
+            `- LO REALMENTE OCURRIDO: ${a.descriptionActual}`,
             `Firma del declarante: (registrada digitalmente en el expediente)`,
-            a.admin_validated ? `✔ Revisado y validado por coordinación.` : `⏳ Pendiente de validación por coordinación.`
+            a.admin_validated ? `[VALIDADO] Revisado y validado por coordinacion.` : `[PENDIENTE] Falta validacion por coordinacion.`
         ];
         const lines = doc.splitTextToSize(texto.join('\n'), 182);
         doc.setFontSize(8); doc.setTextColor(60);
@@ -1499,19 +1496,19 @@ async function downloadSupportShiftPDF(shiftId) {
         const { jsPDF } = window.jspdf; const doc = new jsPDF();
         try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
         doc.setFontSize(16); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 18, null, null, "center");
-        doc.setFontSize(11); doc.setTextColor(0); doc.text("RESUMEN CLÍNICO DEL TURNO — Evidencia del Servicio", 105, 27, null, null, "center");
+        doc.setFontSize(11); doc.setTextColor(0); doc.text("RESUMEN CLINICO DEL TURNO - Evidencia del Servicio", 105, 27, null, null, "center");
         doc.setFontSize(9);
         doc.text(`Paciente: ${shift.patients?.full_name || '-'} — CC ${shift.patients?.document_number || '-'}`, 14, 38);
         doc.text(`Auxiliar: ${sig?.auxiliary_name || shift.professionals?.full_name || '-'} — CC ${sig?.auxiliary_id_number || shift.professionals?.document_number || '-'}`, 14, 44);
         doc.text(`Registro ReTHUS: ${shift.professionals?.professional_card || '(pendiente)'}`, 14, 50);
         doc.text(`Turno: ${shift.shift_type || '-'} | Inicio: ${new Date(shift.start_time).toLocaleString('es-CO')} | Cierre: ${shift.end_time ? new Date(shift.end_time).toLocaleString('es-CO') : '-'}`, 14, 56);
-        doc.text(`Recepción: ${shift.patient_received_status || '-'} | Entrega: ${shift.patient_delivered_status || '-'} | Pendientes: ${shift.pending_tasks || 'Ninguno'}`, 14, 62);
+        doc.text(`Recepcion: ${shift.patient_received_status || '-'} | Entrega: ${shift.patient_delivered_status || '-'} | Pendientes: ${shift.pending_tasks || 'Ninguno'}`, 14, 62);
         let y = 68;
         if (records && records.length) {
             doc.autoTable({ startY: y, head: [['Hora','PA','FC','FR','Temp','SpO2','Glu','EVA','Glasg','Braden']], body: records.map(rc => [String(rc.created_at||'').slice(11,16), rc.blood_pressure||'-', rc.heart_rate||'-', rc.respiratory_rate||'-', rc.temperature||'-', rc.spo2||'-', rc.glucose||'-', rc.eva_score??'-', (rc.glasgow_eyes||0)+(rc.glasgow_verbal||0)+(rc.glasgow_motor||0), rc.braden_score||'-']), headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
             y = doc.lastAutoTable.finalY + 6;
         }
-        y = drawAddendas(doc, y, shift.closing_addendas, 'auxiliar de enfermería');
+        y = drawAddendas(doc, y, shift.closing_addendas, 'auxiliar de enfermeria');
         drawLegalSignatures(doc, y, { docType: 'auxiliar', auxName: sig?.auxiliary_name || shift.professionals?.full_name || '-', auxDoc: sig?.auxiliary_id_number || shift.professionals?.document_number || '-', auxCard: shift.professionals?.professional_card || '-', auxSig: sig?.auxiliary_signature || null, famName: sig?.family_name || '-', famDoc: sig?.family_id_number || '-', famRel: sig?.family_relationship || '-', famSig: sig?.family_signature || null });
         doc.save(`Soporte_Turno_${(shift.patients?.full_name||'paciente').replace(/\s+/g,'_')}_${shiftId.slice(0,8)}.pdf`);
         showToast('PDF generado desde la base de datos');
@@ -1525,18 +1522,18 @@ function downloadSupportNotePDF(noteId) {
         const { jsPDF } = window.jspdf; const doc = new jsPDF();
         try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
         doc.setFontSize(16); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 18, null, null, "center");
-        doc.setFontSize(11); doc.setTextColor(0); doc.text(rec.record_type || 'Nota de Evolución Profesional', 105, 27, null, null, "center");
+        doc.setFontSize(11); doc.setTextColor(0); doc.text(rec.record_type || 'Nota de Evolucion Profesional', 105, 27, null, null, "center");
         doc.setFontSize(9);
         doc.text(`Paciente: ${rec.patients?.full_name || '-'} — CC ${rec.patients?.document_number || '-'}`, 14, 38);
         doc.text(`Profesional: ${rec.professionals?.full_name || '-'} — CC ${rec.professionals?.document_number || '-'}`, 14, 44);
         doc.text(`Tarjeta Profesional: ${rec.professionals?.professional_card || '(pendiente)'}`, 14, 50);
         doc.text(`Fecha: ${new Date(rec.created_at).toLocaleString('es-CO')}`, 14, 56);
         const vs = rec.vital_signs || {};
-        doc.text(`Motivo: ${vs.motivo || '-'} | Duración: ${vs.duracion || '-'} (${vs.visitaInicio || '?'} a ${vs.visitaFin || '?'})`, 14, 62);
+        doc.text(`Motivo: ${vs.motivo || '-'} | Duracion: ${vs.duracion || '-'} (${vs.visitaInicio || '?'} a ${vs.visitaFin || '?'})`, 14, 62);
         if (rec.imc) doc.text(`PA ${vs.bp || '-'} · FC ${vs.hr || '-'} · Peso ${rec.weight || '-'} kg · IMC ${rec.imc}`, 14, 68);
-        const consRows = vs.consentimiento ? [['Consentimiento — Intervención informada', vs.consentimiento.procedimiento || '-'], ['Consentimiento — Aceptación', 'El paciente/cuidador fue informado de riesgos, beneficios y alternativas, y otorgó su consentimiento.']] : [];
-        const body = [['S — Subjetivo', rec.subjective || '-'], ['O — Objetivo', rec.objective || '-'], ['A — Análisis', rec.analysis || '-'], ['P — Plan', rec.plan || '-'], ...consRows];
-        doc.autoTable({ startY: 74, head: [['Sección','Contenido']], body, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 55 } } });
+        const consRows = vs.consentimiento ? [['Consentimiento - Intervencion informada', vs.consentimiento.procedimiento || '-'], ['Consentimiento - Aceptacion', 'El paciente/cuidador fue informado de riesgos, beneficios y alternativas, y otorgo su consentimiento.']] : [];
+        const body = [['S - Subjetivo', rec.subjective || '-'], ['O - Objetivo', rec.objective || '-'], ['A - Analisis', rec.analysis || '-'], ['P - Plan', rec.plan || '-'], ...consRows];
+        doc.autoTable({ startY: 74, head: [['Seccion','Contenido']], body, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 55 } } });
         let y = doc.lastAutoTable.finalY + 12;
         const relDelTestigo = (rec.vital_signs?.testigoParentesco) || ((rec.family_name || '').includes('(') ? (rec.family_name || '').split('(').pop().replace(')', '').trim() : 'Testigo');
         y = drawAddendas(doc, y, rec.addendas, 'profesional de la salud');
@@ -1624,10 +1621,9 @@ async function loadSuggestedVisits() {
         const notas = (d.success ? d.data : []) || [];
         const sugeridas = [];
         notas.forEach(n => {
-            const vs = n.vital_signs || {};
             const plan = `${n.plan || ''}`;
             const match = plan.match(/Próxima visita:\s*(\d{4}-\d{2}-\d{2})/i);
-            if (match) sugeridas.push({ fecha: match[1], paciente: n.patients?.full_name || 'N/A', profesional: n.professionals?.full_name || 'N/A', specialty: n.professionals?.specialties?.name || n.professionals?.specialty || '' });
+            if (match) sugeridas.push({ fecha: match[1], paciente: n.patients?.full_name || 'N/A', profesional: n.professionals?.full_name || 'N/A' });
         });
         sugeridas.sort((a, b) => a.fecha.localeCompare(b.fecha));
         const el = document.getElementById('suggestedVisitsList'); if (!el) return;
@@ -1703,7 +1699,7 @@ function generateLiquidationPDF() {
     const profName = document.getElementById('liquidationProf').selectedOptions[0].text;
     try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
     doc.setFontSize(18); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
-    doc.setFontSize(12); doc.setTextColor(0); doc.text("Liquidación de Honorarios (Por Turnos)", 105, 30, null, null, "center");
+    doc.setFontSize(12); doc.setTextColor(0); doc.text("Liquidacion de Honorarios (Por Turnos)", 105, 30, null, null, "center");
     doc.text(`Profesional: ${profName}`, 14, 45); doc.text(`Periodo: ${MESES_ES[lastLiquidationData._month]||''} ${lastLiquidationData._year}`, 14, 52);
     const rows = (lastLiquidationData.shifts || []).map(x => [x.date, x.patient, x.shift_type, x.hours, formatCurrency(x.base_pay), formatCurrency(x.night_bonus), formatCurrency(x.sunday_bonus), formatCurrency(x.total)]);
     doc.autoTable({ startY: 60, head: [['Fecha','Paciente','Turno','Horas','Base','Noct.','Dom.','Total']], body: rows, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8 } });
@@ -1717,7 +1713,7 @@ function generateLiquidationVisitsPDF() {
     const profName = document.getElementById('liquidationProf').selectedOptions[0].text;
     try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
     doc.setFontSize(18); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
-    doc.setFontSize(12); doc.setTextColor(0); doc.text("Liquidación de Honorarios (Por Visitas)", 105, 30, null, null, "center");
+    doc.setFontSize(12); doc.setTextColor(0); doc.text("Liquidacion de Honorarios (Por Visitas)", 105, 30, null, null, "center");
     doc.setFontSize(10);
     doc.text(`Profesional: ${profName} (${lastLiquidationData.professional?.specialty || '-'})`, 14, 45);
     doc.text(`Tarifa por visita: ${formatCurrency(lastLiquidationData.professional?.fee || 0)}`, 14, 52);
@@ -1726,7 +1722,7 @@ function generateLiquidationVisitsPDF() {
     doc.autoTable({ startY: 66, head: [['Fecha','Paciente','Tipo de Nota','Valor']], body: rows, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8 } });
     const y = doc.lastAutoTable.finalY + 10;
     doc.setFontSize(13); doc.setTextColor(34,197,94); doc.text(`Total: ${formatCurrency(lastLiquidationData.totalAmount)} (${lastLiquidationData.totalValidated} visitas validadas)`, 14, y);
-    if (lastLiquidationData.totalPending > 0) { doc.setFontSize(9); doc.setTextColor(220,38,38); doc.text(`⚠️ ${lastLiquidationData.totalPending} nota(s) pendiente(s) de validación NO incluidas.`, 14, y + 8); }
+    if (lastLiquidationData.totalPending > 0) { doc.setFontSize(9); doc.setTextColor(220,38,38); doc.text(`Advertencia: ${lastLiquidationData.totalPending} nota(s) pendiente(s) de validacion NO incluidas.`, 14, y + 8); }
     doc.save(`Liquidacion_Visitas_${profName}_${lastLiquidationData._month}_${lastLiquidationData._year}.pdf`); showToast('PDF generado');
 }
 
@@ -1861,7 +1857,7 @@ function selectPatient(p) {
     document.getElementById('auxShiftStart').classList.remove('hidden');
 }
 
-// ============ AUXILIAR: MIS TURNOS CERRADOS (addendas) ============
+// ============ AUXILIAR: MIS TURNOS CERRADOS ============
 async function loadMyClosedShifts() {
     try {
         const r = await apiFetch(`${API_URL}/api/shifts/closed`); const d = await r.json();
@@ -1880,7 +1876,7 @@ function renderMyClosedShifts() {
     }).join('') : '<p style="color:#94a3b8; font-size:0.85rem;">Aún no tienes turnos cerrados.</p>';
 }
 
-// ============ PROFESIONAL: MIS NOTAS (addendas) ============
+// ============ PROFESIONAL: MIS NOTAS ============
 async function loadMyNotes() {
     try {
         const r = await apiFetch(`${API_URL}/api/professional-records/list`); const d = await r.json();
@@ -1905,7 +1901,7 @@ function downloadMyNotePDF(noteId) {
     _supportNotes = backupNotes;
 }
 
-// --- 📜 MODAL DE ADDENDA (declaración formal) ---
+// --- 📜 MODAL DE ADDENDA ---
 function openAddendaModal(type, id, paciente, fechaDoc) {
     _addendaTarget = { type, id };
     document.getElementById('addendaInfo').innerHTML = `Turno/Nota de: <strong>${escapeHtml(paciente)}</strong> · Documento del: ${escapeHtml(fechaDoc)} · Plazo: 24h`;
@@ -1931,7 +1927,7 @@ async function startShift() {
             const s = checkData.data[0];
             return showToast(`⚠️ Tienes un turno SIN CERRAR desde el ${new Date(s.start_time).toLocaleString('es-CO')} con ${s.patients?.full_name || 'un paciente'}. Ciérralo o avisa a coordinación antes de iniciar otro.`, 'error');
         }
-    } catch (e) { /* si falla la verificación, continuamos (el server también bloquea) */ }
+    } catch (e) {}
     const shiftType = getVal('shiftType');
     let customStart = null, customEnd = null;
     if (shiftType === 'personalizado') {
@@ -2024,7 +2020,7 @@ function toggleAccordion(header) { header.nextElementSibling.classList.toggle('o
 function toggleLeaveDetails(cb) { document.getElementById('leaveDetails').classList.toggle('hidden', !cb.checked); }
 function toggleOtherRelationship() { document.getElementById('familyRelOtherBox').classList.toggle('hidden', getVal('familyRelationship') !== 'Otro'); }
 
-// --- Actividades repetibles dinámicas ---
+// --- Actividades repetibles ---
 function addRepRow(type) {
     const cfg = REP_CONFIGS[type]; if (!cfg) return;
     const div = document.createElement('div');
@@ -2211,13 +2207,13 @@ function generateClosurePDF() {
     const s = lastShiftData.start || {}, c = lastShiftData.close || {}, sn = lastShiftData.snapshot || {};
     try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
     doc.setFontSize(16); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 18, null, null, "center");
-    doc.setFontSize(11); doc.setTextColor(0); doc.text("RESUMEN CLÍNICO DEL TURNO — Evidencia del Servicio Prestado", 105, 27, null, null, "center");
+    doc.setFontSize(11); doc.setTextColor(0); doc.text("RESUMEN CLINICO DEL TURNO - Evidencia del Servicio Prestado", 105, 27, null, null, "center");
     doc.setFontSize(9);
     doc.text(`Paciente: ${s.paciente || c.paciente || '-'}${s.pacienteDoc ? ' — CC ' + s.pacienteDoc : ''}`, 14, 38);
-    doc.text(`Auxiliar de Enfermería: ${s.auxiliar || c.auxiliaryName || '-'} — CC ${s.auxiliarDoc || c.auxiliaryIdNumber || '-'}`, 14, 44);
+    doc.text(`Auxiliar de Enfermeria: ${s.auxiliar || c.auxiliaryName || '-'} — CC ${s.auxiliarDoc || c.auxiliaryIdNumber || '-'}`, 14, 44);
     doc.text(`Registro ReTHUS: ${s.auxiliarCard || '(pendiente de registrar)'}`, 14, 50);
     doc.text(`Turno: ${s.tipo || '-'} | Inicio: ${s.fecha || '-'} | Cierre: ${c.fecha || '-'}`, 14, 56);
-    doc.text(`Recepción: ${s.recepcion || '-'} | Entrega: ${c.patientDeliveredStatus || '-'}`, 14, 62);
+    doc.text(`Recepcion: ${s.recepcion || '-'} | Entrega: ${c.patientDeliveredStatus || '-'}`, 14, 62);
     let y = 68;
     if (sessionRecords.length > 0) {
         doc.autoTable({ startY: y, head: [['Hora','PA','FC','FR','Temp','SpO2','Glu','EVA','Glasg','Braden']], body: sessionRecords.map(r => [r.hora, r.vitals.bp||'-', r.vitals.hr||'-', r.vitals.rr||'-', r.vitals.temp||'-', r.vitals.spo2||'-', r.vitals.glu||'-', r.eva, r.glasgow, r.braden||'-']), headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
@@ -2230,25 +2226,25 @@ function generateClosurePDF() {
     }
     const meds = (sn.actividades?.medicamentos) || [];
     if (meds.length) {
-        doc.autoTable({ startY: y, head: [['Medicamento','Dosis','Vía','Hora','Prescrito por']], body: meds.map(m => [m.medicamento||'-', m.dosis||'-', m.via||'-', m.hora||'-', m.prescritoPor||'-']), headStyles: { fillColor: [245,158,11] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
+        doc.autoTable({ startY: y, head: [['Medicamento','Dosis','Via','Hora','Prescrito por']], body: meds.map(m => [m.medicamento||'-', m.dosis||'-', m.via||'-', m.hora||'-', m.prescritoPor||'-']), headStyles: { fillColor: [245,158,11] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
         y = doc.lastAutoTable.finalY + 6;
     }
     const meals = (sn.actividades?.comidas) || [];
     if (meals.length) {
-        doc.autoTable({ startY: y, head: [['Comida','Hora','Aceptación','Detalle']], body: meals.map(m => [m.tipo||'-', m.hora||'-', m.aceptacion||'-', m.detalle||'-']), headStyles: { fillColor: [139,92,246] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
+        doc.autoTable({ startY: y, head: [['Comida','Hora','Aceptacion','Detalle']], body: meals.map(m => [m.tipo||'-', m.hora||'-', m.aceptacion||'-', m.detalle||'-']), headStyles: { fillColor: [139,92,246] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
         y = doc.lastAutoTable.finalY + 6;
     }
     const sb = sn.sbar || {};
     if (sb.s || sb.b || sb.a || sb.r) {
-        doc.autoTable({ startY: y, head: [['SBAR']], body: [['S - Situación', sb.s||'-'], ['B - Antecedentes', sb.b||'-'], ['A - Evaluación', sb.a||'-'], ['R - Recomendación', sb.r||'-']], headStyles: { fillColor: [239,68,68] }, styles: { fontSize: 8, cellWidth: 'wrap' }, margin: { left: 14, right: 14 } });
+        doc.autoTable({ startY: y, head: [['SBAR']], body: [['S - Situacion', sb.s||'-'], ['B - Antecedentes', sb.b||'-'], ['A - Evaluacion', sb.a||'-'], ['R - Recomendacion', sb.r||'-']], headStyles: { fillColor: [239,68,68] }, styles: { fontSize: 8, cellWidth: 'wrap' }, margin: { left: 14, right: 14 } });
         y = doc.lastAutoTable.finalY + 6;
     }
     if (sessionAdverseEvents.length > 0) {
-        doc.autoTable({ startY: y, head: [['🚨 Eventos Adversos']], body: sessionAdverseEvents.map(ev => [`${ev.hora} — ${ev.descripcion}`]), headStyles: { fillColor: [220,38,38] }, styles: { fontSize: 8, cellWidth: 'wrap' }, margin: { left: 14, right: 14 } });
+        doc.autoTable({ startY: y, head: [['EVENTOS ADVERSOS']], body: sessionAdverseEvents.map(ev => [`${ev.hora} — ${ev.descripcion}`]), headStyles: { fillColor: [220,38,38] }, styles: { fontSize: 8, cellWidth: 'wrap' }, margin: { left: 14, right: 14 } });
         y = doc.lastAutoTable.finalY + 6;
     }
     if (c.warningsIgnored && c.warningsIgnored.length) {
-        doc.autoTable({ startY: y, head: [['⚠️ Advertencias registradas al cierre (ignoradas por el auxiliar)']], body: c.warningsIgnored.map(w => [w]), headStyles: { fillColor: [245,158,11] }, styles: { fontSize: 7, cellWidth: 'wrap' }, margin: { left: 14, right: 14 } });
+        doc.autoTable({ startY: y, head: [['Advertencias registradas al cierre (ignoradas por el auxiliar)']], body: c.warningsIgnored.map(w => [w]), headStyles: { fillColor: [245,158,11] }, styles: { fontSize: 7, cellWidth: 'wrap' }, margin: { left: 14, right: 14 } });
         y = doc.lastAutoTable.finalY + 6;
     }
     if (y > 250) { doc.addPage(); y = 30; }
@@ -2256,7 +2252,7 @@ function generateClosurePDF() {
     doc.text(`Pendientes: ${c.pendingTasks || 'Ninguno'}`, 14, y); y += 8;
     if (c.patientLeavesHome) {
         doc.setTextColor(220,38,38);
-        doc.text(`⚠️ El paciente salió del domicilio (${c.leaveData?.transport || '-'}) de ${c.leaveData?.time || '?'} a ${c.leaveData?.returnTime || '?'}. Responsabilidad asumida por el familiar.`, 14, y, { maxWidth: 182 });
+        doc.text(`ADVERTENCIA: El paciente salio del domicilio (${c.leaveData?.transport || '-'}) de ${c.leaveData?.time || '?'} a ${c.leaveData?.returnTime || '?'}. Responsabilidad asumida por el familiar.`, 14, y, { maxWidth: 182 });
         doc.setTextColor(0); y += 12;
     }
     drawLegalSignatures(doc, y, { docType: 'auxiliar', auxName: c.auxiliaryName || s.auxiliar || '-', auxDoc: c.auxiliaryIdNumber || s.auxiliarDoc || '-', auxCard: s.auxiliarCard || '-', auxSig: c.auxiliarySignature || null, famName: c.familyName || '-', famDoc: c.familyIdNumber || '-', famRel: c.familyRelationship || '-', famSig: c.familySignature || null });
@@ -2426,17 +2422,17 @@ function generateProfPDF() {
     try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
     doc.setFontSize(18); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
     doc.setFontSize(12); doc.setTextColor(0);
-    doc.text(d.cups ? `Visita Domiciliaria (CUPS ${d.cups})` : "Nota de Evolución Profesional", 105, 30, null, null, "center");
+    doc.text(d.cups ? `Visita Domiciliaria (CUPS ${d.cups})` : "Nota de Evolucion Profesional", 105, 30, null, null, "center");
     doc.setFontSize(10);
     doc.text(`Paciente: ${d.patientName}${d.patientDoc ? ' — CC ' + d.patientDoc : ''}`, 14, 45);
     doc.text(`Profesional: ${d.profName} (${d.specialty}) — CC ${d.profDoc || '-'}`, 14, 52);
     doc.text(`Tarjeta Profesional: ${d.tarjeta || '(pendiente de registrar)'}`, 14, 59);
     doc.text(`Fecha: ${d.fecha}`, 14, 66);
-    doc.text(`Motivo: ${d.vitalSigns?.motivo || '-'} | Duración: ${d.vitalSigns?.duracion || '-'} (${d.vitalSigns?.visitaInicio || '?'} a ${d.vitalSigns?.visitaFin || '?'})`, 14, 73);
+    doc.text(`Motivo: ${d.vitalSigns?.motivo || '-'} | Duracion: ${d.vitalSigns?.duracion || '-'} (${d.vitalSigns?.visitaInicio || '?'} a ${d.vitalSigns?.visitaFin || '?'})`, 14, 73);
     if (d.imc) doc.text(`PA ${d.vitalSigns?.bp || '-'} · FC ${d.vitalSigns?.hr || '-'} · Peso ${d.weight || '-'} kg · IMC ${d.imc}`, 14, 80);
     const body = (d.secciones && d.secciones.length ? d.secciones : [['Nota', `${d.subjective || ''} ${d.objective || ''} ${d.analysis || ''} ${d.plan || ''}`]])
         .map(([k, v]) => [k, (v && String(v).trim()) ? String(v) : '(No registrado)']);
-    doc.autoTable({ startY: 88, head: [['Sección', 'Contenido']], body, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 9, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 55 } } });
+    doc.autoTable({ startY: 88, head: [['Seccion', 'Contenido']], body, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 9, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 55 } } });
     let y = doc.lastAutoTable.finalY + 15;
     drawLegalSignatures(doc, y, { docType: 'profesional', auxName: d.profName || '-', auxDoc: d.profDoc || '-', auxCard: d.tarjeta || '-', auxSig: d.professionalSignature || null, famName: d.familyName || '-', famDoc: d.familyId || '-', famRel: d.famRel || 'Testigo', famSig: d.familySignature || null });
     doc.save(`Visita_Domiciliaria_${d.patientName.replace(/\s+/g,'_')}_${Date.now()}.pdf`); showToast('PDF generado');
