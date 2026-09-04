@@ -1,807 +1,457 @@
+// ============================================================
+// VITAL HOGAR PRO — API completa sobre Supabase
+// Adaptada al esquema real: admission_consents, internal_messages,
+// financial_parameters, client_tariffs, treatment_plans (join manual)
+// Estructura: /server.js  y  /public/index.html
+// ============================================================
 import express from 'express';
 import cors from 'cors';
+import jwt from 'jsonwebtoken';
+import bcrypt from 'bcryptjs';
+import { createClient } from '@supabase/supabase-js';
+import 'dotenv/config';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import dotenv from 'dotenv';
-import { createClient } from '@supabase/supabase-js';
-import jwt from 'jsonwebtoken';
 
-dotenv.config();
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const { SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, JWT_SECRET, PORT = 3000 } = process.env;
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY || !JWT_SECRET) { console.error('Faltan variables en .env'); process.exit(1); }
 
+const sb = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, { auth: { autoRefreshToken: false, persistSession: false } });
 const app = express();
-const PORT = process.env.PORT || 10000;
-
-const supabaseUrl = process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-if (!supabaseUrl || !supabaseKey) {
-    console.error('❌ ERROR: Faltan variables de entorno');
-    process.exit(1);
-}
-
-const supabase = createClient(supabaseUrl, supabaseKey);
-
-// ==========================================
-// CORS
-// ==========================================
-const allowedOrigins = [
-    'https://vital-31.vercel.app',
-    'https://vital-31-efpj46po4-vital-hogar-cuidados-domiciliarios.vercel.app',
-    'http://localhost:3000',
-    'http://127.0.0.1:5500'
-];
-
-app.use(cors({
-    origin: function (origin, callback) {
-        if (!origin || allowedOrigins.indexOf(origin) !== -1) {
-            callback(null, true);
-        } else {
-            callback(new Error('No permitido por CORS'));
-        }
-    },
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
-    credentials: true
-}));
-
-app.options('*', cors());
-
-app.use(express.json({ limit: '50mb' }));
+app.use(cors());
+app.use(express.json({ limit: '8mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ==========================================
-// 🔐 JWT
-// ==========================================
-function verifyToken(req, res, next) {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.status(401).json({ success: false, message: 'Token no proporcionado. Inicia sesión.' });
-    jwt.verify(token, process.env.JWT_SECRET || 'secreto_vital_temporal', (err, decoded) => {
-        if (err) return res.status(401).json({ success: false, message: 'Token inválido o expirado. Ingresa de nuevo.' });
-        req.user = decoded;
-        next();
-    });
+// ---------- helpers ----------
+const ok = (res, data = null, message = 'OK') => res.json({ success: true, data, message });
+const fail = (res, message, code = 400) => res.status(code).json({ success: false, message });
+const h = fn => async (req, res) => { try { await fn(req, res); } catch (e) { console.error(e); if (!res.headersSent) fail(res, e.message || 'Error interno', 500); } };
+const PROFASEL = '*, specialties(name)';
+const monthRange = (y, m) => { const from = new Date(`${y}-${m}-01T00:00:00`); const to = new Date(from); to.setMonth(to.getMonth() + 1); return { from: from.toISOString(), to: to.toISOString() }; };
+const in24h = (iso) => iso && (Date.now() - new Date(iso).getTime()) <= 24 * 3600 * 1000;
+function nightHours(s, e) { let m = 0; const d = new Date(s); while (d < e) { const hh = d.getHours(); if (hh >= 20 || hh < 6) m++; d.setMinutes(d.getMinutes() + 1); } return m / 60; }
+function sundayHours(s, e) { let m = 0; const d = new Date(s); while (d < e) { if (d.getDay() === 0) m++; d.setMinutes(d.getMinutes() + 1); } return m / 60; }
+
+// Finanzas: filas "activas" en tus tablas existentes (financial_parameters / client_tariffs)
+async function getActiveFinance() {
+  let { data } = await sb.from('financial_parameters').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(1);
+  if (data && data.length) return data[0];
+  const { data: c } = await sb.from('financial_parameters').insert({ year: 2026, smmlv: 1623500, subsidy_transport: 200000, night_surcharge_percentage: 35, holiday_surcharge_percentage: 75, is_active: true }).select().single();
+  return c;
+}
+async function getActiveTariffs() {
+  let { data } = await sb.from('client_tariffs').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(1);
+  if (data && data.length) return data[0];
+  const { data: c } = await sb.from('client_tariffs').insert({ t_6h_diurno: 0, t_6h_nocturno: 0, t_8h_diurno: 0, t_8h_nocturno: 0, t_12h_diurno: 0, t_12h_nocturno: 0, t_24h: 0, is_active: true }).select().single();
+  return c;
 }
 
-app.use('/api', (req, res, next) => {
-    if (req.path.startsWith('/auth/')) return next();
-    return verifyToken(req, res, next);
-});
+// ---------- auth ----------
+async function authMiddleware(req, res, next) {
+  try {
+    const token = (req.headers.authorization || '').replace('Bearer ', '');
+    if (!token) return fail(res, 'No autenticado', 401);
+    const payload = jwt.verify(token, JWT_SECRET);
+    const { data: prof } = await sb.from('professionals').select(PROFASEL).eq('id', payload.id).single();
+    if (!prof || prof.is_active === false) return fail(res, 'Sesión inválida', 401);
+    req.prof = prof; next();
+  } catch { return fail(res, 'Sesión expirada', 401); }
+}
+const adminOnly = (req, res, next) => req.prof.specialties?.name === 'ADMINISTRACION' ? next() : fail(res, 'Solo Administración', 403);
+const plansRole = (req, res, next) => ['ADMINISTRACION', 'ENFERMERIA_JEFE'].includes(req.prof.specialties?.name) ? next() : fail(res, 'Solo Administración o Enfermería Jefe', 403);
 
-// ==========================================
-// 1. AUTENTICACIÓN
-// ==========================================
-app.post('/api/auth/login', async (req, res) => {
-    try {
-        const { email, password } = req.body;
-        if (!email || !password) return res.status(400).json({ success: false, message: 'Email y contraseña son requeridos' });
-        const { data: authData, error: authError } = await supabase.auth.signInWithPassword({ email, password });
-        if (authError || !authData?.user) return res.status(401).json({ success: false, message: 'Credenciales inválidas' });
-        const { data: profData, error: profError } = await supabase.from('professionals').select('*, specialties(name)').eq('user_id', authData.user.id).single();
-        if (profError || !profData) return res.status(404).json({ success: false, message: 'Perfil no encontrado' });
-        const token = jwt.sign({ id: profData.id, role: profData.specialty_id }, process.env.JWT_SECRET || 'secreto_vital_temporal', { expiresIn: '24h' });
-        res.json({ success: true, data: { user: profData, token } });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
+// ---------- LOGIN (público) ----------
+app.post('/api/auth/login', h(async (req, res) => {
+  const email = String(req.body?.email || '').trim().toLowerCase();
+  const password = String(req.body?.password || '');
+  if (!email || !password) return fail(res, 'Complete todos los campos');
+  const { data: prof } = await sb.from('professionals').select(PROFASEL).eq('email', email).single();
+  if (!prof || !(await bcrypt.compare(password, prof.password_hash || ''))) return fail(res, 'Credenciales inválidas', 401);
+  if (prof.is_active === false) return fail(res, 'Usuario archivado. Contacta al administrador.', 403);
+  const token = jwt.sign({ id: prof.id, email: prof.email }, JWT_SECRET, { expiresIn: '12h' });
+  const user = { id: prof.id, full_name: prof.full_name, email: prof.email, document_number: prof.document_number, professional_card: prof.professional_card, specialty_name: prof.specialties?.name, specialties: prof.specialties };
+  ok(res, { token, user }, 'Bienvenido');
+}));
 
-app.post('/api/auth/reset-password', async (req, res) => {
-    try {
-        const { email } = req.body;
-        if (!email) return res.status(400).json({ success: false, message: 'Email requerido' });
-        const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo: 'https://vital-hogar-31.onrender.com' });
-        if (error) throw error;
-        res.json({ success: true, message: 'Se ha enviado un enlace de recuperación a tu correo.' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
+app.use('/api', authMiddleware);
 
-// ==========================================
-// 2. DASHBOARD
-// ==========================================
-app.get('/api/dashboard/stats', async (req, res) => {
-    try {
-        const { count: patCount } = await supabase.from('patients').select('*', { count: 'exact', head: true }).eq('is_active', true);
-        const { count: profCount } = await supabase.from('professionals').select('*', { count: 'exact', head: true }).eq('is_active', true);
-        const { count: pendingShifts } = await supabase.from('shifts').select('*', { count: 'exact', head: true }).eq('is_closed', true).eq('admin_validated', false);
-        const { count: pendingNotes } = await supabase.from('professional_records').select('*', { count: 'exact', head: true }).eq('admin_validated', false);
-        res.json({ success: true, data: { patients: patCount || 0, professionals: profCount || 0, pendingReports: (pendingShifts || 0) + (pendingNotes || 0) } });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
+// ---------- PROFESIONALES ----------
+app.get('/api/professionals', h(async (req, res) => {
+  const { data, error } = await sb.from('professionals').select(PROFASEL).order('full_name');
+  if (error) return fail(res, 'BD: ' + error.message, 500);
+  ok(res, data || []);
+}));
+app.post('/api/professionals', adminOnly, h(async (req, res) => {
+  const { fullName, documentNumber, professionalCard, email, password, specialtyName } = req.body || {};
+  if (!fullName || !documentNumber || !email || !password || !professionalCard) return fail(res, 'Completa: nombre, cédula, tarjeta, correo y contraseña');
+  const em = String(email).trim().toLowerCase();
+  const { data: spec } = await sb.from('specialties').select('id').eq('name', specialtyName).single();
+  if (!spec) return fail(res, 'Especialidad inválida');
+  const { data: created, error } = await sb.from('professionals').insert({ full_name: fullName, document_number: documentNumber, professional_card: professionalCard, email: em, password_hash: await bcrypt.hash(password, 10), specialty_id: spec.id }).select(PROFASEL).single();
+  if (error) return fail(res, 'Error guardando: ' + error.message);
+  ok(res, created, 'Profesional creado con acceso');
+}));
+app.patch('/api/professionals/:id', adminOnly, h(async (req, res) => {
+  const { fullName, documentNumber, professionalCard, specialtyName, newPassword } = req.body || {};
+  const upd = {};
+  if (fullName) upd.full_name = fullName;
+  if (documentNumber) upd.document_number = documentNumber;
+  if (professionalCard) upd.professional_card = professionalCard;
+  if (specialtyName) { const { data: spec } = await sb.from('specialties').select('id').eq('name', specialtyName).single(); if (!spec) return fail(res, 'Especialidad inválida'); upd.specialty_id = spec.id; }
+  if (newPassword) upd.password_hash = await bcrypt.hash(newPassword, 10);
+  const { data: prof, error } = await sb.from('professionals').update(upd).eq('id', req.params.id).select(PROFASEL).single();
+  if (error) return fail(res, 'Error actualizando: ' + error.message);
+  ok(res, prof, 'Profesional actualizado' + (newPassword ? ' (contraseña incluida)' : ''));
+}));
+app.patch('/api/professionals/:id/deactivate', adminOnly, h(async (req, res) => {
+  const active = req.body?.isActive !== false;
+  const { error } = await sb.from('professionals').update({ is_active: active }).eq('id', req.params.id);
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, null, active ? 'Profesional reactivado' : 'Profesional archivado');
+}));
+app.delete('/api/professionals/:id', adminOnly, h(async (req, res) => {
+  const { error } = await sb.from('professionals').delete().eq('id', req.params.id);
+  if (error) return fail(res, 'No se pudo eliminar: ' + error.message);
+  ok(res, null, 'Profesional eliminado permanentemente');
+}));
 
-// ==========================================
-// 3. PROFESIONALES
-// ==========================================
-app.get('/api/professionals', async (req, res) => {
-    try { const { data, error } = await supabase.from('professionals').select('*, specialties(name)').order('created_at', { ascending: false }); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
+// ---------- 📧 CAMBIO DE CORREO (solo Admin, doble confirmación, registro) ----------
+app.patch('/api/professionals/:id/change-email', adminOnly, h(async (req, res) => {
+  const e = String(req.body?.newEmail || '').trim().toLowerCase();
+  const e2 = String(req.body?.newEmailConfirm || '').trim().toLowerCase();
+  if (!e || !e2) return fail(res, 'Escribe el correo nuevo en ambos campos');
+  if (e !== e2) return fail(res, 'Los correos no coinciden (doble confirmación)');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) return fail(res, 'Correo inválido');
+  const { data: prof } = await sb.from('professionals').select('id, email, full_name').eq('id', req.params.id).single();
+  if (!prof) return fail(res, 'Profesional no encontrado', 404);
+  if (prof.email.toLowerCase() === e) return fail(res, 'El correo nuevo es igual al actual');
+  const anterior = prof.email;
+  const { error } = await sb.from('professionals').update({ email: e }).eq('id', prof.id);
+  if (error) return fail(res, 'No se pudo actualizar: ' + error.message);
+  // Registro del cambio (no fatal si la tabla email_changes aún no existe)
+  const { error: logErr } = await sb.from('email_changes').insert({ correo_anterior: anterior, correo_nuevo: e, confirmado_1: true, confirmado_2: true, realizado_por: req.prof.id, notificado: true });
+  if (logErr) console.warn('email_changes no registrado:', logErr.message);
+  ok(res, null, `Correo de ${prof.full_name} actualizado a ${e}. Notifica al usuario su nuevo acceso.`);
+}));
 
-app.post('/api/professionals', async (req, res) => {
-    try {
-        const { email, password, fullName, documentNumber, specialtyName, professionalCard } = req.body;
-        if (!email || !password || !fullName || !documentNumber || !specialtyName) return res.status(400).json({ success: false, message: 'Todos los campos son requeridos' });
-        const { data: specData } = await supabase.from('specialties').select('id').eq('name', specialtyName).single();
-        if (!specData) return res.status(400).json({ success: false, message: 'Especialidad no válida' });
-        const { data: authUser, error: authError } = await supabase.auth.admin.createUser({ email, password, email_confirm: true });
-        if (authError) return res.status(400).json({ success: false, message: authError.message });
-        const { error: insertError } = await supabase.from('professionals').insert([{ user_id: authUser.user.id, full_name: fullName, document_number: documentNumber, specialty_id: specData.id, professional_card: professionalCard || null, is_active: true }]);
-        if (insertError) { await supabase.auth.admin.deleteUser(authUser.user.id); return res.status(500).json({ success: false, message: insertError.message }); }
-        res.json({ success: true, message: 'Profesional registrado exitosamente' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
+// ---------- PACIENTES ----------
+const PATSEL = '*, altitude_profiles(city_name)';
+app.get('/api/patients', h(async (req, res) => { const { data } = await sb.from('patients').select(PATSEL).order('full_name'); ok(res, data || []); }));
+app.post('/api/patients', h(async (req, res) => {
+  const { fullName, documentNumber, cityName, familyName, contactPhone, cie10Code, epsName, epsAuthorization } = req.body || {};
+  if (!fullName || !documentNumber) return fail(res, 'Completa: nombre y cédula');
+  const { data: pat, error } = await sb.from('patients').insert({ full_name: fullName, document_number: documentNumber, family_name: familyName || null, contact_phone: contactPhone || null, cie_10_code: cie10Code || null, eps_name: epsName || null, eps_authorization: epsAuthorization || null }).select(PATSEL).single();
+  if (error) return fail(res, 'Error: ' + error.message);
+  if (cityName) await sb.from('altitude_profiles').insert({ patient_id: pat.id, city_name: cityName });
+  ok(res, pat, 'Paciente creado');
+}));
+app.patch('/api/patients/:id', h(async (req, res) => {
+  const { fullName, documentNumber, cityName, familyName, contactPhone, cie10Code, epsName, epsAuthorization } = req.body || {};
+  const upd = {};
+  if (fullName) upd.full_name = fullName;
+  if (documentNumber) upd.document_number = documentNumber;
+  if (familyName !== undefined) upd.family_name = familyName;
+  if (contactPhone !== undefined) upd.contact_phone = contactPhone;
+  if (cie10Code !== undefined) upd.cie_10_code = cie10Code;
+  if (epsName !== undefined) upd.eps_name = epsName;
+  if (epsAuthorization !== undefined) upd.eps_authorization = epsAuthorization;
+  const { error } = await sb.from('patients').update(upd).eq('id', req.params.id);
+  if (error) return fail(res, 'Error: ' + error.message);
+  if (cityName) await sb.from('altitude_profiles').upsert({ patient_id: req.params.id, city_name: cityName }, { onConflict: 'patient_id' });
+  ok(res, null, 'Paciente actualizado');
+}));
+app.patch('/api/patients/:id/discharge', h(async (req, res) => { await sb.from('patients').update({ is_active: false }).eq('id', req.params.id); ok(res, null, 'Paciente archivado'); }));
+app.patch('/api/patients/:id/reactivate', h(async (req, res) => { await sb.from('patients').update({ is_active: true }).eq('id', req.params.id); ok(res, null, 'Paciente reactivado'); }));
+app.delete('/api/patients/:id', adminOnly, h(async (req, res) => { await sb.from('patients').delete().eq('id', req.params.id); ok(res, null, 'Paciente eliminado permanentemente'); }));
+app.get('/api/patients/:id/daily-history', h(async (req, res) => {
+  const start = new Date(); start.setHours(0, 0, 0, 0);
+  const { data } = await sb.from('clinical_records').select('*, professionals(full_name)').eq('patient_id', req.params.id).gte('created_at', start.toISOString()).order('created_at');
+  ok(res, { records: data || [] });
+}));
 
-app.patch('/api/professionals/:id', async (req, res) => {
-    try {
-        const { fullName, documentNumber, professionalCard, specialtyName, newPassword } = req.body;
-        const updateData = {};
-        if (fullName) updateData.full_name = fullName;
-        if (documentNumber) updateData.document_number = documentNumber;
-        if (professionalCard) updateData.professional_card = professionalCard;
-        if (specialtyName) { const { data: spec } = await supabase.from('specialties').select('id').eq('name', specialtyName).single(); if (spec) updateData.specialty_id = spec.id; }
-        const { error } = await supabase.from('professionals').update(updateData).eq('id', req.params.id);
-        if (error) throw error;
-        if (newPassword) { const { data: profData } = await supabase.from('professionals').select('user_id').eq('id', req.params.id).single(); if (profData && profData.user_id) { const { error: passError } = await supabase.auth.admin.updateUserById(profData.user_id, { password: newPassword }); if (passError) throw new Error('No se pudo actualizar la contraseña: ' + passError.message); } }
-        res.json({ success: true, message: 'Profesional actualizado' + (newPassword ? ' (Contraseña modificada)' : '') });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
+// ---------- CONSENTIMIENTOS (usa tu tabla admission_consents) ----------
+app.get('/api/consents', h(async (req, res) => {
+  const { data, error } = await sb.from('admission_consents').select('*').order('created_at', { ascending: false });
+  if (error) return fail(res, 'BD: ' + error.message, 500);
+  ok(res, data || []);
+}));
+app.post('/api/consents', h(async (req, res) => {
+  const { patientId, signedByName, signedById, signedByRelationship, patientSignature, adminSignature } = req.body || {};
+  if (!patientId || !signedByName || !signedById) return fail(res, 'Faltan datos del firmante');
+  const { data, error } = await sb.from('admission_consents').insert({ patient_id: patientId, is_signed: true, signed_by_name: signedByName, signed_by_id: signedById, signed_by_relationship: signedByRelationship || null, patient_signature: patientSignature || null, admin_signature: adminSignature || null }).select().single();
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, data, 'Consentimiento de ingreso registrado');
+}));
 
-// 📧 CAMBIO DE CORREO
-app.patch('/api/professionals/:id/change-email', async (req, res) => {
-    try {
-        const { newEmail, newEmailConfirm } = req.body;
-        if (!newEmail || !newEmailConfirm) return res.status(400).json({ success: false, message: 'Debes escribir el correo nuevo dos veces' });
-        if (newEmail !== newEmailConfirm) return res.status(400).json({ success: false, message: 'Los dos correos no coinciden' });
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(newEmail)) return res.status(400).json({ success: false, message: 'Formato de correo inválido' });
-        const { data: existing } = await supabase.from('professionals').select('id').eq('email', newEmail).maybeSingle();
-        if (existing) return res.status(409).json({ success: false, message: 'Ese correo ya está en uso por otro usuario' });
-        const { data: profData } = await supabase.from('professionals').select('user_id').eq('id', req.params.id).single();
-        if (!profData?.user_id) return res.status(404).json({ success: false, message: 'Profesional no encontrado' });
-        const { error: authError } = await supabase.auth.admin.updateUserById(profData.user_id, { email: newEmail, email_confirm: true });
-        if (authError) throw authError;
-        res.json({ success: true, message: `✅ Correo de acceso actualizado a ${newEmail}. Notifica al usuario.` });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
+// ---------- DASHBOARD ----------
+app.get('/api/dashboard/stats', h(async (req, res) => {
+  const { count: patients } = await sb.from('patients').select('id', { count: 'exact', head: true }).eq('is_active', true);
+  const { count: professionals } = await sb.from('professionals').select('id', { count: 'exact', head: true }).eq('is_active', true);
+  const { count: shPend } = await sb.from('shifts').select('id', { count: 'exact', head: true }).not('end_time', 'is', null).eq('admin_validated', false);
+  const { count: noPend } = await sb.from('professional_records').select('id', { count: 'exact', head: true }).eq('admin_validated', false);
+  ok(res, { patients: patients || 0, professionals: professionals || 0, pendingReports: (shPend || 0) + (noPend || 0) });
+}));
 
-app.patch('/api/professionals/:id/deactivate', async (req, res) => {
-    try { const { isActive } = req.body; await supabase.from('professionals').update({ is_active: isActive }).eq('id', req.params.id); res.json({ success: true, message: isActive ? 'Profesional reactivado' : 'Profesional desactivado' }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
+// ---------- 🎯 PLANES DE TRATAMIENTO (join manual — sin depender de FKs) ----------
+app.get('/api/treatment-plans', h(async (req, res) => {
+  const { data: plans, error } = await sb.from('treatment_plans').select('*').order('created_at', { ascending: false });
+  if (error) return fail(res, 'BD: ' + error.message, 500);
+  const [{ data: pats }, { data: profs }] = await Promise.all([
+    sb.from('patients').select('id, full_name'),
+    sb.from('professionals').select('id, full_name')
+  ]);
+  const pm = Object.fromEntries((pats || []).map(p => [p.id, p.full_name]));
+  const fm = Object.fromEntries((profs || []).map(p => [p.id, p.full_name]));
+  ok(res, (plans || []).map(p => ({ ...p, patients: { full_name: pm[p.patient_id] || 'N/A' }, professionals: { full_name: fm[p.professional_id] || 'N/A' } })));
+}));
+app.post('/api/treatment-plans', plansRole, h(async (req, res) => {
+  const { patientId, professionalId, specialtyCode, sessionsAuthorized, validUntil, notes } = req.body || {};
+  if (!patientId || !specialtyCode || !sessionsAuthorized || sessionsAuthorized < 1) return fail(res, 'Completa: paciente, especialidad y sesiones');
+  const { data, error } = await sb.from('treatment_plans').insert({ patient_id: patientId, professional_id: professionalId || null, specialty_code: specialtyCode, sessions_authorized: Number(sessionsAuthorized), valid_until: validUntil || null, notes: notes || null, created_by: req.prof.id, is_active: true, sessions_used: 0 }).select('*').single();
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, data, 'Plan de tratamiento creado');
+}));
+app.patch('/api/treatment-plans/:id/deactivate', plansRole, h(async (req, res) => {
+  const { error } = await sb.from('treatment_plans').update({ is_active: false }).eq('id', req.params.id);
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, null, 'Plan desactivado');
+}));
+app.get('/api/treatment-plans/usage/:planId', h(async (req, res) => {
+  const { data: p, error } = await sb.from('treatment_plans').select('sessions_used, sessions_authorized').eq('id', req.params.planId).single();
+  if (error || !p) return fail(res, 'Plan no encontrado', 404);
+  ok(res, { used: p.sessions_used || 0, authorized: p.sessions_authorized, remaining: Math.max(0, (p.sessions_authorized || 0) - (p.sessions_used || 0)) });
+}));
 
-// ==========================================
-// 4. PACIENTES
-// ==========================================
-app.get('/api/patients', async (req, res) => {
-    try {
-        let { data, error } = await supabase.from('patients').select('*, altitude_profiles(city_name)').order('created_at', { ascending: false });
-        if (error) { const fallback = await supabase.from('patients').select('*').order('created_at', { ascending: false }); data = fallback.data; error = fallback.error; }
-        if (error) throw error;
-        res.json({ success: true, data: data || [] });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
+// ---------- TURNOS ----------
+const SHIFTSEL = '*, patients(full_name, document_number), professionals(full_name, document_number, professional_card)';
+app.post('/api/shifts/start', h(async (req, res) => {
+  const { patientId, shiftType, patientStatus, patientNotes, customStartTime } = req.body || {};
+  if (!patientId) return fail(res, 'Falta el paciente');
+  const { data, error } = await sb.from('shifts').insert({ professional_id: req.prof.id, patient_id: patientId, shift_type: shiftType || 'personalizado', start_time: customStartTime || new Date().toISOString(), patient_received_status: patientStatus || 'estable', patient_received_notes: patientNotes || null }).select(SHIFTSEL).single();
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, data, 'Turno iniciado');
+}));
+app.get('/api/shifts/open-check/:profId', h(async (req, res) => {
+  const { data } = await sb.from('shifts').select(SHIFTSEL).eq('professional_id', req.params.profId).is('end_time', null).order('start_time', { ascending: false });
+  ok(res, data || []);
+}));
+app.get('/api/shifts/closed', h(async (req, res) => {
+  const { data, error } = await sb.from('shifts').select(SHIFTSEL).not('end_time', 'is', null).order('end_time', { ascending: false }).limit(150);
+  if (error) return fail(res, 'BD: ' + error.message, 500);
+  ok(res, data || []);
+}));
+app.post('/api/shifts/close', h(async (req, res) => {
+  const b = req.body || {};
+  if (!b.shiftId) return fail(res, 'Falta el turno');
+  const { data: upd, error } = await sb.from('shifts').update({ end_time: new Date().toISOString(), patient_delivered_status: b.patientDeliveredStatus || null, patient_delivered_notes: b.patientDeliveredNotes || null, pending_tasks: b.pendingTasks || null, warnings_ignored: b.warningsIgnored || null }).eq('id', b.shiftId).is('end_time', null).select().single();
+  if (error || !upd) return fail(res, 'El turno ya está cerrado o no existe');
+  await sb.from('shift_signatures').upsert({ shift_id: b.shiftId, auxiliary_name: b.auxiliaryName || null, auxiliary_id_number: b.auxiliaryIdNumber || null, auxiliary_signature: b.auxiliarySignature || null, family_name: b.familyName || null, family_id_number: b.familyIdNumber || null, family_relationship: b.familyRelationship || null, family_phone: b.familyPhone || null, family_signature: b.familySignature || null, leave_data: b.leaveData || null }, { onConflict: 'shift_id' });
+  ok(res, upd, 'Turno cerrado correctamente');
+}));
+// 🔓 CIERRE EXCEPCIONAL: auxiliar declara + firma → pendiente de aprobación admin
+app.post('/api/shifts/:id/exceptional-close', h(async (req, res) => {
+  const { reason, whatHappened, signature } = req.body || {};
+  if (!reason || reason.length < 10 || !whatHappened || whatHappened.length < 10) return fail(res, 'Completa las dos declaraciones (mínimo 10 caracteres)');
+  if (!signature) return fail(res, 'La firma digital es obligatoria');
+  const { data: sh } = await sb.from('shifts').select('end_time').eq('id', req.params.id).single();
+  if (!sh) return fail(res, 'Turno no encontrado', 404);
+  if (sh.end_time) return fail(res, 'Este turno ya está cerrado');
+  const ec = { auxName: req.prof.full_name, auxDoc: req.prof.document_number || '', reason, whatHappened, signature, fecha: new Date().toISOString() };
+  const { error } = await sb.from('shifts').update({ exceptional_closure: ec, admin_approved_exceptional: false, end_time: new Date().toISOString() }).eq('id', req.params.id);
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, null, 'Cierre excepcional registrado. Queda pendiente de aprobación de coordinación.');
+}));
+app.patch('/api/shifts/:id/approve-exceptional', adminOnly, h(async (req, res) => {
+  const { data: sh } = await sb.from('shifts').select('exceptional_closure').eq('id', req.params.id).single();
+  if (!sh?.exceptional_closure) return fail(res, 'Este turno no tiene cierre excepcional declarado');
+  const { error } = await sb.from('shifts').update({ admin_approved_exceptional: true }).eq('id', req.params.id);
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, null, 'Cierre excepcional APROBADO');
+}));
+app.get('/api/shifts/:id/closure-data', h(async (req, res) => {
+  const { data: shift } = await sb.from('shifts').select(SHIFTSEL).eq('id', req.params.id).single();
+  if (!shift) return fail(res, 'Turno no encontrado', 404);
+  const { data: records } = await sb.from('clinical_records').select('*').eq('shift_id', req.params.id).order('created_at');
+  const { data: signatures } = await sb.from('shift_signatures').select('*').eq('shift_id', req.params.id);
+  ok(res, { shift, records: records || [], signatures: signatures || [] });
+}));
+app.post('/api/shifts/:id/addenda', h(async (req, res) => {
+  const { descriptionOmitted, descriptionActual, signature } = req.body || {};
+  if (!descriptionOmitted || descriptionOmitted.length < 10 || !descriptionActual || descriptionActual.length < 10) return fail(res, 'Completa las dos descripciones (mínimo 10 caracteres)');
+  if (!signature) return fail(res, 'La firma digital es obligatoria');
+  const { data: sh } = await sb.from('shifts').select('end_time, closing_addendas').eq('id', req.params.id).single();
+  if (!sh) return fail(res, 'Turno no encontrado', 404);
+  if (!in24h(sh.end_time)) return fail(res, 'Venció el plazo de 24 horas para addendas');
+  const arr = Array.isArray(sh.closing_addendas) ? sh.closing_addendas : [];
+  arr.push({ auxName: req.prof.full_name, auxDoc: req.prof.document_number || '', descriptionOmitted, descriptionActual, signature, fecha: new Date().toISOString(), admin_validated: false });
+  await sb.from('shifts').update({ closing_addendas: arr }).eq('id', req.params.id);
+  ok(res, null, 'Addenda registrada y pendiente de validación');
+}));
+app.patch('/api/shifts/:id/validate', adminOnly, h(async (req, res) => {
+  const { error } = await sb.from('shifts').update({ admin_validated: true }).eq('id', req.params.id);
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, null, 'Soporte validado');
+}));
 
-app.post('/api/patients', async (req, res) => {
-    try {
-        const { fullName, documentNumber, cityName, pathology, address, contactPhone, familyName, familyId, familyRel, cie10Code, epsName, epsAuthorization } = req.body;
-        if (!fullName || !documentNumber) return res.status(400).json({ success: false, message: 'Nombre y cédula son requeridos' });
-        let cityId = null;
-        if (cityName) { const { data: cityData } = await supabase.from('altitude_profiles').select('id').eq('city_name', cityName).single(); if (cityData) cityId = cityData.id; }
-        const { error } = await supabase.from('patients').insert([{ full_name: fullName, document_number: documentNumber, city_id: cityId, pathology_summary: pathology || null, address: address || null, contact_phone: contactPhone || null, family_name: familyName || null, family_id_number: familyId || null, family_relationship: familyRel || null, cie_10_code: cie10Code || null, eps_name: epsName || null, eps_authorization: epsAuthorization || null, is_active: true }]);
-        if (error) throw error;
-        res.json({ success: true, message: 'Paciente registrado exitosamente' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
+// ---------- REGISTROS CLÍNICOS ----------
+app.post('/api/clinical-records', h(async (req, res) => {
+  const b = req.body || {};
+  const { data, error } = await sb.from('clinical_records').insert({ shift_id: b.shiftId || null, patient_id: b.patientId, professional_id: req.prof.id, blood_pressure: b.bloodPressure || null, heart_rate: b.heartRate || null, respiratory_rate: b.respiratoryRate || null, temperature: b.temperature || null, spo2: b.spo2 || null, glucose: b.glucose || null, eva_score: b.evaScore ?? 0, glasgow_eyes: b.glasgowEyes || null, glasgow_verbal: b.glasgowVerbal || null, glasgow_motor: b.glasgowMotor || null, braden_score: b.bradenScore || null, activities_completed: b.activitiesCompleted || {}, sbar_situation: b.sbarSituation || null, sbar_background: b.sbarBackground || null, sbar_assessment: b.sbarAssessment || null, sbar_recommendation: b.sbarRecommendation || null, notes: b.notes || null }).select().single();
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, data, 'Registro clínico guardado');
+}));
 
-app.patch('/api/patients/:id', async (req, res) => {
-    try {
-        const { fullName, documentNumber, cityName, familyName, contactPhone, cie10Code, epsName, epsAuthorization } = req.body;
-        const updateData = {};
-        if (fullName) updateData.full_name = fullName;
-        if (documentNumber) updateData.document_number = documentNumber;
-        if (familyName !== undefined) updateData.family_name = familyName;
-        if (contactPhone !== undefined) updateData.contact_phone = contactPhone;
-        if (cie10Code !== undefined) updateData.cie_10_code = cie10Code;
-        if (epsName !== undefined) updateData.eps_name = epsName;
-        if (epsAuthorization !== undefined) updateData.eps_authorization = epsAuthorization;
-        if (cityName) { const { data: city } = await supabase.from('altitude_profiles').select('id').eq('city_name', cityName).single(); if (city) updateData.city_id = city.id; }
-        const { error } = await supabase.from('patients').update(updateData).eq('id', req.params.id);
-        if (error) throw error;
-        res.json({ success: true, message: 'Paciente actualizado' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
+// ---------- NOTAS DE EVOLUCIÓN (con motor de plan) ----------
+const RECSEL = '*, patients(full_name, document_number), professionals(full_name, document_number, professional_card)';
+app.post('/api/professional-records', h(async (req, res) => {
+  const b = req.body || {};
+  const specialty = req.prof.specialties?.name || '';
+  let planInfo = null, planWarning = null;
+  const { data: pl } = await sb.from('treatment_plans').select('*').eq('patient_id', b.patientId).eq('specialty_code', specialty).eq('is_active', true).order('created_at', { ascending: false }).limit(1).maybeSingle();
+  if (pl) {
+    const used = pl.sessions_used || 0, authorized = pl.sessions_authorized || 0;
+    const outside = used >= authorized;
+    planInfo = { planId: pl.id, used, authorized, outside };
+    if (outside) {
+      planWarning = `⚠️ Sesión FUERA DE PLAN (${used} de ${authorized} usadas). Guardada con marca para revisión de coordinación.`;
+      if (b.outsideJustification) planInfo.justificacion = b.outsideJustification;
+    }
+    await sb.from('treatment_plans').update({ sessions_used: used + 1 }).eq('id', pl.id);
+  }
+  const vs = { ...(b.vitalSigns || {}) }; if (planInfo) vs.planInfo = planInfo;
+  const { data, error } = await sb.from('professional_records').insert({ patient_id: b.patientId, professional_id: req.prof.id, record_type: b.recordType || null, weight: b.weight || null, height: b.height || null, imc: b.imc || null, vital_signs: vs, subjective: b.subjective || null, objective: b.objective || null, analysis: b.analysis || null, plan: b.plan || null, professional_signature: b.professionalSignature || null, family_signature: b.familySignature || null, family_name: b.familyName || null, family_id: b.familyId || null }).select(RECSEL).single();
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, { ...data, planWarning }, planWarning || 'Nota guardada');
+}));
+app.get('/api/professional-records/list', h(async (req, res) => {
+  const { data, error } = await sb.from('professional_records').select(RECSEL).order('created_at', { ascending: false }).limit(200);
+  if (error) return fail(res, 'BD: ' + error.message, 500);
+  ok(res, data || []);
+}));
+app.post('/api/professional-records/:id/addenda', h(async (req, res) => {
+  const { descriptionOmitted, descriptionActual, signature } = req.body || {};
+  if (!descriptionOmitted || descriptionOmitted.length < 10 || !descriptionActual || descriptionActual.length < 10) return fail(res, 'Completa las dos descripciones (mínimo 10 caracteres)');
+  if (!signature) return fail(res, 'La firma digital es obligatoria');
+  const { data: rec } = await sb.from('professional_records').select('created_at, addendas').eq('id', req.params.id).single();
+  if (!rec) return fail(res, 'Nota no encontrada', 404);
+  if (!in24h(rec.created_at)) return fail(res, 'Venció el plazo de 24 horas para addendas');
+  const arr = Array.isArray(rec.addendas) ? rec.addendas : [];
+  arr.push({ profName: req.prof.full_name, profDoc: req.prof.document_number || '', descriptionOmitted, descriptionActual, signature, fecha: new Date().toISOString(), admin_validated: false });
+  await sb.from('professional_records').update({ addendas: arr }).eq('id', req.params.id);
+  ok(res, null, 'Addenda registrada y pendiente de validación');
+}));
+app.patch('/api/professional-records/:id/validate', adminOnly, h(async (req, res) => {
+  const { error } = await sb.from('professional_records').update({ admin_validated: true }).eq('id', req.params.id);
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, null, 'Nota validada');
+}));
 
-app.patch('/api/patients/:id/discharge', async (req, res) => {
-    try { const { reason, notes } = req.body; await supabase.from('patients').update({ is_active: false, discharge_date: new Date().toISOString(), discharge_reason: reason, discharge_notes: notes || null }).eq('id', req.params.id); res.json({ success: true, message: 'Paciente dado de baja' }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
+// ---------- EDUCACIÓN / AGENDA / CHAT (internal_messages) / EVENTOS ----------
+app.get('/api/education/topics', h(async (req, res) => { const { data } = await sb.from('education_topics').select('*, professionals(full_name)').order('created_at', { ascending: false }); ok(res, data || []); }));
+app.post('/api/education/topics', h(async (req, res) => {
+  const { title, description, responsibleId } = req.body || {};
+  if (!title) return fail(res, 'Escribe el título');
+  const { data, error } = await sb.from('education_topics').insert({ title, description: description || null, responsible_id: responsibleId || null }).select('*, professionals(full_name)').single();
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, data, 'Tema guardado');
+}));
+app.get('/api/scheduled-shifts', h(async (req, res) => {
+  const { data } = await sb.from('scheduled_shifts').select('*, patients(full_name), professionals(full_name)').order('shift_date', { ascending: false }).limit(200);
+  ok(res, data || []);
+}));
+app.get('/api/scheduled-shifts/professional/:profId', h(async (req, res) => {
+  const { data } = await sb.from('scheduled_shifts').select('*, patients(full_name, document_number, altitude_profiles(city_name)), professionals(full_name)').eq('professional_id', req.params.profId).eq('status', 'Programado').order('shift_date');
+  ok(res, data || []);
+}));
+app.post('/api/scheduled-shifts', h(async (req, res) => {
+  const { shiftDate, patientId, professionalId, shiftType } = req.body || {};
+  if (!shiftDate || !patientId || !professionalId) return fail(res, 'Completa: fecha, paciente y profesional');
+  const { data, error } = await sb.from('scheduled_shifts').insert({ shift_date: shiftDate, patient_id: patientId, professional_id: professionalId, shift_type: shiftType || 'personalizado', status: 'Programado' }).select().single();
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, data, 'Turno publicado');
+}));
+app.get('/api/messages', h(async (req, res) => {
+  const { data, error } = await sb.from('internal_messages').select('*').order('created_at', { ascending: true }).limit(200);
+  if (error) return fail(res, 'BD: ' + error.message, 500);
+  ok(res, data || []);
+}));
+app.post('/api/messages', h(async (req, res) => {
+  const { senderId, senderName, message, isAlert } = req.body || {};
+  if (!message) return fail(res, 'Mensaje vacío');
+  const { data, error } = await sb.from('internal_messages').insert({ sender_id: senderId || req.prof.id, sender_name: senderName || req.prof.full_name, message, is_alert: !!isAlert }).select().single();
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, data, 'Enviado');
+}));
+app.post('/api/adverse-events', h(async (req, res) => {
+  const { patientId, shiftId, eventType, description } = req.body || {};
+  const { data, error } = await sb.from('adverse_events').insert({ patient_id: patientId || null, professional_id: req.prof.id, shift_id: shiftId || null, event_type: eventType || 'Otro', description: description || '' }).select().single();
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, data, 'Evento adverso reportado');
+}));
 
-app.patch('/api/patients/:id/reactivate', async (req, res) => {
-    try { await supabase.from('patients').update({ is_active: true, discharge_date: null, discharge_reason: null, discharge_notes: null }).eq('id', req.params.id); res.json({ success: true, message: 'Paciente reactivado' }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
+// ---------- FINANZAS (financial_parameters / client_tariffs) ----------
+app.get('/api/finance/parameters', h(async (req, res) => ok(res, await getActiveFinance())));
+app.patch('/api/finance/parameters/:id', h(async (req, res) => {
+  const upd = {}; ['year','smmlv','subsidy_transport','night_surcharge_percentage','holiday_surcharge_percentage'].forEach(k => { if (req.body?.[k] !== undefined) upd[k] = Number(req.body[k]); });
+  const { data, error } = await sb.from('financial_parameters').update(upd).eq('id', req.params.id).select().single();
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, data, 'Parámetros guardados');
+}));
+app.get('/api/finance/tariffs', h(async (req, res) => ok(res, await getActiveTariffs())));
+app.patch('/api/finance/tariffs/:id', h(async (req, res) => {
+  const upd = {}; Object.keys(req.body || {}).filter(k => k.startsWith('t_')).forEach(k => upd[k] = Number(req.body[k]) || 0);
+  const { data, error } = await sb.from('client_tariffs').update(upd).eq('id', req.params.id).select().single();
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, data, 'Tarifas guardadas');
+}));
+app.get('/api/finance/liquidation/:profId/:month/:year', h(async (req, res) => {
+  const { from, to } = monthRange(req.params.year, req.params.month);
+  const p = await getActiveFinance();
+  const hourly = (Number(p.smmlv) || 0) / 240;
+  const { data: shifts } = await sb.from('shifts').select('*, patients(full_name)').eq('professional_id', req.params.profId).not('end_time', 'is', null).gte('start_time', from).lt('start_time', to);
+  const rows = (shifts || []).map(s => {
+    const st = new Date(s.start_time), en = new Date(s.end_time);
+    const hours = Math.max(0, (en - st) / 3600000);
+    const base = hours * hourly;
+    const nb = nightHours(st, en) * hourly * ((Number(p.night_surcharge_percentage) || 35) / 100);
+    const sbn = sundayHours(st, en) * hourly * ((Number(p.holiday_surcharge_percentage) || 75) / 100);
+    return { date: s.start_time.slice(0, 10), patient: s.patients?.full_name || '-', shift_type: s.shift_type || '-', hours: Math.round(hours * 100) / 100, base_pay: Math.round(base), night_bonus: Math.round(nb), sunday_bonus: Math.round(sbn), total: Math.round(base + nb + sbn) };
+  });
+  const subsidy = rows.length ? (Number(p.subsidy_transport) || 0) : 0;
+  ok(res, { shifts: rows, subsidyApplied: subsidy, totalAmount: rows.reduce((a, r) => a + r.total, 0) + subsidy });
+}));
+app.get('/api/finance/liquidation-visits/:profId/:month/:year', h(async (req, res) => {
+  const { from, to } = monthRange(req.params.year, req.params.month);
+  const { data: prof } = await sb.from('professionals').select('full_name, visit_fee, specialties(name)').eq('id', req.params.profId).single();
+  if (!prof) return fail(res, 'Profesional no encontrado', 404);
+  const fee = Number(prof.visit_fee) || 0;
+  const { data: recs } = await sb.from('professional_records').select('created_at, record_type, admin_validated, patients(full_name)').eq('professional_id', req.params.profId).gte('created_at', from).lt('created_at', to);
+  const valids = (recs || []).filter(r => r.admin_validated);
+  ok(res, { professional: { full_name: prof.full_name, specialty: prof.specialties?.name || '-', fee }, visits: valids.map(r => ({ date: r.created_at.slice(0, 10), patient: r.patients?.full_name || '-', record_type: r.record_type || '-', amount: fee })), totalAmount: fee * valids.length, totalValidated: valids.length, totalPending: (recs || []).length - valids.length });
+}));
+app.get('/api/finance/invoice/:patId/:month/:year', h(async (req, res) => {
+  const { from, to } = monthRange(req.params.year, req.params.month);
+  const { data: pat } = await sb.from('patients').select('full_name').eq('id', req.params.patId).single();
+  const t = await getActiveTariffs();
+  const { data: shifts } = await sb.from('shifts').select('*, professionals(full_name)').eq('patient_id', req.params.patId).not('end_time', 'is', null).gte('start_time', from).lt('start_time', to);
+  const KEYS = ['6h_diurno','6h_nocturno','8h_diurno','8h_nocturno','12h_diurno','12h_nocturno','24h'];
+  const details = (shifts || []).map(s => {
+    let amount = 0;
+    if (KEYS.includes(s.shift_type)) amount = Number(t['t_' + s.shift_type]) || 0;
+    else { const hrs = Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000); amount = Math.round(hrs * ((Number(t.t_24h) || 0) / 24)); }
+    return { date: s.start_time.slice(0, 10), service: s.shift_type || '-', auxiliaries: s.professionals?.full_name || 'Equipo Vital Hogar', amount };
+  });
+  ok(res, { patient: pat || {}, details, totalAmount: details.reduce((a, d) => a + d.amount, 0) });
+}));
+app.get('/api/reports/:patId/:month/:year', h(async (req, res) => {
+  const { from, to } = monthRange(req.params.year, req.params.month);
+  const { data: patient } = await sb.from('patients').select('*, altitude_profiles(city_name)').eq('id', req.params.patId).single();
+  if (!patient) return fail(res, 'Paciente no encontrado', 404);
+  const { data: records } = await sb.from('clinical_records').select('*, professionals(full_name)').eq('patient_id', req.params.patId).gte('created_at', from).lt('created_at', to).order('created_at');
+  const { data: profRecords } = await sb.from('professional_records').select('*, professionals(full_name)').eq('patient_id', req.params.patId).gte('created_at', from).lt('created_at', to).order('created_at');
+  ok(res, { patient, records: records || [], profRecords: profRecords || [] });
+}));
 
-// ==========================================
-// 📋 FICHA DE CUIDADO DEL PACIENTE (NUEVO)
-// ==========================================
-app.get('/api/care-profile/:patientId', async (req, res) => {
-    try {
-        const { data, error } = await supabase.from('patient_care_profiles').select('*, professionals(full_name)').eq('patient_id', req.params.patientId).maybeSingle();
-        if (error) throw error;
-        res.json({ success: true, data: data || null });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.post('/api/care-profile/:patientId', async (req, res) => {
-    try {
-        const { patientId } = req.params;
-        const { routines, particularities, alerts, medicationManager, createdBy } = req.body;
-        const payload = { routines: routines || null, particularities: particularities || null, alerts: alerts || null, medication_manager: medicationManager || null, created_by: createdBy || null, updated_at: new Date().toISOString() };
-        const { data: existing } = await supabase.from('patient_care_profiles').select('id').eq('patient_id', patientId).maybeSingle();
-        if (existing) {
-            const { error } = await supabase.from('patient_care_profiles').update(payload).eq('patient_id', patientId);
-            if (error) throw error;
-            res.json({ success: true, message: '📋 Ficha de cuidado actualizada' });
-        } else {
-            const { error } = await supabase.from('patient_care_profiles').insert([{ patient_id: patientId, ...payload }]);
-            if (error) throw error;
-            res.json({ success: true, message: '📋 Ficha de cuidado creada' });
-        }
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-// ==========================================
-// 🤝 PASE DE TURNO — datos de entrega del último turno cerrado (NUEVO)
-// ==========================================
-app.get('/api/shifts/handoff/:patientId', async (req, res) => {
-    try {
-        const { data: lastShift } = await supabase.from('shifts')
-            .select('id, end_time, patient_delivered_status, patient_delivered_notes, pending_tasks, exceptional_closure, professionals(full_name)')
-            .eq('patient_id', req.params.patientId)
-            .eq('is_closed', true)
-            .order('end_time', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-        if (!lastShift) return res.json({ success: true, data: null });
-        const { data: lastSbar } = await supabase.from('clinical_records')
-            .select('sbar_situation, sbar_background, sbar_assessment, sbar_recommendation, created_at')
-            .eq('shift_id', lastShift.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
-        res.json({ success: true, data: { shift: lastShift, sbar: lastSbar || null } });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-// ==========================================
-// 5. CONSENTIMIENTO GENERAL
-// ==========================================
-app.get('/api/consents', async (req, res) => {
-    try {
-        let { data, error } = await supabase.from('admission_consents').select('*, patients(full_name, document_number)').order('created_at', { ascending: false });
-        if (error) {
-            const fb = await supabase.from('admission_consents').select('*').order('created_at', { ascending: false });
-            if (fb.error) throw fb.error;
-            data = fb.data;
-        }
-        res.json({ success: true, data: data || [] });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.post('/api/consents', async (req, res) => {
-    try {
-        const { patientId, signedByName, signedById, signedByRelationship, patientSignature, adminSignature } = req.body;
-        if (!patientId || !signedByName || !signedById) return res.status(400).json({ success: false, message: 'Datos del consentimiento incompletos' });
-        const { error } = await supabase.from('admission_consents').insert([{ patient_id: patientId, signed_by_name: signedByName, signed_by_id: signedById, signed_by_relationship: signedByRelationship || null, patient_signature: patientSignature || null, admin_signature: adminSignature || null, is_signed: true }]);
-        if (error) throw error;
-        res.json({ success: true, message: 'Consentimiento de ingreso registrado exitosamente' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-// ==========================================
-// 6. ELIMINACIÓN CON CASCADA
-// ==========================================
-app.delete('/api/patients/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        await supabase.from('admission_consents').delete().eq('patient_id', id);
-        await supabase.from('treatment_plans').delete().eq('patient_id', id);
-        await supabase.from('patient_care_profiles').delete().eq('patient_id', id);
-        await supabase.from('clinical_records').delete().eq('patient_id', id);
-        await supabase.from('professional_records').delete().eq('patient_id', id);
-        await supabase.from('adverse_events').delete().eq('patient_id', id);
-        await supabase.from('scheduled_shifts').delete().eq('patient_id', id);
-        await supabase.from('internal_messages').delete().eq('patient_id', id);
-        const { data: shiftRows } = await supabase.from('shifts').select('id').eq('patient_id', id);
-        const shiftIds = (shiftRows || []).map(s => s.id);
-        if (shiftIds.length) { try { await supabase.from('shift_signatures').delete().in('shift_id', shiftIds); } catch (e) {} }
-        await supabase.from('shifts').delete().eq('patient_id', id);
-        const { error } = await supabase.from('patients').delete().eq('id', id);
-        if (error) throw error;
-        res.json({ success: true, message: 'Paciente y TODOS sus registros asociados eliminados' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.delete('/api/professionals/:id', async (req, res) => {
-    try {
-        const { id } = req.params;
-        await supabase.from('treatment_plans').update({ professional_id: null }).eq('professional_id', id);
-        await supabase.from('clinical_records').delete().eq('professional_id', id);
-        await supabase.from('professional_records').delete().eq('professional_id', id);
-        await supabase.from('adverse_events').delete().eq('professional_id', id);
-        await supabase.from('scheduled_shifts').delete().eq('professional_id', id);
-        await supabase.from('education_topics').delete().eq('created_by', id);
-        await supabase.from('internal_messages').delete().eq('sender_id', id);
-        const { data: shiftRows } = await supabase.from('shifts').select('id').eq('professional_id', id);
-        const shiftIds = (shiftRows || []).map(s => s.id);
-        if (shiftIds.length) { try { await supabase.from('shift_signatures').delete().in('shift_id', shiftIds); } catch (e) {} }
-        await supabase.from('shifts').delete().eq('professional_id', id);
-        const { data: prof } = await supabase.from('professionals').select('user_id').eq('id', id).single();
-        const { error } = await supabase.from('professionals').delete().eq('id', id);
-        if (error) throw error;
-        if (prof?.user_id) { try { await supabase.auth.admin.deleteUser(prof.user_id); } catch (e) { console.log('Usuario Auth ya no existe'); } }
-        res.json({ success: true, message: 'Profesional y TODOS sus registros eliminados (incluido su acceso)' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-// ==========================================
-// 7. EDUCACIÓN
-// ==========================================
-app.get('/api/education/topics', async (req, res) => {
-    try { const { data, error } = await supabase.from('education_topics').select(`*, professionals!education_topics_created_by_fkey(full_name, document_number, professional_card)`).order('created_at', { ascending: false }); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.post('/api/education/topics', async (req, res) => {
-    try { const { title, description, responsibleId } = req.body; if (!title) return res.status(400).json({ success: false, message: 'El título es requerido' }); const { error } = await supabase.from('education_topics').insert([{ title, description: description || 'Sin descripción', created_by: responsibleId || null }]); if (error) throw error; res.json({ success: true, message: 'Tema educativo creado' }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-// ==========================================
-// 8. AUXILIAR - TURNOS, REGISTROS Y EVENTOS
-// ==========================================
-app.get('/api/auxiliar/patients', async (req, res) => {
-    try {
-        let { data, error } = await supabase.from('patients').select(`*, altitude_profiles(city_name, spo2_min_normal), clinical_records(created_at, spo2, glucose, eva_score, glasgow_eyes, glasgow_verbal, glasgow_motor)`).eq('is_active', true).order('created_at', { ascending: false });
-        if (error) { const fallback = await supabase.from('patients').select('*').eq('is_active', true).order('created_at', { ascending: false }); data = fallback.data; error = fallback.error; }
-        if (error) throw error;
-        if (data) data.forEach(p => { if (p.clinical_records) p.clinical_records.sort((a, b) => new Date(b.created_at) - new Date(a.created_at)); });
-        res.json({ success: true, data: data || [] });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.get('/api/shifts/open-check/:profId', async (req, res) => {
-    try {
-        const { data, error } = await supabase.from('shifts').select('id, start_time, shift_type, patients(full_name)').eq('professional_id', req.params.profId).eq('is_closed', false).order('start_time', { ascending: false });
-        if (error) throw error;
-        res.json({ success: true, data: data || [] });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.post('/api/shifts/start', async (req, res) => {
-    try { const { patientId, professionalId, shiftType, patientStatus, patientNotes, customStartTime, customEndTime, handoffConfirmed } = req.body; if (!patientId || !professionalId || !shiftType) return res.status(400).json({ success: false, message: 'Datos incompletos' });
-        const { data: openShifts } = await supabase.from('shifts').select('id, start_time, patients(full_name)').eq('professional_id', professionalId).eq('is_closed', false);
-        if (openShifts && openShifts.length > 0) return res.status(409).json({ success: false, message: `⚠️ Ya tienes un turno abierto desde el ${new Date(openShifts[0].start_time).toLocaleString('es-CO')} con el paciente ${openShifts[0].patients?.full_name || 'N/A'}. Ciérralo antes de iniciar otro.` });
-        const { data, error } = await supabase.from('shifts').insert([{ patient_id: patientId, professional_id: professionalId, shift_type: shiftType, start_time: customStartTime ? new Date(customStartTime).toISOString() : new Date().toISOString(), end_time: customEndTime ? new Date(customEndTime).toISOString() : null, patient_received_status: patientStatus || null, patient_received_notes: patientNotes || null, is_closed: false, handoff_confirmed: handoffConfirmed || null }]).select().single(); if (error) throw error; res.json({ success: true, message: 'Turno iniciado', data: { id: data.id } });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.post('/api/clinical-records', async (req, res) => {
-    try {
-        const { shiftId, patientId, professionalId, bloodPressure, heartRate, respiratoryRate, temperature, spo2, glucose, evaScore, glasgowEyes, glasgowVerbal, glasgowMotor, bradenScore, morseScore, activitiesCompleted, sbarSituation, sbarBackground, sbarAssessment, sbarRecommendation, notes } = req.body;
-        if (!shiftId || !patientId || !professionalId) return res.status(400).json({ success: false, message: 'Datos incompletos' });
-        const { data, error } = await supabase.from('clinical_records').insert([{ shift_id: shiftId, patient_id: patientId, professional_id: professionalId, blood_pressure: bloodPressure || null, heart_rate: heartRate || null, respiratory_rate: respiratoryRate || null, temperature: temperature || null, spo2: spo2 || null, glucose: glucose || null, eva_score: evaScore || 0, glasgow_eyes: glasgowEyes || null, glasgow_verbal: glasgowVerbal || null, glasgow_motor: glasgowMotor || null, braden_score: bradenScore || null, morse_score: morseScore || null, activities_completed: activitiesCompleted || {}, sbar_situation: sbarSituation || null, sbar_background: sbarBackground || null, sbar_assessment: sbarAssessment || null, sbar_recommendation: sbarRecommendation || null, notes: notes || null }]).select().single();
-        if (error) throw error;
-        res.json({ success: true, message: 'Registro guardado', data: { id: data.id } });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.get('/api/patients/:id/daily-history', async (req, res) => {
-    try { const today = new Date(); today.setHours(0, 0, 0, 0); const { data: records, error: err1 } = await supabase.from('clinical_records').select('*, professionals(full_name)').eq('patient_id', req.params.id).gte('created_at', today.toISOString()).order('created_at', { ascending: true }); if (err1) throw err1; const { data: signatures, error: err2 } = await supabase.from('shift_signatures').select('*').gte('created_at', today.toISOString()); if (err2) throw err2; res.json({ success: true, data: { records: records || [], signatures: signatures || [] } }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.post('/api/shifts/close', async (req, res) => {
-    try {
-        const { shiftId, patientDeliveredStatus, patientDeliveredNotes, pendingTasks, auxiliarySignature, auxiliaryName, auxiliaryIdNumber, familySignature, familyName, familyIdNumber, familyRelationship, familyPhone, patientLeavesHome, leaveData, familyReceivedEducation, educationTopicGiven, educationPhotoData } = req.body;
-        if (!shiftId || !auxiliarySignature || !auxiliaryName || !auxiliaryIdNumber) return res.status(400).json({ success: false, message: 'Datos de cierre incompletos' });
-        await supabase.from('shifts').update({ end_time: new Date().toISOString(), patient_delivered_status: patientDeliveredStatus || null, patient_delivered_notes: patientDeliveredNotes || null, pending_tasks: pendingTasks || null, is_closed: true }).eq('id', shiftId);
-        await supabase.from('shift_signatures').insert([{ shift_id: shiftId, auxiliary_signature: auxiliarySignature, auxiliary_name: auxiliaryName, auxiliary_id_number: auxiliaryIdNumber, family_signature: familySignature || null, family_name: familyName || null, family_id_number: familyIdNumber || null, family_relationship: familyRelationship || null, family_phone: familyPhone || null, patient_leaves_home: patientLeavesHome || false, leave_data: leaveData || null, family_received_education: familyReceivedEducation || false, education_topic_given: educationTopicGiven || null, education_photo_data: educationPhotoData || null }]);
-        res.json({ success: true, message: 'Turno cerrado exitosamente', data: { shiftId } });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
-    try {
-        const { data: shift, error: shiftError } = await supabase.from('shifts').select('*, patients(*, altitude_profiles(city_name)), professionals(full_name, document_number, professional_card)').eq('id', req.params.shiftId).single();
-        if (shiftError) throw shiftError;
-        const { data: records, error: recordsError } = await supabase.from('clinical_records').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: true });
-        if (recordsError) throw recordsError;
-        let signatures = [], sigError = null;
-        const intento = await supabase.from('shift_signatures').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: false }).limit(1);
-        signatures = intento.data; sigError = intento.error;
-        if (sigError || !signatures || signatures.length === 0) {
-            const fb = await supabase.from('shift_signatures').select('*').order('created_at', { ascending: false }).limit(1);
-            signatures = fb.data;
-            sigError = fb.error;
-        }
-        if (sigError) throw sigError;
-        const { data: adverseEvents, error: advError } = await supabase.from('adverse_events').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: true });
-        if (advError) throw advError;
-        res.json({ success: true, data: { shift, records: records || [], signatures: signatures || [], adverseEvents: adverseEvents || [] } });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-// ==========================================
-// 🔓 CIERRE EXCEPCIONAL POR COORDINACIÓN
-// ==========================================
-app.post('/api/shifts/:id/exceptional-close', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { professionalId, reason, whatHappened, signature } = req.body;
-        if (!professionalId || !reason || !whatHappened || !signature) return res.status(400).json({ success: false, message: 'Datos del cierre excepcional incompletos' });
-        const { data: prof } = await supabase.from('professionals').select('full_name, document_number').eq('id', professionalId).single();
-        if (!prof) return res.status(404).json({ success: false, message: 'Profesional no encontrado' });
-        const { data: shift, error: errS } = await supabase.from('shifts').select('id, is_closed, professional_id').eq('id', id).single();
-        if (errS || !shift) return res.status(404).json({ success: false, message: 'Turno no encontrado' });
-        if (shift.is_closed) return res.status(400).json({ success: false, message: 'Este turno ya está cerrado' });
-        if (shift.professional_id !== professionalId) return res.status(403).json({ success: false, message: 'Solo el auxiliar dueño del turno puede declarar el cierre excepcional' });
-        const exceptional = { fecha: new Date().toISOString(), auxName: prof.full_name, auxDoc: prof.document_number, reason, whatHappened, signature };
-        const { error } = await supabase.from('shifts').update({ is_closed: true, end_time: new Date().toISOString(), exceptional_closure: exceptional, admin_approved_exceptional: false }).eq('id', id);
-        if (error) throw error;
-        res.json({ success: true, message: '📋 Cierre excepcional registrado. Queda pendiente de aprobación por coordinación.' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.patch('/api/shifts/:id/approve-exceptional', async (req, res) => {
-    try {
-        const { error } = await supabase.from('shifts').update({ admin_approved_exceptional: true }).eq('id', req.params.id);
-        if (error) throw error;
-        res.json({ success: true, message: '✅ Cierre excepcional aprobado por coordinación' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-// ==========================================
-// 9. SOPORTES PARA FACTURACIÓN
-// ==========================================
-app.get('/api/shifts/closed', async (req, res) => {
-    try {
-        let { data, error } = await supabase.from('shifts').select('*, patients(full_name, document_number), professionals(full_name, document_number, professional_card)').eq('is_closed', true).order('start_time', { ascending: false }).limit(200);
-        if (error) {
-            const fb = await supabase.from('shifts').select('*').eq('is_closed', true).order('start_time', { ascending: false }).limit(200);
-            if (fb.error) throw fb.error;
-            data = fb.data;
-            if (data && data.length) {
-                const patIds = [...new Set(data.map(s => s.patient_id).filter(Boolean))];
-                const profIds = [...new Set(data.map(s => s.professional_id).filter(Boolean))];
-                const { data: pats } = patIds.length ? await supabase.from('patients').select('id, full_name, document_number').in('id', patIds) : { data: [] };
-                const { data: profs } = profIds.length ? await supabase.from('professionals').select('id, full_name, document_number, professional_card').in('id', profIds) : { data: [] };
-                const patMap = new Map((pats || []).map(p => [p.id, p]));
-                const profMap = new Map((profs || []).map(p => [p.id, p]));
-                data = data.map(s => ({ ...s, patients: patMap.get(s.patient_id) || null, professionals: profMap.get(s.professional_id) || null }));
-            }
-        }
-        res.json({ success: true, data: data || [] });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.get('/api/professional-records/list', async (req, res) => {
-    try {
-        let { data, error } = await supabase.from('professional_records').select('*, patients(full_name, document_number), professionals(full_name, document_number, professional_card)').order('created_at', { ascending: false }).limit(200);
-        if (error) {
-            const fb = await supabase.from('professional_records').select('*').order('created_at', { ascending: false }).limit(200);
-            if (fb.error) throw fb.error;
-            data = fb.data;
-            if (data && data.length) {
-                const patIds = [...new Set(data.map(n => n.patient_id).filter(Boolean))];
-                const profIds = [...new Set(data.map(n => n.professional_id).filter(Boolean))];
-                const { data: pats } = patIds.length ? await supabase.from('patients').select('id, full_name, document_number').in('id', patIds) : { data: [] };
-                const { data: profs } = profIds.length ? await supabase.from('professionals').select('id, full_name, document_number, professional_card').in('id', profIds) : { data: [] };
-                const patMap = new Map((pats || []).map(p => [p.id, p]));
-                const profMap = new Map((profs || []).map(p => [p.id, p]));
-                data = data.map(n => ({ ...n, patients: patMap.get(n.patient_id) || null, professionals: profMap.get(n.professional_id) || null }));
-            }
-        }
-        res.json({ success: true, data: data || [] });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.patch('/api/shifts/:id/validate', async (req, res) => {
-    try {
-        const { data: shift } = await supabase.from('shifts').select('closing_addendas').eq('id', req.params.id).single();
-        if (shift && shift.closing_addendas && Array.isArray(shift.closing_addendas)) {
-            const pendiente = shift.closing_addendas.some(a => !a.admin_validated);
-            if (pendiente) return res.status(409).json({ success: false, message: '⚠️ Este soporte tiene ADDENDAS pendientes de validar. Revísalas y valídalas primero (sección Addendas).' });
-        }
-        const { error } = await supabase.from('shifts').update({ admin_validated: true, admin_validated_at: new Date().toISOString() }).eq('id', req.params.id);
-        if (error) throw error;
-        res.json({ success: true, message: 'Soporte validado correctamente' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.patch('/api/professional-records/:id/validate', async (req, res) => {
-    try {
-        const { data: rec } = await supabase.from('professional_records').select('addendas').eq('id', req.params.id).single();
-        if (rec && rec.addendas && Array.isArray(rec.addendas)) {
-            const pendiente = rec.addendas.some(a => !a.admin_validated);
-            if (pendiente) return res.status(409).json({ success: false, message: '⚠️ Esta nota tiene ADDENDAS pendientes de validar. Revísalas y valídalas primero (sección Addendas).' });
-        }
-        const { error } = await supabase.from('professional_records').update({ admin_validated: true, admin_validated_at: new Date().toISOString() }).eq('id', req.params.id);
-        if (error) throw error;
-        res.json({ success: true, message: 'Soporte validado correctamente' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-// ==========================================
-// 📜 ADDENDAS
-// ==========================================
-app.post('/api/shifts/:id/addenda', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { professionalId, descriptionOmitted, descriptionActual, signature } = req.body;
-        if (!professionalId || !descriptionOmitted || !descriptionActual || !signature) return res.status(400).json({ success: false, message: 'Datos de la addenda incompletos' });
-        const { data: prof } = await supabase.from('professionals').select('full_name, document_number').eq('id', professionalId).single();
-        if (!prof) return res.status(404).json({ success: false, message: 'Profesional no encontrado' });
-        const { data: shift, error: errS } = await supabase.from('shifts').select('id, is_closed, end_time, closing_addendas, professional_id').eq('id', id).single();
-        if (errS || !shift) return res.status(404).json({ success: false, message: 'Turno no encontrado' });
-        if (!shift.is_closed) return res.status(400).json({ success: false, message: 'Este turno aún está abierto' });
-        if (shift.professional_id !== professionalId) return res.status(403).json({ success: false, message: 'Solo el auxiliar dueño del turno puede declarar la addenda' });
-        if (shift.end_time) {
-            const horas = (Date.now() - new Date(shift.end_time).getTime()) / 3600000;
-            if (horas > 24) return res.status(409).json({ success: false, message: `⚠️ Venció el plazo de 24 horas para addendas (cierre fue hace ${Math.round(horas)}h). Comunícate con el administrador.` });
-        }
-        const nueva = { fecha: new Date().toISOString(), auxName: prof.full_name, auxDoc: prof.document_number, descriptionOmitted, descriptionActual, signature, admin_validated: false };
-        const addendas = Array.isArray(shift.closing_addendas) ? shift.closing_addendas : [];
-        addendas.push(nueva);
-        const { error } = await supabase.from('shifts').update({ closing_addendas: addendas }).eq('id', id);
-        if (error) throw error;
-        res.json({ success: true, message: '📜 Addenda registrada. Queda pendiente de validación por coordinación.' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.patch('/api/shifts/:id/addenda/:idx/validate', async (req, res) => {
-    try {
-        const { id, idx } = req.params;
-        const { data: shift } = await supabase.from('shifts').select('closing_addendas').eq('id', id).single();
-        if (!shift || !shift.closing_addendas || !shift.closing_addendas[parseInt(idx)]) return res.status(404).json({ success: false, message: 'Addenda no encontrada' });
-        shift.closing_addendas[parseInt(idx)].admin_validated = true;
-        const { error } = await supabase.from('shifts').update({ closing_addendas: shift.closing_addendas }).eq('id', id);
-        if (error) throw error;
-        res.json({ success: true, message: '✅ Addenda validada por coordinación' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.post('/api/professional-records/:id/addenda', async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { professionalId, descriptionOmitted, descriptionActual, signature } = req.body;
-        if (!professionalId || !descriptionOmitted || !descriptionActual || !signature) return res.status(400).json({ success: false, message: 'Datos de la addenda incompletos' });
-        const { data: prof } = await supabase.from('professionals').select('full_name, document_number').eq('id', professionalId).single();
-        if (!prof) return res.status(404).json({ success: false, message: 'Profesional no encontrado' });
-        const { data: rec, error: errR } = await supabase.from('professional_records').select('id, created_at, addendas, professional_id').eq('id', id).single();
-        if (errR || !rec) return res.status(404).json({ success: false, message: 'Nota no encontrada' });
-        if (rec.professional_id !== professionalId) return res.status(403).json({ success: false, message: 'Solo el profesional autor de la nota puede declarar la addenda' });
-        const horas = (Date.now() - new Date(rec.created_at).getTime()) / 3600000;
-        if (horas > 24) return res.status(409).json({ success: false, message: `⚠️ Venció el plazo de 24 horas para addendas (la nota fue hace ${Math.round(horas)}h). Comunícate con el administrador.` });
-        const nueva = { fecha: new Date().toISOString(), profName: prof.full_name, profDoc: prof.document_number, descriptionOmitted, descriptionActual, signature, admin_validated: false };
-        const addendas = Array.isArray(rec.addendas) ? rec.addendas : [];
-        addendas.push(nueva);
-        const { error } = await supabase.from('professional_records').update({ addendas }).eq('id', id);
-        if (error) throw error;
-        res.json({ success: true, message: '📜 Addenda registrada. Queda pendiente de validación por coordinación.' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.patch('/api/professional-records/:id/addenda/:idx/validate', async (req, res) => {
-    try {
-        const { id, idx } = req.params;
-        const { data: rec } = await supabase.from('professional_records').select('addendas').eq('id', id).single();
-        if (!rec || !rec.addendas || !rec.addendas[parseInt(idx)]) return res.status(404).json({ success: false, message: 'Addenda no encontrada' });
-        rec.addendas[parseInt(idx)].admin_validated = true;
-        const { error } = await supabase.from('professional_records').update({ addendas: rec.addendas }).eq('id', id);
-        if (error) throw error;
-        res.json({ success: true, message: '✅ Addenda validada por coordinación' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.post('/api/adverse-events', async (req, res) => {
-    try {
-        const { patientId, professionalId, shiftId, eventType, description } = req.body;
-        if (!patientId || !professionalId || !description) return res.status(400).json({ success: false, message: 'Datos del evento incompletos' });
-        const { error } = await supabase.from('adverse_events').insert([{ patient_id: patientId, professional_id: professionalId, shift_id: shiftId || null, event_type: eventType || 'Otro', description: description }]);
-        if (error) throw error;
-        res.json({ success: true, message: 'Evento adverso reportado exitosamente' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-// ==========================================
-// 🎯 PLANES DE TRATAMIENTO
-// ==========================================
-app.get('/api/treatment-plans', async (req, res) => {
-    try {
-        let { data, error } = await supabase.from('treatment_plans').select('*, patients(full_name, document_number), professionals(full_name, specialties(name))').order('created_at', { ascending: false });
-        if (error) {
-            const fb = await supabase.from('treatment_plans').select('*').order('created_at', { ascending: false });
-            if (fb.error) throw fb.error;
-            data = fb.data;
-        }
-        res.json({ success: true, data: data || [] });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.post('/api/treatment-plans', async (req, res) => {
-    try {
-        const { patientId, professionalId, specialtyCode, sessionsAuthorized, validUntil, notes, createdBy } = req.body;
-        if (!patientId || !specialtyCode || !sessionsAuthorized || !createdBy) return res.status(400).json({ success: false, message: 'Datos del plan incompletos' });
-        if (sessionsAuthorized < 1) return res.status(400).json({ success: false, message: 'Las sesiones autorizadas deben ser al menos 1' });
-        const { error } = await supabase.from('treatment_plans').insert([{ patient_id: patientId, professional_id: professionalId || null, specialty_code: specialtyCode, sessions_authorized: sessionsAuthorized, valid_until: validUntil || null, notes: notes || null, created_by: createdBy, is_active: true }]);
-        if (error) throw error;
-        res.json({ success: true, message: '🎯 Plan de tratamiento creado exitosamente' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.get('/api/treatment-plans/usage/:planId', async (req, res) => {
-    try {
-        const { data: plan } = await supabase.from('treatment_plans').select('*').eq('id', req.params.planId).single();
-        if (!plan) return res.status(404).json({ success: false, message: 'Plan no encontrado' });
-        const { count } = await supabase.from('professional_records').select('*', { count: 'exact', head: true })
-            .eq('patient_id', plan.patient_id)
-            .eq('professional_id', plan.professional_id)
-            .gte('created_at', plan.created_at);
-        const usadas = count || 0;
-        const restantes = Math.max(0, plan.sessions_authorized - usadas);
-        res.json({ success: true, data: { used: usadas, authorized: plan.sessions_authorized, remaining: restantes } });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.patch('/api/treatment-plans/:id/deactivate', async (req, res) => {
-    try {
-        const { error } = await supabase.from('treatment_plans').update({ is_active: false }).eq('id', req.params.id);
-        if (error) throw error;
-        res.json({ success: true, message: 'Plan desactivado' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-// ==========================================
-// 10. INFORMES CONSOLIDADOS
-// ==========================================
-app.get('/api/reports/pending', async (req, res) => {
-    try { const { data, error } = await supabase.from('patients').select('id, full_name, family_name').eq('is_active', true).order('full_name'); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.get('/api/reports/:patientId/:month/:year', async (req, res) => {
-    try {
-        const { patientId, month, year } = req.params; const monthNum = parseInt(month); const yearNum = parseInt(year);
-        if (monthNum < 1 || monthNum > 12 || yearNum < 2000) return res.status(400).json({ success: false, message: 'Mes o año inválido' });
-        const { data: patient, error: patientError } = await supabase.from('patients').select('*, altitude_profiles(city_name)').eq('id', patientId).single();
-        if (patientError || !patient) return res.status(404).json({ success: false, message: 'Paciente no encontrado' });
-        const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`; const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59).toISOString();
-        const { data: records, error: recordsError } = await supabase.from('clinical_records').select('*, professionals(full_name)').eq('patient_id', patientId).gte('created_at', startDate).lte('created_at', endDate).order('created_at', { ascending: true });
-        if (recordsError) throw recordsError;
-        const { data: profRecords, error: profRecordsError } = await supabase.from('professional_records').select('*, professionals(full_name, specialties(name))').eq('patient_id', patientId).gte('created_at', startDate).lte('created_at', endDate).order('created_at', { ascending: true });
-        if (profRecordsError) throw profRecordsError;
-        res.json({ success: true, data: { patient, records: records || [], profRecords: profRecords || [], stats: { totalRecords: records?.length || 0 } } });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.post('/api/professional-records', async (req, res) => {
-    try {
-        const { patientId, professionalId, recordType, weight, height, imc, vitalSigns, subjective, objective, analysis, plan, photoData, professionalSignature, familySignature, familyName, familyId } = req.body;
-        if (!patientId || !professionalId) return res.status(400).json({ success: false, message: 'Datos incompletos' });
-        let planInfo = null;
-        const { data: plans } = await supabase.from('treatment_plans').select('*').eq('patient_id', patientId).eq('professional_id', professionalId).eq('is_active', true);
-        if (plans && plans.length) {
-            const plan = plans[0];
-            const { count } = await supabase.from('professional_records').select('*', { count: 'exact', head: true })
-                .eq('patient_id', patientId).eq('professional_id', professionalId)
-                .gte('created_at', plan.created_at);
-            const usadas = count || 0;
-            planInfo = { planId: plan.id, authorized: plan.sessions_authorized, used: usadas, outside: usadas >= plan.sessions_authorized };
-        }
-        const { data, error } = await supabase.from('professional_records').insert([{ patient_id: patientId, professional_id: professionalId, record_type: recordType || 'Nota de Evolución', weight: weight || null, height: height || null, imc: imc || null, vital_signs: { ...(vitalSigns || {}), planInfo }, subjective: subjective || null, objective: objective || null, analysis: analysis || null, plan: plan || null, photo_data: photoData || null, professional_signature: professionalSignature || null, family_signature: familySignature || null, family_name: familyName || null, family_id: familyId || null }]).select().single();
-        if (error) throw error;
-        let planWarning = null;
-        if (planInfo && planInfo.outside) planWarning = `⚠️ Esta nota quedó FUERA DE PLAN (sesión ${planInfo.used + 1} de ${planInfo.authorized} autorizadas). Quedó marcada para revisión de coordinación.`;
-        res.json({ success: true, message: 'Nota de evolución guardada' + (planWarning ? ' — ' + planWarning : ''), data: { id: data.id, planWarning } });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-// ==========================================
-// 11. MÓDULO FINANCIERO
-// ==========================================
-app.get('/api/finance/parameters', async (req, res) => { try { const { data, error } = await supabase.from('financial_parameters').select('*').eq('is_active', true).single(); if (error) throw error; res.json({ success: true, data: data || {} }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
-app.patch('/api/finance/parameters/:id', async (req, res) => { try { const { smmlv, subsidy_transport, night_surcharge_percentage, holiday_surcharge_percentage, night_start_hour, night_end_hour, year } = req.body; const { error } = await supabase.from('financial_parameters').update({ smmlv, subsidy_transport, night_surcharge_percentage, holiday_surcharge_percentage, night_start_hour, night_end_hour, year }).eq('id', req.params.id); if (error) throw error; res.json({ success: true, message: 'Parámetros de ley actualizados' }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
-app.get('/api/finance/tariffs', async (req, res) => { try { const { data, error } = await supabase.from('client_tariffs').select('*').eq('is_active', true).single(); if (error) throw error; res.json({ success: true, data: data || {} }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
-app.patch('/api/finance/tariffs/:id', async (req, res) => { try { const { t_6h_diurno, t_6h_nocturno, t_8h_diurno, t_8h_nocturno, t_12h_diurno, t_12h_nocturno, t_24h } = req.body; const { error } = await supabase.from('client_tariffs').update({ t_6h_diurno, t_6h_nocturno, t_8h_diurno, t_8h_nocturno, t_12h_diurno, t_12h_nocturno, t_24h }).eq('id', req.params.id); if (error) throw error; res.json({ success: true, message: 'Tarifas de clientes actualizadas' }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
-
-app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res) => {
-    try {
-        const { professionalId, month, year } = req.params; const monthNum = parseInt(month); const yearNum = parseInt(year);
-        const { data: params } = await supabase.from('financial_parameters').select('*').eq('is_active', true).single();
-        if (!params) return res.status(404).json({ success: false, message: 'Parámetros financieros no configurados' });
-        const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`; const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59).toISOString();
-        const { data: shifts, error: shiftError } = await supabase.from('shifts').select('*, patients(full_name)').eq('professional_id', professionalId).eq('is_closed', true).gte('start_time', startDate).lte('start_time', endDate).order('start_time', { ascending: true });
-        if (shiftError) throw shiftError;
-        const smmlv = parseFloat(params.smmlv); const dailyRate = smmlv / 30; const hourlyRate = dailyRate / 8; const nightStart = params.night_start_hour; const nightEnd = params.night_end_hour; const nightPct = parseFloat(params.night_surcharge_percentage) / 100; const sundayPct = parseFloat(params.holiday_surcharge_percentage) / 100;
-        let totalAmount = 0; let details = [];
-        shifts.forEach(shift => { const start = new Date(shift.start_time); const end = shift.end_time ? new Date(shift.end_time) : new Date(start.getTime() + 12 * 3600000); let totalHours = (end - start) / (1000 * 60 * 60); if (isNaN(totalHours) || totalHours <= 0) totalHours = 0; let shiftBase = totalHours * hourlyRate; let nightBonus = 0; let sundayBonus = 0; if (start.getDay() === 0) { sundayBonus = shiftBase * sundayPct; } let nightHours = 0; for (let i = 0; i < totalHours; i++) { const hour = new Date(start.getTime() + i * 3600000).getHours(); if (hour >= nightStart || hour < nightEnd) { nightHours++; } } nightBonus = nightHours * hourlyRate * nightPct; const totalShiftPay = shiftBase + nightBonus + sundayBonus; totalAmount += totalShiftPay; details.push({ date: start.toLocaleDateString('es-CO'), patient: shift.patients?.full_name || 'N/A', shift_type: shift.shift_type, hours: totalHours.toFixed(1), base_pay: Math.round(shiftBase), night_bonus: Math.round(nightBonus), sunday_bonus: Math.round(sundayBonus), total: Math.round(totalShiftPay) }); });
-        let subsidy = 0; if (totalAmount < (smmlv * 2)) { subsidy = parseFloat(params.subsidy_transport); totalAmount += subsidy; }
-        res.json({ success: true, data: { params, shifts: details, totalAmount: Math.round(totalAmount), subsidyApplied: subsidy } });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.get('/api/finance/liquidation-visits/:professionalId/:month/:year', async (req, res) => {
-    try {
-        const { professionalId, month, year } = req.params;
-        const { data: prof, error: errP } = await supabase.from('professionals').select('full_name, specialties(name)').eq('id', professionalId).single();
-        if (errP || !prof) return res.status(404).json({ success: false, message: 'Profesional no encontrado' });
-        const tarifasPorEspecialidad = {
-            'MEDICINA': 60000, 'ENFERMERIA_JEFE': 50000, 'PSICOLOGIA': 50000, 'FISIOTERAPIA': 45000,
-            'FONOAUDIOLOGIA': 45000, 'TERAPIA_OCUPACIONAL': 45000, 'TERAPIA_RESPIRATORIA': 45000,
-            'NUTRICION': 45000, 'TRABAJO_SOCIAL': 40000
-        };
-        const especialidad = prof.specialties?.name || '';
-        const tarifa = parseFloat(process.env[`VISIT_FEE_${especialidad}`]) || tarifasPorEspecialidad[especialidad] || 0;
-        if (!tarifa) return res.status(400).json({ success: false, message: `No hay tarifa de visita configurada para la especialidad ${especialidad}. Configura la variable VISIT_FEE_${especialidad} en Vercel o agrégala al código.` });
-        const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`; const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59).toISOString();
-        const { data: notas, error: errN } = await supabase.from('professional_records').select('id, created_at, record_type, patients(full_name), admin_validated').eq('professional_id', professionalId).gte('created_at', startDate).lte('created_at', endDate).order('created_at', { ascending: true });
-        if (errN) throw errN;
-        const validadas = (notas || []).filter(n => n.admin_validated);
-        const pendientes = (notas || []).filter(n => !n.admin_validated);
-        const details = validadas.map(n => ({ date: new Date(n.created_at).toLocaleDateString('es-CO'), patient: n.patients?.full_name || 'N/A', record_type: n.record_type || 'Nota', amount: tarifa }));
-        const totalAmount = details.length * tarifa;
-        res.json({ success: true, data: { professional: { full_name: prof.full_name, specialty: especialidad, fee: tarifa }, visits: details, totalValidated: details.length, totalPending: pendientes.length, totalAmount } });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.get('/api/finance/invoice/:patientId/:month/:year', async (req, res) => {
-    try {
-        const { patientId, month, year } = req.params; const monthNum = parseInt(month); const yearNum = parseInt(year);
-        const { data: tariffs, error: tariffError } = await supabase.from('client_tariffs').select('*').limit(1).maybeSingle();
-        if (tariffError) throw new Error('Error en BD tarifas: ' + tariffError.message);
-        if (!tariffs) return res.status(400).json({ success: false, message: 'Debe configurar las tarifas de clientes primero en el sistema.' });
-        const { data: patientData, error: patError } = await supabase.from('patients').select('full_name').eq('id', patientId).maybeSingle();
-        if (patError) throw new Error('Error en BD paciente: ' + patError.message);
-        const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`; const endDate = new Date(yearNum, monthNum, 0, 23, 59, 59).toISOString();
-        const { data: shifts, error: shiftError } = await supabase.from('shifts').select('*').eq('patient_id', patientId).eq('is_closed', true).gte('start_time', startDate).lte('start_time', endDate).order('start_time', { ascending: true });
-        if (shiftError) throw new Error('Error en BD turnos: ' + shiftError.message);
-        const groupedByDate = {};
-        if (shifts && shifts.length > 0) { shifts.forEach(s => { if (!s.start_time) return; const dateStr = new Date(s.start_time).toISOString().split('T')[0]; if (!groupedByDate[dateStr]) groupedByDate[dateStr] = []; groupedByDate[dateStr].push(s); }); }
-        let totalAmount = 0; let invoiceDetails = [];
-        for (const date in groupedByDate) { const dayShifts = groupedByDate[date]; const types = dayShifts.map(s => s.shift_type); let has24h = types.includes('24h'); let has12D = types.includes('12h_diurno'); let has12N = types.includes('12h_nocturno'); if (has24h || (has12D && has12N)) { const amount = parseFloat(tariffs.t_24h) || 0; invoiceDetails.push({ date: date, service: 'Servicio 24 Horas', auxiliaries: 'Servicio Integral', amount: amount }); totalAmount += amount; } else { dayShifts.forEach(s => { let amount = parseFloat(tariffs[`t_${s.shift_type}`]) || 0; invoiceDetails.push({ date: date, service: `Turno ${s.shift_type.replace('_', ' ')}`, auxiliaries: 'Servicio Integral', amount: amount }); totalAmount += amount; }); } }
-        res.json({ success: true, data: { patient: patientData || { full_name: 'Paciente' }, details: invoiceDetails, totalAmount: totalAmount } });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-// ==========================================
-// 12. AGENDA (con validación de solapamiento)
-// ==========================================
-app.get('/api/scheduled-shifts', async (req, res) => { try { const { data, error } = await supabase.from('scheduled_shifts').select('*, patients(full_name), professionals(full_name)').order('shift_date', { ascending: true }); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
-app.get('/api/scheduled-shifts/professional/:profId', async (req, res) => { try { const { data, error } = await supabase.from('scheduled_shifts').select('*, patients(*, altitude_profiles(city_name))').eq('professional_id', req.params.profId).eq('status', 'Programado').order('shift_date', { ascending: true }); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
-app.post('/api/scheduled-shifts', async (req, res) => {
-    try {
-        const { patientId, professionalId, shiftDate, shiftType } = req.body;
-        if (!patientId || !professionalId || !shiftDate || !shiftType) return res.status(400).json({ success: false, message: 'Datos de agenda incompletos' });
-        // 🆕 VALIDACIÓN DE SOLAPAMIENTO: el profesional ya tiene un turno publicado ese día
-        const { data: existing } = await supabase.from('scheduled_shifts')
-            .select('id, shift_type, patients(full_name)')
-            .eq('professional_id', professionalId)
-            .eq('shift_date', shiftDate)
-            .eq('status', 'Programado');
-        if (existing && existing.length > 0) {
-            return res.status(409).json({ success: false, message: `⚠️ SOLAPAMIENTO: esa persona ya tiene un turno publicado el ${new Date(shiftDate + 'T12:00:00').toLocaleDateString('es-CO')} (${existing[0].shift_type} con ${existing[0].patients?.full_name || 'un paciente'}). No puede cubrir dos pacientes a la vez.` });
-        }
-        const { error } = await supabase.from('scheduled_shifts').insert([{ patient_id: patientId, professional_id: professionalId, shift_date: shiftDate, shift_type: shiftType, status: 'Programado' }]);
-        if (error) throw error;
-        res.json({ success: true, message: 'Turno programado exitosamente' });
-    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
-});
-
-app.get('/api/messages', async (req, res) => { try { const { data, error } = await supabase.from('internal_messages').select('*, patients(full_name)').order('created_at', { ascending: true }).limit(100); if (error) throw error; res.json({ success: true, data: data || [] }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
-app.post('/api/messages', async (req, res) => { try { const { patientId, shiftId, senderId, senderName, message, isAlert } = req.body; if (!senderId || !message) return res.status(400).json({ success: false, message: 'Mensaje vacío o sin remitente' }); const { error } = await supabase.from('internal_messages').insert([{ patient_id: patientId || null, shift_id: shiftId || null, sender_id: senderId, sender_name: senderName || 'Usuario', message: message, is_alert: isAlert || false, is_read: false }]); if (error) throw error; res.json({ success: true, message: 'Mensaje enviado' }); } catch (error) { res.status(500).json({ success: false, message: error.message }); } });
-
-// ==========================================
-// SERVIDOR DE ARCHIVOS
-// ==========================================
-app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api')) { res.sendFile(path.join(__dirname, 'public', 'index.html')); } else { res.status(404).json({ success: false, message: 'Endpoint no encontrado' }); }
-});
-
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Servidor corriendo exitosamente en el puerto ${PORT}`);
-});
-
-export default app;
+app.use((req, res) => fail(res, 'Ruta no encontrada: ' + req.method + ' ' + req.path, 404));
+app.listen(PORT, () => console.log(`✅ Vital Hogar Pro API en http://localhost:${PORT}`));
