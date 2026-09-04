@@ -292,7 +292,6 @@ app.get('/api/auxiliar/patients', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// 🔒 BLOQUEO DE TURNOS DOBLES + AVISO DE HUÉRFANOS
 app.get('/api/shifts/open-check/:profId', async (req, res) => {
     try {
         const { data, error } = await supabase.from('shifts').select('id, start_time, shift_type, patients(full_name)').eq('professional_id', req.params.profId).eq('is_closed', false).order('start_time', { ascending: false });
@@ -324,7 +323,14 @@ app.get('/api/patients/:id/daily-history', async (req, res) => {
 });
 
 app.post('/api/shifts/close', async (req, res) => {
-    try { const { shiftId, patientDeliveredStatus, patientDeliveredNotes, pendingTasks, auxiliarySignature, auxiliaryName, auxiliaryIdNumber, familySignature, familyName, familyIdNumber, familyRelationship, familyPhone, patientLeavesHome, leaveData, familyReceivedEducation, educationTopicGiven, educationPhotoData } = req.body; if (!shiftId || !auxiliarySignature || !auxiliaryName || !auxiliaryIdNumber) return res.status(400).json({ success: false, message: 'Datos de cierre incompletos' }); await supabase.from('shifts').update({ end_time: new Date().toISOString(), patient_delivered_status: patientDeliveredStatus || null, patient_delivered_notes: patientDeliveredNotes || null, pending_tasks: pendingTasks || null, is_closed: true }).eq('id', shiftId); await supabase.from('shift_signatures').insert([{ auxiliary_signature: auxiliarySignature, auxiliary_name: auxiliaryName, auxiliary_id_number: auxiliaryIdNumber, family_signature: familySignature || null, family_name: familyName || null, family_id_number: familyIdNumber || null, family_relationship: familyRelationship || null, family_phone: familyPhone || null, patient_leaves_home: patientLeavesHome || false, leave_data: leaveData || null, family_received_education: familyReceivedEducation || false, education_topic_given: educationTopicGiven || null, education_photo_data: educationPhotoData || null }]); res.json({ success: true, message: 'Turno cerrado exitosamente', data: { shiftId } }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+    try {
+        const { shiftId, patientDeliveredStatus, patientDeliveredNotes, pendingTasks, auxiliarySignature, auxiliaryName, auxiliaryIdNumber, familySignature, familyName, familyIdNumber, familyRelationship, familyPhone, patientLeavesHome, leaveData, familyReceivedEducation, educationTopicGiven, educationPhotoData } = req.body;
+        if (!shiftId || !auxiliarySignature || !auxiliaryName || !auxiliaryIdNumber) return res.status(400).json({ success: false, message: 'Datos de cierre incompletos' });
+        await supabase.from('shifts').update({ end_time: new Date().toISOString(), patient_delivered_status: patientDeliveredStatus || null, patient_delivered_notes: patientDeliveredNotes || null, pending_tasks: pendingTasks || null, is_closed: true }).eq('id', shiftId);
+        // 🔗 VINCULACIÓN: la firma se guarda con el shift_id del turno (nuevo en este parche)
+        await supabase.from('shift_signatures').insert([{ shift_id: shiftId, auxiliary_signature: auxiliarySignature, auxiliary_name: auxiliaryName, auxiliary_id_number: auxiliaryIdNumber, family_signature: familySignature || null, family_name: familyName || null, family_id_number: familyIdNumber || null, family_relationship: familyRelationship || null, family_phone: familyPhone || null, patient_leaves_home: patientLeavesHome || false, leave_data: leaveData || null, family_received_education: familyReceivedEducation || false, education_topic_given: educationTopicGiven || null, education_photo_data: educationPhotoData || null }]);
+        res.json({ success: true, message: 'Turno cerrado exitosamente', data: { shiftId } });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
 app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
@@ -333,7 +339,16 @@ app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
         if (shiftError) throw shiftError;
         const { data: records, error: recordsError } = await supabase.from('clinical_records').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: true });
         if (recordsError) throw recordsError;
-        const { data: signatures, error: sigError } = await supabase.from('shift_signatures').select('*').order('created_at', { ascending: false }).limit(1);
+        // 🔗 FIRMAS DEL TURNO EXACTO (con fallback para firmas antiguas sin vinculación)
+        let signatures = [], sigError = null;
+        const intento = await supabase.from('shift_signatures').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: false }).limit(1);
+        signatures = intento.data; sigError = intento.error;
+        if (sigError || !signatures || signatures.length === 0) {
+            console.log('Firma sin vinculación, usando la más reciente como respaldo:', sigError?.message || 'no hay firma vinculada');
+            const fb = await supabase.from('shift_signatures').select('*').order('created_at', { ascending: false }).limit(1);
+            signatures = fb.data;
+            sigError = fb.error;
+        }
         if (sigError) throw sigError;
         const { data: adverseEvents, error: advError } = await supabase.from('adverse_events').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: true });
         if (advError) throw advError;
@@ -415,7 +430,7 @@ app.patch('/api/professional-records/:id/validate', async (req, res) => {
 });
 
 // ==========================================
-// 📜 ADDENDAS (Lote 4): turnos cerrados y notas profesionales
+// 📜 ADDENDAS
 // ==========================================
 app.post('/api/shifts/:id/addenda', async (req, res) => {
     try {
@@ -546,7 +561,6 @@ app.get('/api/finance/liquidation/:professionalId/:month/:year', async (req, res
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
-// 💰 LIQUIDACIÓN POR VISITAS (Profesionales): notas validadas × tarifa por especialidad
 app.get('/api/finance/liquidation-visits/:professionalId/:month/:year', async (req, res) => {
     try {
         const { professionalId, month, year } = req.params;
@@ -559,7 +573,7 @@ app.get('/api/finance/liquidation-visits/:professionalId/:month/:year', async (r
         };
         const especialidad = prof.specialties?.name || '';
         const tarifa = parseFloat(process.env[`VISIT_FEE_${especialidad}`]) || tarifasPorEspecialidad[especialidad] || 0;
-        if (!tarifa) return res.status(400).json({ success: false, message: `No hay tarifa de visita configurada para la especialidad ${especialidad}. Configura la variable VISIT_FEE_${especialidad} en Render o agrégala al código.` });
+        if (!tarifa) return res.status(400).json({ success: false, message: `No hay tarifa de visita configurada para la especialidad ${especialidad}. Configura la variable VISIT_FEE_${especialidad} en Vercel o agrégala al código.` });
         const startDate = `${year}-${month.padStart(2, '0')}-01T00:00:00.000Z`; const endDate = new Date(parseInt(year), parseInt(month), 0, 23, 59, 59).toISOString();
         const { data: notas, error: errN } = await supabase.from('professional_records').select('id, created_at, record_type, patients(full_name), admin_validated').eq('professional_id', professionalId).gte('created_at', startDate).lte('created_at', endDate).order('created_at', { ascending: true });
         if (errN) throw errN;
