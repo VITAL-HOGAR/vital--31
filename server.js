@@ -1,17 +1,15 @@
 // ============================================================
-// VITAL HOGAR PRO — API completa (Vercel serverless)
-// ARQUITECTURA REAL del proyecto:
-//   auth.users     → correos + contraseñas (Supabase Auth)
-//   public.users   → perfiles (name, email, cedula, rethus, role, status)
-//   professionals  → datos laborales (user_id → users, specialty_id → specialties)
-//   Tablas reales: admission_consents, internal_messages,
-//   financial_parameters, client_tariffs, treatment_plans (join manual)
-// Estructura: /server.js  +  /public/index.html
+// VITAL HOGAR PRO — API completa (Vercel serverless) v2
+// NUEVO: festivos automáticos Colombia 2026, tarifas por CUPS,
+// datos de empresa, regla auxilio ≤ 2 SMMLV, rentabilidad
+// (mes global + por paciente), horas calculadas en hora COLOMBIA (UTC-5)
+// ARQUITECTURA: auth.users (accesos) · public.users (perfiles) ·
+// professionals (laboral) · admission_consents · internal_messages ·
+// financial_parameters · client_tariffs · treatment_plans
 // ============================================================
 import express from 'express';
 import cors from 'cors';
 import jwt from 'jsonwebtoken';
-import bcrypt from 'bcryptjs';
 import { createClient } from '@supabase/supabase-js';
 import 'dotenv/config';
 import path from 'path';
@@ -32,16 +30,44 @@ const ok = (res, data = null, message = 'OK') => res.json({ success: true, data,
 const fail = (res, message, code = 400) => res.status(code).json({ success: false, message });
 const h = fn => async (req, res) => { try { await fn(req, res); } catch (e) { console.error(e); if (!res.headersSent) fail(res, e.message || 'Error interno', 500); } };
 const PROFASEL = '*, specialties(name)';
-const monthRange = (y, m) => { const from = new Date(`${y}-${m}-01T00:00:00`); const to = new Date(from); to.setMonth(to.getMonth() + 1); return { from: from.toISOString(), to: to.toISOString() }; };
-const in24h = (iso) => iso && (Date.now() - new Date(iso).getTime()) <= 24 * 3600 * 1000;
-function nightHours(s, e) { let m = 0; const d = new Date(s); while (d < e) { const hh = d.getHours(); if (hh >= 20 || hh < 6) m++; d.setMinutes(d.getMinutes() + 1); } return m / 60; }
-function sundayHours(s, e) { let m = 0; const d = new Date(s); while (d < e) { if (d.getDay() === 0) m++; d.setMinutes(d.getMinutes() + 1); } return m / 60; }
 
-// Finanzas: filas "activas" en tus tablas reales
+// Hora de Colombia (UTC-5, sin horario de verano) — Vercel corre en UTC
+const CO_OFFSET = 5 * 3600000;
+const colombiaDate = (d) => new Date(d.getTime() - CO_OFFSET);
+const colombiaDateStr = (iso) => colombiaDate(new Date(iso)).toISOString().slice(0, 10);
+
+// Rango de un mes en hora colombiana (medianoche COT = 05:00 UTC)
+const monthRange = (y, m) => {
+  const from = new Date(`${y}-${m}-01T00:00:00-05:00`);
+  const nm = Number(m) === 12 ? 1 : Number(m) + 1;
+  const ny = Number(m) === 12 ? Number(y) + 1 : y;
+  const mm = String(nm).padStart(2, '0');
+  const to = new Date(`${ny}-${mm}-01T00:00:00-05:00`);
+  return { from: from.toISOString(), to: to.toISOString() };
+};
+const in24h = (iso) => iso && (Date.now() - new Date(iso).getTime()) <= 24 * 3600 * 1000;
+
+function nightHours(s, e, nightStart = 19, nightEnd = 6) {
+  let m = 0; const d = new Date(s);
+  while (d < e) { const hh = colombiaDate(d).getHours(); if (hh >= nightStart || hh < nightEnd) m++; d.setMinutes(d.getMinutes() + 1); }
+  return m / 60;
+}
+function surchargeHours(s, e, holidays) { // domingos + festivos colombianos
+  const hset = new Set((holidays || []).map(x => x.date));
+  let m = 0; const d = new Date(s);
+  while (d < e) {
+    const loc = colombiaDate(d);
+    if (loc.getDay() === 0 || hset.has(loc.toISOString().slice(0, 10))) m++;
+    d.setMinutes(d.getMinutes() + 1);
+  }
+  return m / 60;
+}
+
+// Finanzas: parámetros + tarifas + festivos + empresa
 async function getActiveFinance() {
   let { data } = await sb.from('financial_parameters').select('*').eq('is_active', true).order('created_at', { ascending: false }).limit(1);
   if (data && data.length) return data[0];
-  const { data: c } = await sb.from('financial_parameters').insert({ year: 2026, smmlv: 1623500, subsidy_transport: 200000, night_surcharge_percentage: 35, holiday_surcharge_percentage: 75, is_active: true }).select().single();
+  const { data: c } = await sb.from('financial_parameters').insert({ year: 2026, smmlv: 1750905, subsidy_transport: 249095, night_surcharge_percentage: 35, holiday_surcharge_percentage: 75, is_active: true }).select().single();
   return c;
 }
 async function getActiveTariffs() {
@@ -50,8 +76,17 @@ async function getActiveTariffs() {
   const { data: c } = await sb.from('client_tariffs').insert({ t_6h_diurno: 0, t_6h_nocturno: 0, t_8h_diurno: 0, t_8h_nocturno: 0, t_12h_diurno: 0, t_12h_nocturno: 0, t_24h: 0, is_active: true }).select().single();
   return c;
 }
+async function getHolidays() { try { const { data } = await sb.from('holidays').select('date'); return data || []; } catch { return []; } }
+async function getCompany() {
+  const { data } = await sb.from('company_profile').select('*').eq('id', 1).maybeSingle();
+  return data || { responsible_name: 'Vital Hogar Pro', doc_type: 'CC', doc_number: '', address: '', phone: '', email: '', city: 'Cúcuta', tax_regime: 'No responsable de IVA' };
+}
+async function getCupsTariffs() {
+  const { data } = await sb.from('cups_tariffs').select('*');
+  return data || [];
+}
 
-// ---------- auth (middleware + helpers de Supabase Auth) ----------
+// ---------- auth ----------
 async function authMiddleware(req, res, next) {
   try {
     const token = (req.headers.authorization || '').replace('Bearer ', '');
@@ -65,7 +100,6 @@ async function authMiddleware(req, res, next) {
 const adminOnly = (req, res, next) => req.prof.specialties?.name === 'ADMINISTRACION' ? next() : fail(res, 'Solo Administración', 403);
 const plansRole = (req, res, next) => ['ADMINISTRACION', 'ENFERMERIA_JEFE'].includes(req.prof.specialties?.name) ? next() : fail(res, 'Solo Administración o Enfermería Jefe', 403);
 
-// Las contraseñas viven en Supabase Auth (auth.users)
 const AUTH_KEY = SUPABASE_ANON_KEY || SUPABASE_SERVICE_ROLE_KEY;
 async function authSignIn(email, password) {
   const r = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
@@ -97,7 +131,7 @@ async function getAuthUserId(prof) {
   return found?.id || null;
 }
 
-// ---------- LOGIN (público, contra Supabase Auth) ----------
+// ---------- LOGIN (público) ----------
 app.post('/api/auth/login', h(async (req, res) => {
   const email = String(req.body?.email || '').trim().toLowerCase();
   const password = String(req.body?.password || '');
@@ -122,7 +156,7 @@ app.get('/api/professionals', h(async (req, res) => {
   ok(res, data || []);
 }));
 app.post('/api/professionals', adminOnly, h(async (req, res) => {
-  const { fullName, documentNumber, professionalCard, email, password, specialtyName } = req.body || {};
+  const { fullName, documentNumber, professionalCard, email, password, specialtyName, visitFee } = req.body || {};
   if (!fullName || !documentNumber || !email || !password || !professionalCard) return fail(res, 'Completa: nombre, cédula, tarjeta, correo y contraseña');
   const em = String(email).trim().toLowerCase();
   const { data: spec } = await sb.from('specialties').select('id').eq('name', specialtyName).single();
@@ -134,16 +168,17 @@ app.post('/api/professionals', adminOnly, h(async (req, res) => {
   if (tpl) { userRow.role = tpl.role; userRow.status = tpl.status; }
   const { data: uRow, error: uErr } = await sb.from('users').insert(userRow).select('id').single();
   if (uErr) { try { await sb.auth.admin.deleteUser(au.user.id); } catch {} return fail(res, 'No se pudo crear el perfil de usuario: ' + uErr.message); }
-  const { data: created, error } = await sb.from('professionals').insert({ full_name: fullName, document_number: documentNumber, professional_card: professionalCard, user_id: uRow.id, auth_user_id: au.user.id, specialty_id: spec.id }).select(PROFASEL).single();
+  const { data: created, error } = await sb.from('professionals').insert({ full_name: fullName, document_number: documentNumber, professional_card: professionalCard, user_id: uRow.id, auth_user_id: au.user.id, specialty_id: spec.id, visit_fee: visitFee ? Number(visitFee) : 0 }).select(PROFASEL).single();
   if (error) return fail(res, 'Error guardando: ' + error.message);
   ok(res, created, 'Profesional creado con acceso');
 }));
 app.patch('/api/professionals/:id', adminOnly, h(async (req, res) => {
-  const { fullName, documentNumber, professionalCard, specialtyName, newPassword } = req.body || {};
+  const { fullName, documentNumber, professionalCard, specialtyName, newPassword, visitFee } = req.body || {};
   const upd = {};
   if (fullName) upd.full_name = fullName;
   if (documentNumber) upd.document_number = documentNumber;
   if (professionalCard) upd.professional_card = professionalCard;
+  if (visitFee !== undefined && visitFee !== null && visitFee !== '') upd.visit_fee = Number(visitFee) || 0;
   if (specialtyName) { const { data: spec } = await sb.from('specialties').select('id').eq('name', specialtyName).single(); if (!spec) return fail(res, 'Especialidad inválida'); upd.specialty_id = spec.id; }
   const { data: prof, error } = await sb.from('professionals').update(upd).eq('id', req.params.id).select(PROFASEL).single();
   if (error) return fail(res, 'Error actualizando: ' + error.message);
@@ -161,8 +196,6 @@ app.patch('/api/professionals/:id/deactivate', adminOnly, h(async (req, res) => 
   if (error) return fail(res, 'Error: ' + error.message);
   ok(res, null, active ? 'Profesional reactivado' : 'Profesional archivado');
 }));
-// ELIMINAR: borra el profesional + su perfil en users + su cuenta de acceso en Auth.
-// Las FKs apuntan a ON DELETE SET NULL (SQL de referencias), así no se rompe el historial.
 app.delete('/api/professionals/:id', adminOnly, h(async (req, res) => {
   const { data: prof } = await sb.from('professionals').select('user_id, auth_user_id').eq('id', req.params.id).single();
   const { error } = await sb.from('professionals').delete().eq('id', req.params.id);
@@ -172,7 +205,7 @@ app.delete('/api/professionals/:id', adminOnly, h(async (req, res) => {
   ok(res, null, 'Profesional eliminado permanentemente (incluido su acceso)');
 }));
 
-// ---------- 📧 CAMBIO DE CORREO (solo Admin, doble confirmación; escribe en Auth + users) ----------
+// ---------- 📧 CAMBIO DE CORREO (solo Admin, doble confirmación, con registro) ----------
 app.patch('/api/professionals/:id/change-email', adminOnly, h(async (req, res) => {
   const e = String(req.body?.newEmail || '').trim().toLowerCase();
   const e2 = String(req.body?.newEmailConfirm || '').trim().toLowerCase();
@@ -181,6 +214,8 @@ app.patch('/api/professionals/:id/change-email', adminOnly, h(async (req, res) =
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) return fail(res, 'Correo inválido');
   const { data: prof } = await sb.from('professionals').select('id, full_name, auth_user_id, user_id').eq('id', req.params.id).single();
   if (!prof) return fail(res, 'Profesional no encontrado', 404);
+  let anterior = null;
+  if (prof.user_id) { const { data: u } = await sb.from('users').select('email').eq('id', prof.user_id).single(); anterior = u?.email || null; }
   const authId = await getAuthUserId(prof);
   if (authId) {
     const { error: auErr } = await sb.auth.admin.updateUserById(authId, { email: e, email_confirm: true });
@@ -188,34 +223,54 @@ app.patch('/api/professionals/:id/change-email', adminOnly, h(async (req, res) =
   }
   const { error } = await sb.from('users').update({ email: e }).eq('id', prof.user_id);
   if (error) return fail(res, 'No se pudo actualizar el perfil: ' + error.message);
-  try { await sb.from('email_changes').insert({ correo_nuevo: e, confirmado_1: true, confirmado_2: true, realizado_por: req.prof.id, notificado: true }); } catch {}
+  try { await sb.from('email_changes').insert({ correo_anterior: anterior, correo_nuevo: e, confirmado_1: true, confirmado_2: true, realizado_por: req.prof.id, notificado: true }); } catch {}
   ok(res, null, `Correo de ${prof.full_name} actualizado a ${e}. Notifica al usuario su nuevo acceso.`);
 }));
 
-// ---------- PACIENTES ----------
+// ---------- PACIENTES (con campos ampliados) ----------
 const PATSEL = '*, altitude_profiles(city_name)';
 app.get('/api/patients', h(async (req, res) => { const { data } = await sb.from('patients').select(PATSEL).order('full_name'); ok(res, data || []); }));
 app.post('/api/patients', h(async (req, res) => {
-  const { fullName, documentNumber, cityName, familyName, contactPhone, cie10Code, epsName, epsAuthorization } = req.body || {};
-  if (!fullName || !documentNumber) return fail(res, 'Completa: nombre y cédula');
-  const { data: pat, error } = await sb.from('patients').insert({ full_name: fullName, document_number: documentNumber, family_name: familyName || null, contact_phone: contactPhone || null, cie_10_code: cie10Code || null, eps_name: epsName || null, eps_authorization: epsAuthorization || null }).select(PATSEL).single();
+  const b = req.body || {};
+  if (!b.fullName || !b.documentNumber) return fail(res, 'Completa: nombre y número de documento');
+  const { data: pat, error } = await sb.from('patients').insert({
+    full_name: b.fullName, document_number: b.documentNumber,
+    document_type: b.documentType || 'CC', birth_date: b.birthDate || null, sex: b.sex || null,
+    address: b.address || null, neighborhood: b.neighborhood || null, housing_type: b.housingType || null,
+    arrival_references: b.arrivalReferences || null, access_notes: b.accessNotes || null, pets: b.pets || null,
+    family_name: b.familyName || null, contact_phone: b.contactPhone || null, family_email: b.familyEmail || null,
+    emergency_name: b.emergencyName || null, emergency_phone: b.emergencyPhone || null,
+    cie_10_code: b.cie10Code || null, eps_name: b.epsName || null, eps_authorization: b.epsAuthorization || null
+  }).select(PATSEL).single();
   if (error) return fail(res, 'Error: ' + error.message);
-  if (cityName) await sb.from('altitude_profiles').insert({ patient_id: pat.id, city_name: cityName });
+  if (b.cityName) await sb.from('altitude_profiles').insert({ patient_id: pat.id, city_name: b.cityName });
   ok(res, pat, 'Paciente creado');
 }));
 app.patch('/api/patients/:id', h(async (req, res) => {
-  const { fullName, documentNumber, cityName, familyName, contactPhone, cie10Code, epsName, epsAuthorization } = req.body || {};
+  const b = req.body || {};
   const upd = {};
-  if (fullName) upd.full_name = fullName;
-  if (documentNumber) upd.document_number = documentNumber;
-  if (familyName !== undefined) upd.family_name = familyName;
-  if (contactPhone !== undefined) upd.contact_phone = contactPhone;
-  if (cie10Code !== undefined) upd.cie_10_code = cie10Code;
-  if (epsName !== undefined) upd.eps_name = epsName;
-  if (epsAuthorization !== undefined) upd.eps_authorization = epsAuthorization;
+  if (b.fullName) upd.full_name = b.fullName;
+  if (b.documentNumber) upd.document_number = b.documentNumber;
+  if (b.documentType !== undefined) upd.document_type = b.documentType;
+  if (b.birthDate !== undefined) upd.birth_date = b.birthDate || null;
+  if (b.sex !== undefined) upd.sex = b.sex;
+  if (b.address !== undefined) upd.address = b.address;
+  if (b.neighborhood !== undefined) upd.neighborhood = b.neighborhood;
+  if (b.housingType !== undefined) upd.housing_type = b.housingType;
+  if (b.arrivalReferences !== undefined) upd.arrival_references = b.arrivalReferences;
+  if (b.accessNotes !== undefined) upd.access_notes = b.accessNotes;
+  if (b.pets !== undefined) upd.pets = b.pets;
+  if (b.familyName !== undefined) upd.family_name = b.familyName;
+  if (b.contactPhone !== undefined) upd.contact_phone = b.contactPhone;
+  if (b.familyEmail !== undefined) upd.family_email = b.familyEmail;
+  if (b.emergencyName !== undefined) upd.emergency_name = b.emergencyName;
+  if (b.emergencyPhone !== undefined) upd.emergency_phone = b.emergencyPhone;
+  if (b.cie10Code !== undefined) upd.cie_10_code = b.cie10Code;
+  if (b.epsName !== undefined) upd.eps_name = b.epsName;
+  if (b.epsAuthorization !== undefined) upd.eps_authorization = b.epsAuthorization;
   const { error } = await sb.from('patients').update(upd).eq('id', req.params.id);
   if (error) return fail(res, 'Error: ' + error.message);
-  if (cityName) await sb.from('altitude_profiles').upsert({ patient_id: req.params.id, city_name: cityName }, { onConflict: 'patient_id' });
+  if (b.cityName) await sb.from('altitude_profiles').upsert({ patient_id: req.params.id, city_name: b.cityName }, { onConflict: 'patient_id' });
   ok(res, null, 'Paciente actualizado');
 }));
 app.patch('/api/patients/:id/discharge', h(async (req, res) => { await sb.from('patients').update({ is_active: false }).eq('id', req.params.id); ok(res, null, 'Paciente archivado'); }));
@@ -227,7 +282,7 @@ app.get('/api/patients/:id/daily-history', h(async (req, res) => {
   ok(res, { records: data || [] });
 }));
 
-// ---------- CONSENTIMIENTOS (tabla admission_consents) ----------
+// ---------- CONSENTIMIENTOS ----------
 app.get('/api/consents', h(async (req, res) => {
   const { data, error } = await sb.from('admission_consents').select('*').order('created_at', { ascending: false });
   if (error) return fail(res, 'BD: ' + error.message, 500);
@@ -250,7 +305,7 @@ app.get('/api/dashboard/stats', h(async (req, res) => {
   ok(res, { patients: patients || 0, professionals: professionals || 0, pendingReports: (shPend || 0) + (noPend || 0) });
 }));
 
-// ---------- 🎯 PLANES DE TRATAMIENTO (solo Admin + Enfermería Jefe; join manual) ----------
+// ---------- 🎯 PLANES ----------
 app.get('/api/treatment-plans', h(async (req, res) => {
   const { data: plans, error } = await sb.from('treatment_plans').select('*').order('created_at', { ascending: false });
   if (error) return fail(res, 'BD: ' + error.message, 500);
@@ -306,7 +361,7 @@ app.post('/api/shifts/close', h(async (req, res) => {
   await sb.from('shift_signatures').upsert({ shift_id: b.shiftId, auxiliary_name: b.auxiliaryName || null, auxiliary_id_number: b.auxiliaryIdNumber || null, auxiliary_signature: b.auxiliarySignature || null, family_name: b.familyName || null, family_id_number: b.familyIdNumber || null, family_relationship: b.familyRelationship || null, family_phone: b.familyPhone || null, family_signature: b.familySignature || null, leave_data: b.leaveData || null }, { onConflict: 'shift_id' });
   ok(res, upd, 'Turno cerrado correctamente');
 }));
-// 🔓 CIERRE EXCEPCIONAL: auxiliar declara + firma → pendiente de aprobación admin
+// 🔓 CIERRE EXCEPCIONAL
 app.post('/api/shifts/:id/exceptional-close', h(async (req, res) => {
   const { reason, whatHappened, signature } = req.body || {};
   if (!reason || reason.length < 10 || !whatHappened || whatHappened.length < 10) return fail(res, 'Completa las dos declaraciones (mínimo 10 caracteres)');
@@ -359,7 +414,7 @@ app.post('/api/clinical-records', h(async (req, res) => {
   ok(res, data, 'Registro clínico guardado');
 }));
 
-// ---------- NOTAS DE EVOLUCIÓN (con motor de plan) ----------
+// ---------- NOTAS DE EVOLUCIÓN (motor de plan) ----------
 const RECSEL = '*, patients(full_name, document_number), professionals(full_name, document_number, professional_card)';
 app.post('/api/professional-records', h(async (req, res) => {
   const b = req.body || {};
@@ -404,7 +459,7 @@ app.patch('/api/professional-records/:id/validate', adminOnly, h(async (req, res
   ok(res, null, 'Nota validada');
 }));
 
-// ---------- EDUCACIÓN / AGENDA / CHAT (internal_messages) / EVENTOS ----------
+// ---------- EDUCACIÓN / AGENDA / CHAT / EVENTOS ----------
 app.get('/api/education/topics', h(async (req, res) => { const { data } = await sb.from('education_topics').select('*, professionals(full_name)').order('created_at', { ascending: false }); ok(res, data || []); }));
 app.post('/api/education/topics', h(async (req, res) => {
   const { title, description, responsibleId } = req.body || {};
@@ -447,10 +502,10 @@ app.post('/api/adverse-events', h(async (req, res) => {
   ok(res, data, 'Evento adverso reportado');
 }));
 
-// ---------- FINANZAS (financial_parameters / client_tariffs) ----------
+// ---------- FINANZAS ----------
 app.get('/api/finance/parameters', h(async (req, res) => ok(res, await getActiveFinance())));
 app.patch('/api/finance/parameters/:id', h(async (req, res) => {
-  const upd = {}; ['year','smmlv','subsidy_transport','night_surcharge_percentage','holiday_surcharge_percentage'].forEach(k => { if (req.body?.[k] !== undefined) upd[k] = Number(req.body[k]); });
+  const upd = {}; ['year','smmlv','subsidy_transport','night_surcharge_percentage','holiday_surcharge_percentage','night_start_hour','night_end_hour'].forEach(k => { if (req.body?.[k] !== undefined) upd[k] = Number(req.body[k]); });
   const { data, error } = await sb.from('financial_parameters').update(upd).eq('id', req.params.id).select().single();
   if (error) return fail(res, 'Error: ' + error.message);
   ok(res, data, 'Parámetros guardados');
@@ -462,45 +517,163 @@ app.patch('/api/finance/tariffs/:id', h(async (req, res) => {
   if (error) return fail(res, 'Error: ' + error.message);
   ok(res, data, 'Tarifas guardadas');
 }));
+
+// 🏷️ TARIFAS AL CLIENTE POR ESPECIALIDAD/CUPS
+app.get('/api/finance/cups-tariffs', h(async (req, res) => ok(res, await getCupsTariffs())));
+app.patch('/api/finance/cups-tariffs/:specialty', h(async (req, res) => {
+  const { price } = req.body || {};
+  const { data, error } = await sb.from('cups_tariffs').update({ price: Number(price) || 0, updated_at: new Date().toISOString() }).eq('specialty_code', req.params.specialty).select().single();
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, data, 'Tarifa CUPS actualizada');
+}));
+
+// 🏢 DATOS DE EMPRESA (GET para todos los autenticados — sale en PDFs; PATCH solo Admin)
+app.get('/api/company', h(async (req, res) => ok(res, await getCompany())));
+app.patch('/api/company', adminOnly, h(async (req, res) => {
+  const b = req.body || {};
+  const upd = {};
+  if (b.responsibleName !== undefined) upd.responsible_name = b.responsibleName;
+  if (b.docType !== undefined) upd.doc_type = b.docType;
+  if (b.docNumber !== undefined) upd.doc_number = b.docNumber;
+  if (b.address !== undefined) upd.address = b.address;
+  if (b.phone !== undefined) upd.phone = b.phone;
+  if (b.email !== undefined) upd.email = b.email;
+  if (b.city !== undefined) upd.city = b.city;
+  if (b.taxRegime !== undefined) upd.tax_regime = b.taxRegime;
+  upd.updated_at = new Date().toISOString();
+  const { data, error } = await sb.from('company_profile').update(upd).eq('id', 1).select().single();
+  if (error) return fail(res, 'Error: ' + error.message);
+  ok(res, data, 'Datos de la empresa guardados');
+}));
+
+// 💵 LIQUIDACIÓN AUXILIARES — solo VALIDADOS · nocturno configurable · domingos+festivos · auxilio ≤ 2 SMMLV
 app.get('/api/finance/liquidation/:profId/:month/:year', h(async (req, res) => {
   const { from, to } = monthRange(req.params.year, req.params.month);
   const p = await getActiveFinance();
+  const holidays = await getHolidays();
+  const nStart = Number(p.night_start_hour ?? 19), nEnd = Number(p.night_end_hour ?? 6);
   const hourly = (Number(p.smmlv) || 0) / 240;
-  const { data: shifts } = await sb.from('shifts').select('*, patients(full_name)').eq('professional_id', req.params.profId).not('end_time', 'is', null).gte('start_time', from).lt('start_time', to);
+  const { data: prof } = await sb.from('professionals').select('full_name, document_number').eq('id', req.params.profId).single();
+  const { data: shifts } = await sb.from('shifts').select('*, patients(full_name)').eq('professional_id', req.params.profId).eq('admin_validated', true).not('end_time', 'is', null).gte('start_time', from).lt('start_time', to);
   const rows = (shifts || []).map(s => {
     const st = new Date(s.start_time), en = new Date(s.end_time);
     const hours = Math.max(0, (en - st) / 3600000);
     const base = hours * hourly;
-    const nb = nightHours(st, en) * hourly * ((Number(p.night_surcharge_percentage) || 35) / 100);
-    const sbn = sundayHours(st, en) * hourly * ((Number(p.holiday_surcharge_percentage) || 75) / 100);
-    return { date: s.start_time.slice(0, 10), patient: s.patients?.full_name || '-', shift_type: s.shift_type || '-', hours: Math.round(hours * 100) / 100, base_pay: Math.round(base), night_bonus: Math.round(nb), sunday_bonus: Math.round(sbn), total: Math.round(base + nb + sbn) };
+    const nb = nightHours(st, en, nStart, nEnd) * hourly * ((Number(p.night_surcharge_percentage) || 35) / 100);
+    const sbn = surchargeHours(st, en, holidays) * hourly * ((Number(p.holiday_surcharge_percentage) || 75) / 100);
+    return { date: colombiaDateStr(s.start_time), patient: s.patients?.full_name || '-', shift_type: s.shift_type || '-', hours: Math.round(hours * 100) / 100, base_pay: Math.round(base), night_bonus: Math.round(nb), sunday_bonus: Math.round(sbn), total: Math.round(base + nb + sbn) };
   });
-  const subsidy = rows.length ? (Number(p.subsidy_transport) || 0) : 0;
-  ok(res, { shifts: rows, subsidyApplied: subsidy, totalAmount: rows.reduce((a, r) => a + r.total, 0) + subsidy });
+  const subtotal = rows.reduce((a, r) => a + r.total, 0);
+  const twoSmmlv = (Number(p.smmlv) || 0) * 2;
+  const subsidy = (rows.length && subtotal <= twoSmmlv) ? (Number(p.subsidy_transport) || 0) : 0;
+  ok(res, {
+    professional: { full_name: prof?.full_name || '-', document: prof?.document_number || '-' },
+    period: { month: req.params.month, year: req.params.year },
+    shifts: rows, shiftsCount: rows.length,
+    subtotal, subsidyApplied: subsidy,
+    totalAmount: subtotal + subsidy,
+    auxilioLimit: twoSmmlv,
+    auxilioExcluded: rows.length > 0 && subtotal > twoSmmlv
+  });
 }));
+
+// 🎓 LIQUIDACIÓN PROFESIONALES — solo notas VALIDADAS × su tarifa por visita
 app.get('/api/finance/liquidation-visits/:profId/:month/:year', h(async (req, res) => {
   const { from, to } = monthRange(req.params.year, req.params.month);
-  const { data: prof } = await sb.from('professionals').select('full_name, visit_fee, specialties(name)').eq('id', req.params.profId).single();
+  const { data: prof } = await sb.from('professionals').select('full_name, document_number, visit_fee, specialties(name)').eq('id', req.params.profId).single();
   if (!prof) return fail(res, 'Profesional no encontrado', 404);
   const fee = Number(prof.visit_fee) || 0;
-  const { data: recs } = await sb.from('professional_records').select('created_at, record_type, admin_validated, patients(full_name)').eq('professional_id', req.params.profId).gte('created_at', from).lt('created_at', to);
-  const valids = (recs || []).filter(r => r.admin_validated);
-  ok(res, { professional: { full_name: prof.full_name, specialty: prof.specialties?.name || '-', fee }, visits: valids.map(r => ({ date: r.created_at.slice(0, 10), patient: r.patients?.full_name || '-', record_type: r.record_type || '-', amount: fee })), totalAmount: fee * valids.length, totalValidated: valids.length, totalPending: (recs || []).length - valids.length });
+  const { data: recs } = await sb.from('professional_records').select('created_at, record_type, admin_validated, patients(full_name)').eq('professional_id', req.params.profId).eq('admin_validated', true).gte('created_at', from).lt('created_at', to);
+  ok(res, {
+    professional: { full_name: prof.full_name, document: prof.document_number || '-', specialty: prof.specialties?.name || '-', fee },
+    period: { month: req.params.month, year: req.params.year },
+    visits: (recs || []).map(r => ({ date: colombiaDateStr(r.created_at), patient: r.patients?.full_name || '-', record_type: r.record_type || '-', amount: fee })),
+    totalAmount: fee * (recs || []).length, totalValidated: (recs || []).length
+  });
 }));
+
+// 🧾 FACTURA AL CLIENTE — turnos validados × tarifario de turnos + notas validadas × tarifa CUPS
 app.get('/api/finance/invoice/:patId/:month/:year', h(async (req, res) => {
   const { from, to } = monthRange(req.params.year, req.params.month);
-  const { data: pat } = await sb.from('patients').select('full_name').eq('id', req.params.patId).single();
+  const { data: pat } = await sb.from('patients').select('*, altitude_profiles(city_name)').eq('id', req.params.patId).single();
   const t = await getActiveTariffs();
-  const { data: shifts } = await sb.from('shifts').select('*, professionals(full_name)').eq('patient_id', req.params.patId).not('end_time', 'is', null).gte('start_time', from).lt('start_time', to);
+  const cupsList = await getCupsTariffs();
+  const cupsMap = Object.fromEntries(cupsList.map(c => [c.specialty_code, Number(c.price) || 0]));
+  const { data: shifts } = await sb.from('shifts').select('*, professionals(full_name)').eq('patient_id', req.params.patId).eq('admin_validated', true).not('end_time', 'is', null).gte('start_time', from).lt('start_time', to);
   const KEYS = ['6h_diurno','6h_nocturno','8h_diurno','8h_nocturno','12h_diurno','12h_nocturno','24h'];
   const details = (shifts || []).map(s => {
     let amount = 0;
     if (KEYS.includes(s.shift_type)) amount = Number(t['t_' + s.shift_type]) || 0;
     else { const hrs = Math.max(0, (new Date(s.end_time) - new Date(s.start_time)) / 3600000); amount = Math.round(hrs * ((Number(t.t_24h) || 0) / 24)); }
-    return { date: s.start_time.slice(0, 10), service: s.shift_type || '-', auxiliaries: s.professionals?.full_name || 'Equipo Vital Hogar', amount };
+    return { date: colombiaDateStr(s.start_time), service: s.shift_type || '-', auxiliaries: s.professionals?.full_name || 'Equipo Vital Hogar', amount };
+  });
+  const { data: profRecs } = await sb.from('professional_records').select('record_type, created_at, professionals(full_name, specialties(name))').eq('patient_id', req.params.patId).eq('admin_validated', true).gte('created_at', from).lt('created_at', to);
+  (profRecs || []).forEach(r => {
+    const spec = r.professionals?.specialties?.name || '';
+    if ((cupsMap[spec] || 0) > 0) details.push({ date: colombiaDateStr(r.created_at), service: r.record_type || `Visita ${spec}`, auxiliaries: r.professionals?.full_name || '-', amount: cupsMap[spec] });
   });
   ok(res, { patient: pat || {}, details, totalAmount: details.reduce((a, d) => a + d.amount, 0) });
 }));
+
+// 💰 RENTABILIDAD — el corazón del módulo de dinero
+app.get('/api/finance/profitability/:month/:year', h(async (req, res) => {
+  const { from, to } = monthRange(req.params.year, req.params.month);
+  const [p, holidays, t, cupsList] = await Promise.all([getActiveFinance(), getHolidays(), getActiveTariffs(), getCupsTariffs()]);
+  const cupsMap = Object.fromEntries(cupsList.map(c => [c.specialty_code, Number(c.price) || 0]));
+  const nStart = Number(p.night_start_hour ?? 19), nEnd = Number(p.night_end_hour ?? 6);
+  const hourly = (Number(p.smmlv) || 0) / 240;
+
+  const { data: shifts } = await sb.from('shifts').select('*, patients(id, full_name), professionals(id, full_name)').eq('admin_validated', true).not('end_time', 'is', null).gte('start_time', from).lt('start_time', to);
+  const { data: recs } = await sb.from('professional_records').select('id, created_at, patient_id, professional_id, professionals(id, full_name, visit_fee, specialties(name)), patients(id, full_name)').eq('admin_validated', true).gte('created_at', from).lt('created_at', to);
+
+  const byPatient = {};
+  const getPat = (pid, name) => { if (!pid) pid = 'otros'; if (!byPatient[pid]) byPatient[pid] = { patient: name || 'Sin identificar', billed: 0, paidAux: 0, paidProf: 0 }; return byPatient[pid]; };
+
+  const KEYS = ['6h_diurno','6h_nocturno','8h_diurno','8h_nocturno','12h_diurno','12h_nocturno','24h'];
+  let totalBilled = 0, totalAux = 0, totalProf = 0;
+  const auxPaid = {};
+
+  for (const s of (shifts || [])) {
+    const st = new Date(s.start_time), en = new Date(s.end_time);
+    const hours = Math.max(0, (en - st) / 3600000);
+    const base = hours * hourly;
+    const nb = nightHours(st, en, nStart, nEnd) * hourly * ((Number(p.night_surcharge_percentage) || 35) / 100);
+    const sbn = surchargeHours(st, en, holidays) * hourly * ((Number(p.holiday_surcharge_percentage) || 75) / 100);
+    const auxCost = Math.round(base + nb + sbn);
+    let billed = 0;
+    if (KEYS.includes(s.shift_type)) billed = Number(t['t_' + s.shift_type]) || 0;
+    else billed = Math.round(hours * ((Number(t.t_24h) || 0) / 24));
+    const pat = getPat(s.patients?.id, s.patients?.full_name);
+    pat.billed += billed; pat.paidAux += auxCost;
+    totalBilled += billed; totalAux += auxCost;
+    if (s.professionals?.id) {
+      if (!auxPaid[s.professionals.id]) auxPaid[s.professionals.id] = { name: s.professionals.full_name || '-', amount: 0 };
+      auxPaid[s.professionals.id].amount += auxCost;
+    }
+  }
+  for (const r of (recs || [])) {
+    const fee = Number(r.professionals?.visit_fee) || 0;
+    const spec = r.professionals?.specialties?.name || '';
+    const price = cupsMap[spec] || 0;
+    const pat = getPat(r.patients?.id, r.patients?.full_name);
+    pat.billed += price; pat.paidProf += fee;
+    totalBilled += price; totalProf += fee;
+  }
+  const patientsList = Object.entries(byPatient).map(([patientId, v]) => ({ patientId, ...v, profit: v.billed - v.paidAux - v.paidProf })).sort((a, b) => b.profit - a.profit);
+  ok(res, {
+    period: { month: req.params.month, year: req.params.year },
+    company: await getCompany(),
+    totals: {
+      billed: totalBilled,
+      paidAuxiliaries: totalAux,
+      paidProfessionals: totalProf,
+      profit: totalBilled - totalAux - totalProf
+    },
+    auxiliaries: Object.entries(auxPaid).map(([professionalId, v]) => ({ professionalId, ...v })).sort((a, b) => b.amount - a.amount),
+    patients: patientsList
+  });
+}));
+
 app.get('/api/reports/:patId/:month/:year', h(async (req, res) => {
   const { from, to } = monthRange(req.params.year, req.params.month);
   const { data: patient } = await sb.from('patients').select('*, altitude_profiles(city_name)').eq('id', req.params.patId).single();
@@ -512,7 +685,5 @@ app.get('/api/reports/:patId/:month/:year', h(async (req, res) => {
 
 app.use((req, res) => fail(res, 'Ruta no encontrada: ' + req.method + ' ' + req.path, 404));
 
-// Vercel serverless necesita el manejador exportado:
 export default app;
-// Servidor local (npm start en tu PC) — Vercel lo ignora:
-if (!process.env.VERCEL) app.listen(PORT, () => console.log(`✅ Vital Hogar Pro API en http://localhost:${PORT}`));
+if (!process.env.VERCEL) app.listen(PORT, () => console.log(`✅ Vital Hogar Pro API v2 en http://localhost:${PORT}`));
