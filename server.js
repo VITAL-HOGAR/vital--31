@@ -24,7 +24,7 @@ if (!supabaseUrl || !supabaseKey) {
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ==========================================
-// CONFIGURACIÓN DE CORS
+// CORS
 // ==========================================
 const allowedOrigins = [
     'https://vital-31.vercel.app',
@@ -52,7 +52,7 @@ app.use(express.json({ limit: '50mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ==========================================
-// 🔐 MIDDLEWARE DE AUTENTICACIÓN JWT
+// 🔐 JWT
 // ==========================================
 function verifyToken(req, res, next) {
     const authHeader = req.headers['authorization'];
@@ -145,6 +145,24 @@ app.patch('/api/professionals/:id', async (req, res) => {
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
+// 📧 CAMBIO DE CORREO (solo admin)
+app.patch('/api/professionals/:id/change-email', async (req, res) => {
+    try {
+        const { newEmail, newEmailConfirm } = req.body;
+        if (!newEmail || !newEmailConfirm) return res.status(400).json({ success: false, message: 'Debes escribir el correo nuevo dos veces' });
+        if (newEmail !== newEmailConfirm) return res.status(400).json({ success: false, message: 'Los dos correos no coinciden' });
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(newEmail)) return res.status(400).json({ success: false, message: 'Formato de correo inválido' });
+        const { data: existing } = await supabase.from('professionals').select('id').eq('email', newEmail).maybeSingle();
+        if (existing) return res.status(409).json({ success: false, message: 'Ese correo ya está en uso por otro usuario' });
+        const { data: profData } = await supabase.from('professionals').select('user_id').eq('id', req.params.id).single();
+        if (!profData?.user_id) return res.status(404).json({ success: false, message: 'Profesional no encontrado' });
+        const { error: authError } = await supabase.auth.admin.updateUserById(profData.user_id, { email: newEmail, email_confirm: true });
+        if (authError) throw authError;
+        res.json({ success: true, message: `✅ Correo de acceso actualizado a ${newEmail}. Notifica al usuario.` });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
 app.patch('/api/professionals/:id/deactivate', async (req, res) => {
     try { const { isActive } = req.body; await supabase.from('professionals').update({ is_active: isActive }).eq('id', req.params.id); res.json({ success: true, message: isActive ? 'Profesional reactivado' : 'Profesional desactivado' }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
@@ -200,13 +218,12 @@ app.patch('/api/patients/:id/reactivate', async (req, res) => {
 });
 
 // ==========================================
-// 5. CONSENTIMIENTO GENERAL DE INGRESO
+// 5. CONSENTIMIENTO GENERAL
 // ==========================================
 app.get('/api/consents', async (req, res) => {
     try {
         let { data, error } = await supabase.from('admission_consents').select('*, patients(full_name, document_number)').order('created_at', { ascending: false });
         if (error) {
-            console.log('Join falló en consents, usando fallback:', error.message);
             const fb = await supabase.from('admission_consents').select('*').order('created_at', { ascending: false });
             if (fb.error) throw fb.error;
             data = fb.data;
@@ -226,12 +243,13 @@ app.post('/api/consents', async (req, res) => {
 });
 
 // ==========================================
-// 6. ELIMINACIÓN PERMANENTE CON CASCADA
+// 6. ELIMINACIÓN CON CASCADA
 // ==========================================
 app.delete('/api/patients/:id', async (req, res) => {
     try {
         const { id } = req.params;
         await supabase.from('admission_consents').delete().eq('patient_id', id);
+        await supabase.from('treatment_plans').delete().eq('patient_id', id);
         await supabase.from('clinical_records').delete().eq('patient_id', id);
         await supabase.from('professional_records').delete().eq('patient_id', id);
         await supabase.from('adverse_events').delete().eq('patient_id', id);
@@ -239,7 +257,7 @@ app.delete('/api/patients/:id', async (req, res) => {
         await supabase.from('internal_messages').delete().eq('patient_id', id);
         const { data: shiftRows } = await supabase.from('shifts').select('id').eq('patient_id', id);
         const shiftIds = (shiftRows || []).map(s => s.id);
-        if (shiftIds.length) { try { await supabase.from('shift_signatures').delete().in('shift_id', shiftIds); } catch (e) { console.log('Firmas ya eliminadas'); } }
+        if (shiftIds.length) { try { await supabase.from('shift_signatures').delete().in('shift_id', shiftIds); } catch (e) {} }
         await supabase.from('shifts').delete().eq('patient_id', id);
         const { error } = await supabase.from('patients').delete().eq('id', id);
         if (error) throw error;
@@ -250,6 +268,7 @@ app.delete('/api/patients/:id', async (req, res) => {
 app.delete('/api/professionals/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        await supabase.from('treatment_plans').update({ professional_id: null }).eq('professional_id', id);
         await supabase.from('clinical_records').delete().eq('professional_id', id);
         await supabase.from('professional_records').delete().eq('professional_id', id);
         await supabase.from('adverse_events').delete().eq('professional_id', id);
@@ -258,7 +277,7 @@ app.delete('/api/professionals/:id', async (req, res) => {
         await supabase.from('internal_messages').delete().eq('sender_id', id);
         const { data: shiftRows } = await supabase.from('shifts').select('id').eq('professional_id', id);
         const shiftIds = (shiftRows || []).map(s => s.id);
-        if (shiftIds.length) { try { await supabase.from('shift_signatures').delete().in('shift_id', shiftIds); } catch (e) { console.log('Firmas ya eliminadas'); } }
+        if (shiftIds.length) { try { await supabase.from('shift_signatures').delete().in('shift_id', shiftIds); } catch (e) {} }
         await supabase.from('shifts').delete().eq('professional_id', id);
         const { data: prof } = await supabase.from('professionals').select('user_id').eq('id', id).single();
         const { error } = await supabase.from('professionals').delete().eq('id', id);
@@ -327,7 +346,6 @@ app.post('/api/shifts/close', async (req, res) => {
         const { shiftId, patientDeliveredStatus, patientDeliveredNotes, pendingTasks, auxiliarySignature, auxiliaryName, auxiliaryIdNumber, familySignature, familyName, familyIdNumber, familyRelationship, familyPhone, patientLeavesHome, leaveData, familyReceivedEducation, educationTopicGiven, educationPhotoData } = req.body;
         if (!shiftId || !auxiliarySignature || !auxiliaryName || !auxiliaryIdNumber) return res.status(400).json({ success: false, message: 'Datos de cierre incompletos' });
         await supabase.from('shifts').update({ end_time: new Date().toISOString(), patient_delivered_status: patientDeliveredStatus || null, patient_delivered_notes: patientDeliveredNotes || null, pending_tasks: pendingTasks || null, is_closed: true }).eq('id', shiftId);
-        // 🔗 VINCULACIÓN: la firma se guarda con el shift_id del turno (nuevo en este parche)
         await supabase.from('shift_signatures').insert([{ shift_id: shiftId, auxiliary_signature: auxiliarySignature, auxiliary_name: auxiliaryName, auxiliary_id_number: auxiliaryIdNumber, family_signature: familySignature || null, family_name: familyName || null, family_id_number: familyIdNumber || null, family_relationship: familyRelationship || null, family_phone: familyPhone || null, patient_leaves_home: patientLeavesHome || false, leave_data: leaveData || null, family_received_education: familyReceivedEducation || false, education_topic_given: educationTopicGiven || null, education_photo_data: educationPhotoData || null }]);
         res.json({ success: true, message: 'Turno cerrado exitosamente', data: { shiftId } });
     } catch (error) { res.status(500).json({ success: false, message: error.message }); }
@@ -339,12 +357,10 @@ app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
         if (shiftError) throw shiftError;
         const { data: records, error: recordsError } = await supabase.from('clinical_records').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: true });
         if (recordsError) throw recordsError;
-        // 🔗 FIRMAS DEL TURNO EXACTO (con fallback para firmas antiguas sin vinculación)
         let signatures = [], sigError = null;
         const intento = await supabase.from('shift_signatures').select('*').eq('shift_id', req.params.shiftId).order('created_at', { ascending: false }).limit(1);
         signatures = intento.data; sigError = intento.error;
         if (sigError || !signatures || signatures.length === 0) {
-            console.log('Firma sin vinculación, usando la más reciente como respaldo:', sigError?.message || 'no hay firma vinculada');
             const fb = await supabase.from('shift_signatures').select('*').order('created_at', { ascending: false }).limit(1);
             signatures = fb.data;
             sigError = fb.error;
@@ -357,13 +373,41 @@ app.get('/api/shifts/:shiftId/closure-data', async (req, res) => {
 });
 
 // ==========================================
+// 🔓 CIERRE EXCEPCIONAL POR COORDINACIÓN (NUEVO)
+// ==========================================
+app.post('/api/shifts/:id/exceptional-close', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { professionalId, reason, whatHappened, signature } = req.body;
+        if (!professionalId || !reason || !whatHappened || !signature) return res.status(400).json({ success: false, message: 'Datos del cierre excepcional incompletos' });
+        const { data: prof } = await supabase.from('professionals').select('full_name, document_number').eq('id', professionalId).single();
+        if (!prof) return res.status(404).json({ success: false, message: 'Profesional no encontrado' });
+        const { data: shift, error: errS } = await supabase.from('shifts').select('id, is_closed, professional_id, patient_id').eq('id', id).single();
+        if (errS || !shift) return res.status(404).json({ success: false, message: 'Turno no encontrado' });
+        if (shift.is_closed) return res.status(400).json({ success: false, message: 'Este turno ya está cerrado' });
+        if (shift.professional_id !== professionalId) return res.status(403).json({ success: false, message: 'Solo el auxiliar dueño del turno puede declarar el cierre excepcional' });
+        const exceptional = { fecha: new Date().toISOString(), auxName: prof.full_name, auxDoc: prof.document_number, reason, whatHappened, signature };
+        const { error } = await supabase.from('shifts').update({ is_closed: true, end_time: new Date().toISOString(), exceptional_closure: exceptional, admin_approved_exceptional: false }).eq('id', id);
+        if (error) throw error;
+        res.json({ success: true, message: '📋 Cierre excepcional registrado. Queda pendiente de aprobación por coordinación.' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.patch('/api/shifts/:id/approve-exceptional', async (req, res) => {
+    try {
+        const { error } = await supabase.from('shifts').update({ admin_approved_exceptional: true }).eq('id', req.params.id);
+        if (error) throw error;
+        res.json({ success: true, message: '✅ Cierre excepcional aprobado por coordinación' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// ==========================================
 // 9. SOPORTES PARA FACTURACIÓN
 // ==========================================
 app.get('/api/shifts/closed', async (req, res) => {
     try {
         let { data, error } = await supabase.from('shifts').select('*, patients(full_name, document_number), professionals(full_name, document_number, professional_card)').eq('is_closed', true).order('start_time', { ascending: false }).limit(200);
         if (error) {
-            console.log('Join falló en shifts/closed, usando fallback:', error.message);
             const fb = await supabase.from('shifts').select('*').eq('is_closed', true).order('start_time', { ascending: false }).limit(200);
             if (fb.error) throw fb.error;
             data = fb.data;
@@ -385,7 +429,6 @@ app.get('/api/professional-records/list', async (req, res) => {
     try {
         let { data, error } = await supabase.from('professional_records').select('*, patients(full_name, document_number), professionals(full_name, document_number, professional_card)').order('created_at', { ascending: false }).limit(200);
         if (error) {
-            console.log('Join falló en professional-records/list, usando fallback:', error.message);
             const fb = await supabase.from('professional_records').select('*').order('created_at', { ascending: false }).limit(200);
             if (fb.error) throw fb.error;
             data = fb.data;
@@ -512,6 +555,55 @@ app.post('/api/adverse-events', async (req, res) => {
 });
 
 // ==========================================
+// 🎯 PLANES DE TRATAMIENTO (NUEVO)
+// ==========================================
+app.get('/api/treatment-plans', async (req, res) => {
+    try {
+        let { data, error } = await supabase.from('treatment_plans').select('*, patients(full_name, document_number), professionals(full_name, specialties(name))').order('created_at', { ascending: false });
+        if (error) {
+            const fb = await supabase.from('treatment_plans').select('*').order('created_at', { ascending: false });
+            if (fb.error) throw fb.error;
+            data = fb.data;
+        }
+        res.json({ success: true, data: data || [] });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.post('/api/treatment-plans', async (req, res) => {
+    try {
+        const { patientId, professionalId, specialtyCode, sessionsAuthorized, validUntil, notes, createdBy } = req.body;
+        if (!patientId || !specialtyCode || !sessionsAuthorized || !createdBy) return res.status(400).json({ success: false, message: 'Datos del plan incompletos' });
+        if (sessionsAuthorized < 1) return res.status(400).json({ success: false, message: 'Las sesiones autorizadas deben ser al menos 1' });
+        const { error } = await supabase.from('treatment_plans').insert([{ patient_id: patientId, professional_id: professionalId || null, specialty_code: specialtyCode, sessions_authorized: sessionsAuthorized, valid_until: validUntil || null, notes: notes || null, created_by: createdBy, is_active: true }]);
+        if (error) throw error;
+        res.json({ success: true, message: '🎯 Plan de tratamiento creado exitosamente' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// Uso de sesión: cuenta las notas del profesional en la especialidad del plan desde la creación del plan
+app.get('/api/treatment-plans/usage/:planId', async (req, res) => {
+    try {
+        const { data: plan } = await supabase.from('treatment_plans').select('*').eq('id', req.params.planId).single();
+        if (!plan) return res.status(404).json({ success: false, message: 'Plan no encontrado' });
+        const { count } = await supabase.from('professional_records').select('*', { count: 'exact', head: true })
+            .eq('patient_id', plan.patient_id)
+            .eq('professional_id', plan.professional_id)
+            .gte('created_at', plan.created_at);
+        const usadas = count || 0;
+        const restantes = Math.max(0, plan.sessions_authorized - usadas);
+        res.json({ success: true, data: { used: usadas, authorized: plan.sessions_authorized, remaining: restantes } });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+app.patch('/api/treatment-plans/:id/deactivate', async (req, res) => {
+    try {
+        const { error } = await supabase.from('treatment_plans').update({ is_active: false }).eq('id', req.params.id);
+        if (error) throw error;
+        res.json({ success: true, message: 'Plan desactivado' });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+});
+
+// ==========================================
 // 10. INFORMES CONSOLIDADOS
 // ==========================================
 app.get('/api/reports/pending', async (req, res) => {
@@ -534,7 +626,26 @@ app.get('/api/reports/:patientId/:month/:year', async (req, res) => {
 });
 
 app.post('/api/professional-records', async (req, res) => {
-    try { const { patientId, professionalId, recordType, weight, height, imc, vitalSigns, subjective, objective, analysis, plan, photoData, professionalSignature, familySignature, familyName, familyId } = req.body; if (!patientId || !professionalId) return res.status(400).json({ success: false, message: 'Datos incompletos' }); const { data, error } = await supabase.from('professional_records').insert([{ patient_id: patientId, professional_id: professionalId, record_type: recordType || 'Nota de Evolución', weight: weight || null, height: height || null, imc: imc || null, vital_signs: vitalSigns || {}, subjective: subjective || null, objective: objective || null, analysis: analysis || null, plan: plan || null, photo_data: photoData || null, professional_signature: professionalSignature || null, family_signature: familySignature || null, family_name: familyName || null, family_id: familyId || null }]).select().single(); if (error) throw error; res.json({ success: true, message: 'Nota de evolución guardada', data: { id: data.id } }); } catch (error) { res.status(500).json({ success: false, message: error.message }); }
+    try {
+        const { patientId, professionalId, recordType, weight, height, imc, vitalSigns, subjective, objective, analysis, plan, photoData, professionalSignature, familySignature, familyName, familyId } = req.body;
+        if (!patientId || !professionalId) return res.status(400).json({ success: false, message: 'Datos incompletos' });
+        // 🎯 Verificar plan de tratamiento activo para este paciente+profesional
+        let planInfo = null;
+        const { data: plans } = await supabase.from('treatment_plans').select('*').eq('patient_id', patientId).eq('professional_id', professionalId).eq('is_active', true);
+        if (plans && plans.length) {
+            const plan = plans[0];
+            const { count } = await supabase.from('professional_records').select('*', { count: 'exact', head: true })
+                .eq('patient_id', patientId).eq('professional_id', professionalId)
+                .gte('created_at', plan.created_at);
+            const usadas = count || 0;
+            planInfo = { planId: plan.id, authorized: plan.sessions_authorized, used: usadas, outside: usadas >= plan.sessions_authorized };
+        }
+        const { data, error } = await supabase.from('professional_records').insert([{ patient_id: patientId, professional_id: professionalId, record_type: recordType || 'Nota de Evolución', weight: weight || null, height: height || null, imc: imc || null, vital_signs: { ...(vitalSigns || {}), planInfo }, subjective: subjective || null, objective: objective || null, analysis: analysis || null, plan: plan || null, photo_data: photoData || null, professional_signature: professionalSignature || null, family_signature: familySignature || null, family_name: familyName || null, family_id: familyId || null }]).select().single();
+        if (error) throw error;
+        let planWarning = null;
+        if (planInfo && planInfo.outside) planWarning = `⚠️ Esta nota quedó FUERA DE PLAN (sesión ${planInfo.used + 1} de ${planInfo.authorized} autorizadas). Quedó marcada para revisión de coordinación.`;
+        res.json({ success: true, message: 'Nota de evolución guardada' + (planWarning ? ' — ' + planWarning : ''), data: { id: data.id, planWarning } });
+    } catch (error) { res.status(500).json({ success: false, message: error.message }); }
 });
 
 // ==========================================
