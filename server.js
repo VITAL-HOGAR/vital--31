@@ -454,4 +454,8 @@ app.get('/api/reports/:patId/:month/:year', h(async (req, res) => {
 }));
 
 app.use((req, res) => fail(res, 'Ruta no encontrada: ' + req.method + ' ' + req.path, 404));
-app.listen(PORT, () => console.log(`✅ Vital Hogar Pro API en http://localhost:${PORT}`));
+// Vercel serverless necesita el manejador exportado:
+export default app;
+
+// Servidor local (npm start en tu PC) — Vercel lo ignora:
+if (!process.env.VERCEL) app.listen(PORT, () => console.log(`✅ API local en http://localhost:${PORT}`));
