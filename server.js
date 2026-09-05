@@ -1,8 +1,11 @@
 // ============================================================
-// VITAL HOGAR PRO — API v3 (Vercel serverless)
+// VITAL HOGAR PRO — API v3.1 (Vercel serverless)
+// CORREGIDO v3.1: endpoints de lectura del módulo de dinero
+// ahora extraen .data correctamente (antes enviaban el objeto
+// completo de Supabase y el index quedaba en "Cargando...").
 // Motor de pagos por evento validado (tabla oficial congelada),
 // libro de pagos, liquidación por prestador, rentabilidad con ARL,
-// gestión de tarifas prestador/cliente, control ARL prestadores.
+// gestión de tarifas, control ARL prestadores, perfil ACOMPANANTE.
 // Terminología legal: EVENTOS (coherente con contratos).
 // ============================================================
 import express from 'express';
@@ -33,7 +36,14 @@ const in24h = (iso) => iso && (Date.now() - new Date(iso).getTime()) <= 24 * 360
 const CO_OFFSET = 5 * 3600000;
 const colombiaDate = (d) => new Date(d.getTime() - CO_OFFSET);
 
-// Tarifa según tipo de evento + tipo de prestador + día (domingo/festivo se pasa por parámetro)
+// Lector seguro de tablas (extrae data, reporta error — el fix del "Cargando...")
+async function fetchAll(table, select = '*') {
+  const { data, error } = await sb.from(table).select(select);
+  if (error) throw new Error(`BD (${table}): ${error.message}`);
+  return data || [];
+}
+
+// Claves de tarifa/precio según evento, prestador y día
 function resolveRateKeyBase(shiftType, providerType, isDomFest) {
   if (providerType === 'ACOMPANANTE') {
     if (isDomFest) return 'acomp_dom_fest';
@@ -47,7 +57,6 @@ function resolveRateKeyBase(shiftType, providerType, isDomFest) {
   if (st.includes('nocturno')) return '12h_nocturno';
   return '12h_diurno';
 }
-// Precio cliente según tipo de evento (auxiliar; acompañante usa su propia serie)
 function resolveClientKey(shiftType, providerType, isDomFest) {
   if (providerType === 'ACOMPANANTE') {
     if (isDomFest) return 'acomp_dom_fest';
@@ -63,7 +72,7 @@ function resolveClientKey(shiftType, providerType, isDomFest) {
 }
 
 async function getHolidaysSet() {
-  try { const { data } = await sb.from('holidays').select('date'); return new Set((data || []).map(x => x.date)); } catch { return new Set(); }
+  try { const rows = await fetchAll('holidays', 'date'); return new Set(rows.map(x => x.date)); } catch { return new Set(); }
 }
 function isHolidayOrSunday(dateIso, holidaySet) {
   const d = colombiaDate(new Date(dateIso));
@@ -72,16 +81,16 @@ function isHolidayOrSunday(dateIso, holidaySet) {
 }
 
 async function getProviderRates() {
-  const { data } = await sb.from('provider_rates').select('*');
-  return Object.fromEntries((data || []).map(r => [r.event_type, Number(r.rate)]));
+  const rows = await fetchAll('provider_rates');
+  return Object.fromEntries(rows.map(r => [r.event_type, Number(r.rate)]));
 }
 async function getClientEventPrices() {
-  const { data } = await sb.from('client_event_prices').select('*');
-  return Object.fromEntries((data || []).map(r => [r.event_type, Number(r.price)]));
+  const rows = await fetchAll('client_event_prices');
+  return Object.fromEntries(rows.map(r => [r.event_type, Number(r.price)]));
 }
 async function getCupsMap() {
-  const { data } = await sb.from('cups_tariffs').select('*');
-  return Object.fromEntries((data || []).map(c => [c.specialty_code, Number(c.price) || 0]));
+  const rows = await fetchAll('cups_tariffs');
+  return Object.fromEntries(rows.map(c => [c.specialty_code, Number(c.price) || 0]));
 }
 async function getMoneySettings() {
   const { data } = await sb.from('money_settings').select('*').eq('id', 1).maybeSingle();
@@ -163,7 +172,7 @@ app.post('/api/auth/login', h(async (req, res) => {
 
 app.use('/api', authMiddleware);
 
-// ---------- PROFESIONALES (PRESTADORES) ----------
+// ---------- PRESTADORES ----------
 app.get('/api/professionals', h(async (req, res) => {
   const { data, error } = await sb.from('professionals').select(PROFASEL).order('full_name');
   if (error) return fail(res, 'BD: ' + error.message, 500);
@@ -311,7 +320,7 @@ app.get('/api/dashboard/stats', h(async (req, res) => {
   ok(res, { patients: patients || 0, professionals: professionals || 0, pendingReports: (shPend || 0) + (noPend || 0) });
 }));
 
-// ---------- 🎯 PLANES ----------
+// ---------- PLANES DE TRATAMIENTO ----------
 app.get('/api/treatment-plans', h(async (req, res) => {
   const { data: plans, error } = await sb.from('treatment_plans').select('*').order('created_at', { ascending: false });
   if (error) return fail(res, 'BD: ' + error.message, 500);
@@ -334,7 +343,7 @@ app.get('/api/treatment-plans/usage/:planId', h(async (req, res) => {
   ok(res, { used: p.sessions_used || 0, authorized: p.sessions_authorized, remaining: Math.max(0, (p.sessions_authorized || 0) - (p.sessions_used || 0)) });
 }));
 
-// ---------- EVENTOS (TURNOS) + MOTOR DE PAGOS ----------
+// ---------- EVENTOS + MOTOR DE PAGOS ----------
 const SHIFTSEL = '*, patients(full_name, document_number), professionals(full_name, document_number, professional_card, arl_active_until)';
 app.post('/api/shifts/start', h(async (req, res) => {
   const { patientId, shiftType, patientStatus, patientNotes, customStartTime } = req.body || {};
@@ -472,8 +481,8 @@ app.patch('/api/professional-records/:id/validate', adminOnly, h(async (req, res
   ok(res, null, 'Nota validada');
 }));
 
-// ---------- EDUCACIÓN / AGENDA / CHAT / EVENTOS ----------
-app.get('/api/education/topics', h(async (req, res) => { const { data } = await sb.from('education_topics').select('*, professionals(full_name)').order('created_at', { ascending: false }); ok(res, data || []); }));
+// ---------- EDUCACIÓN / AGENDA / CHAT / EVENTOS ADVERSOS ----------
+app.get('/api/education/topics', h(async (req, res) => { const { data, error } = await sb.from('education_topics').select('*, professionals(full_name)').order('created_at', { ascending: false }); if (error) return fail(res, 'BD: ' + error.message, 500); ok(res, data || []); }));
 app.post('/api/education/topics', h(async (req, res) => {
   const { title, description, responsibleId } = req.body || {};
   if (!title) return fail(res, 'Escribe el título');
@@ -482,11 +491,13 @@ app.post('/api/education/topics', h(async (req, res) => {
   ok(res, data, 'Tema guardado');
 }));
 app.get('/api/scheduled-shifts', h(async (req, res) => {
-  const { data } = await sb.from('scheduled_shifts').select('*, patients(full_name), professionals(full_name)').order('shift_date', { ascending: false }).limit(200);
+  const { data, error } = await sb.from('scheduled_shifts').select('*, patients(full_name), professionals(full_name)').order('shift_date', { ascending: false }).limit(200);
+  if (error) return fail(res, 'BD: ' + error.message, 500);
   ok(res, data || []);
 }));
 app.get('/api/scheduled-shifts/professional/:profId', h(async (req, res) => {
-  const { data } = await sb.from('scheduled_shifts').select('*, patients(full_name, document_number, altitude_profiles(city_name)), professionals(full_name)').eq('professional_id', req.params.profId).eq('status', 'Programado').order('shift_date');
+  const { data, error } = await sb.from('scheduled_shifts').select('*, patients(full_name, document_number, altitude_profiles(city_name)), professionals(full_name)').eq('professional_id', req.params.profId).eq('status', 'Programado').order('shift_date');
+  if (error) return fail(res, 'BD: ' + error.message, 500);
   ok(res, data || []);
 }));
 app.post('/api/scheduled-shifts', h(async (req, res) => {
@@ -515,20 +526,29 @@ app.post('/api/adverse-events', h(async (req, res) => {
   ok(res, data, 'Evento adverso reportado');
 }));
 
-// ---------- 💵 MÓDULO DE DINERO v3 ----------
-app.get('/api/money/provider-rates', h(async (req, res) => ok(res, await sb.from('provider_rates').select('*'))));
+// ---------- 💵 MÓDULO DE DINERO v3.1 (lecturas CORREGIDAS) ----------
+app.get('/api/money/provider-rates', h(async (req, res) => {
+  const data = await fetchAll('provider_rates');
+  ok(res, data);
+}));
 app.patch('/api/money/provider-rates/:key', adminOnly, h(async (req, res) => {
   const { data, error } = await sb.from('provider_rates').update({ rate: Number(req.body?.rate) || 0 }).eq('event_type', req.params.key).select().single();
   if (error) return fail(res, 'Error: ' + error.message);
   ok(res, data, 'Tarifa actualizada');
 }));
-app.get('/api/money/client-prices', h(async (req, res) => ok(res, await sb.from('client_event_prices').select('*'))));
+app.get('/api/money/client-prices', h(async (req, res) => {
+  const data = await fetchAll('client_event_prices');
+  ok(res, data);
+}));
 app.patch('/api/money/client-prices/:key', adminOnly, h(async (req, res) => {
   const { data, error } = await sb.from('client_event_prices').update({ price: Number(req.body?.price) || 0 }).eq('event_type', req.params.key).select().single();
   if (error) return fail(res, 'Error: ' + error.message);
   ok(res, data, 'Precio actualizado');
 }));
-app.get('/api/money/monthly-plans', h(async (req, res) => ok(res, await sb.from('monthly_plans').select('*'))));
+app.get('/api/money/monthly-plans', h(async (req, res) => {
+  const data = await fetchAll('monthly_plans');
+  ok(res, data);
+}));
 app.patch('/api/money/monthly-plans/:key', adminOnly, h(async (req, res) => {
   const { data, error } = await sb.from('monthly_plans').update({ price: Number(req.body?.price) || 0 }).eq('plan_key', req.params.key).select().single();
   if (error) return fail(res, 'Error: ' + error.message);
@@ -550,7 +570,8 @@ app.get('/api/money/provider-liquidation/:profId/:month/:year', h(async (req, re
   const { from, to } = monthRange(req.params.year, req.params.month);
   const { data: prof } = await sb.from('professionals').select('full_name, document_number, arl_active_until, specialties(name)').eq('id', req.params.profId).single();
   if (!prof) return fail(res, 'Prestador no encontrado', 404);
-  const { data: pays } = await sb.from('event_payments').select('*').eq('provider_id', req.params.profId).gte('validated_at', from).lt('validated_at', to).order('validated_at');
+  const { data: pays, error: pErr } = await sb.from('event_payments').select('*').eq('provider_id', req.params.profId).gte('validated_at', from).lt('validated_at', to).order('validated_at');
+  if (pErr) return fail(res, 'BD: ' + pErr.message, 500);
   const total = (pays || []).reduce((a, p) => a + Number(p.amount), 0);
   const pending = (pays || []).filter(p => !p.paid);
   const settings = await getMoneySettings();
@@ -564,7 +585,8 @@ app.get('/api/money/provider-liquidation/:profId/:month/:year', h(async (req, re
 }));
 app.get('/api/money/payment-book/:month/:year', h(async (req, res) => {
   const { from, to } = monthRange(req.params.year, req.params.month);
-  const { data: pays } = await sb.from('event_payments').select('*, professionals(full_name, document_number)').gte('validated_at', from).lt('validated_at', to).order('validated_at');
+  const { data: pays, error: pErr } = await sb.from('event_payments').select('*, professionals(full_name, document_number)').gte('validated_at', from).lt('validated_at', to).order('validated_at');
+  if (pErr) return fail(res, 'BD: ' + pErr.message, 500);
   const byProvider = {};
   for (const p of (pays || [])) {
     if (!byProvider[p.provider_id]) byProvider[p.provider_id] = { providerId: p.provider_id, name: p.professionals?.full_name || '-', document: p.professionals?.document_number || '-', events: 0, total: 0, paid: 0, pending: 0 };
@@ -587,26 +609,37 @@ app.patch('/api/money/pay-provider/:profId/:month/:year', adminOnly, h(async (re
 app.get('/api/finance/profitability/:month/:year', h(async (req, res) => {
   const { from, to } = monthRange(req.params.year, req.params.month);
   const settings = await getMoneySettings();
-  const { data: pays } = await sb.from('event_payments').select('event_id, amount, client_price, provider_id, professionals(full_name), patients(full_name), shifts(patient_id)').gte('validated_at', from).lt('validated_at', to);
+  const { data: pays, error: pErr } = await sb.from('event_payments').select('event_id, amount, client_price, provider_id, professionals(full_name), patients(full_name)').gte('validated_at', from).lt('validated_at', to);
+  if (pErr) return fail(res, 'BD: ' + pErr.message, 500);
   const prices = await getClientEventPrices();
   const holidaySet = await getHolidaysSet();
   const cupsMap = await getCupsMap();
-  const { data: recs } = await sb.from('professional_records').select('id, created_at, patient_id, professionals(id, full_name, visit_fee, specialties(name)), patients(id, full_name)').eq('admin_validated', true).gte('created_at', from).lt('created_at', to);
+  const { data: recs, error: rErr } = await sb.from('professional_records').select('id, created_at, patient_id, professional_id, professionals(id, full_name, visit_fee, specialties(name)), patients(id, full_name)').eq('admin_validated', true).gte('created_at', from).lt('created_at', to);
+  if (rErr) return fail(res, 'BD: ' + rErr.message, 500);
   const byPatient = {};
   const getPat = (pid, name) => { if (!pid) pid = 'otros'; if (!byPatient[pid]) byPatient[pid] = { patient: name || 'Sin identificar', billed: 0, paidProviders: 0 }; return byPatient[pid]; };
   let totalBilled = 0, totalPaid = 0;
   const payBook = {};
   for (const p of (pays || [])) payBook[p.event_id] = p;
-  // Facturado por eventos: usa el precio guardado al validar; si no hay libro (eventos previos a v3), calcula
-  const { data: shifts } = await sb.from('shifts').select('id, patient_id, shift_type, start_time, patients(id, full_name)').eq('admin_validated', true).not('end_time', 'is', null).gte('start_time', from).lt('start_time', to);
+  // Especialidad de cada prestador (una sola consulta, sin N+1)
+  const profSpecs = {};
+  for (const p of (pays || [])) if (p.provider_id && profSpecs[p.provider_id] === undefined) profSpecs[p.provider_id] = null;
+  const specIds = Object.keys(profSpecs);
+  if (specIds.length) {
+    const { data: profRows } = await sb.from('professionals').select('id, specialties(name)').in('id', specIds);
+    for (const pr of (profRows || [])) profSpecs[pr.id] = pr.specialties?.name || '';
+  }
+  // Facturado por eventos: precio guardado al validar; fallback para eventos previos a v3
+  const { data: shifts, error: sErr } = await sb.from('shifts').select('id, patient_id, shift_type, start_time, professional_id, patients(id, full_name)').eq('admin_validated', true).not('end_time', 'is', null).gte('start_time', from).lt('start_time', to);
+  if (sErr) return fail(res, 'BD: ' + sErr.message, 500);
   for (const s of (shifts || [])) {
     const pay = payBook[s.id];
     let price = 0;
     if (pay) {
       price = Number(pay.client_price) || 0;
     } else {
-      const { data: profSpec } = await sb.from('professionals').select('specialty_id, specialties(name)').eq('id', s.professional_id || '').maybeSingle();
-      const providerType = profSpec?.specialties?.name === 'ACOMPANANTE' ? 'ACOMPANANTE' : 'AUXILIAR';
+      const specName = profSpecs[s.professional_id] || '';
+      const providerType = specName === 'ACOMPANANTE' ? 'ACOMPANANTE' : 'AUXILIAR';
       const clientKey = resolveClientKey(s.shift_type, providerType, isHolidayOrSunday(s.start_time, holidaySet));
       price = prices[clientKey] || 0;
     }
@@ -659,7 +692,10 @@ app.patch('/api/finance/tariffs/:id', h(async (req, res) => {
   if (error) return fail(res, 'Error: ' + error.message);
   ok(res, data, 'Tarifas guardadas');
 }));
-app.get('/api/finance/cups-tariffs', h(async (req, res) => ok(res, await sb.from('cups_tariffs').select('*'))));
+app.get('/api/finance/cups-tariffs', h(async (req, res) => {
+  const data = await fetchAll('cups_tariffs');
+  ok(res, data);
+}));
 app.patch('/api/finance/cups-tariffs/:specialty', h(async (req, res) => {
   const { data, error } = await sb.from('cups_tariffs').update({ price: Number(req.body?.price) || 0, updated_at: new Date().toISOString() }).eq('specialty_code', req.params.specialty).select().single();
   if (error) return fail(res, 'Error: ' + error.message);
@@ -673,13 +709,14 @@ app.get('/api/finance/invoice/:patId/:month/:year', h(async (req, res) => {
   const prices = await getClientEventPrices();
   const cupsMap = await getCupsMap();
   const holidaySet = await getHolidaysSet();
-  const { data: shifts } = await sb.from('shifts').select('id, shift_type, start_time, professionals(full_name)').eq('patient_id', req.params.patId).eq('admin_validated', true).not('end_time', 'is', null).gte('start_time', from).lt('start_time', to);
-  const { data: pays } = await sb.from('event_payments').select('event_id, client_price').gte('validated_at', from).lt('validated_at', to);
+  const { data: shifts, error: sErr } = await sb.from('shifts').select('id, shift_type, start_time, professional_id, professionals(full_name)').eq('patient_id', req.params.patId).eq('admin_validated', true).not('end_time', 'is', null).gte('start_time', from).lt('start_time', to);
+  if (sErr) return fail(res, 'BD: ' + sErr.message, 500);
+  const { data: pays, error: pErr } = await sb.from('event_payments').select('event_id, client_price').gte('validated_at', from).lt('validated_at', to);
+  if (pErr) return fail(res, 'BD: ' + pErr.message, 500);
   const payMap = Object.fromEntries((pays || []).map(p => [p.event_id, Number(p.client_price) || 0]));
   const details = (shifts || []).map(s => {
     let amount = payMap[s.id];
     if (amount === undefined) {
-      const st = String(s.shift_type);
       const clientKey = resolveClientKey(s.shift_type, 'AUXILIAR', isHolidayOrSunday(s.start_time, holidaySet));
       amount = prices[clientKey] || 0;
     }
@@ -705,4 +742,4 @@ app.get('/api/reports/:patId/:month/:year', h(async (req, res) => {
 app.use((req, res) => fail(res, 'Ruta no encontrada: ' + req.method + ' ' + req.path, 404));
 
 export default app;
-if (!process.env.VERCEL) app.listen(PORT, () => console.log(`✅ Vital Hogar Pro API v3 en http://localhost:${PORT}`));
+if (!process.env.VERCEL) app.listen(PORT, () => console.log(`✅ Vital Hogar Pro API v3.1 en http://localhost:${PORT}`));
