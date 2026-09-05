@@ -133,10 +133,18 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 .plan-banner { background: rgba(59,130,246,0.12); border: 2px solid var(--info); border-radius: 12px; padding: 14px; margin-bottom: 16px; font-size: 0.95rem; }
 .plan-banner.warn { background: rgba(245,158,11,0.12); border-color: var(--warning); }
 .exceptional-badge { background: rgba(239,68,68,0.15); border: 1px solid var(--danger); color: #fca5a5; padding: 2px 8px; border-radius: 10px; font-size: 0.7rem; font-weight: bold; }
+/* ⭐ NUEVO: Rentabilidad */
+.profit-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin: 15px 0; }
+.profit-card { background: var(--bg-dark); border: 1px solid var(--border); border-radius: 12px; padding: 15px; text-align: center; }
+.profit-card .p-label { font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; font-weight: 600; }
+.profit-card .p-value { font-size: 1.5rem; font-weight: bold; margin-top: 6px; }
+.profit-card.positive .p-value { color: var(--primary); }
+.profit-card.negative .p-value { color: var(--danger); }
+.profit-card.main { border: 2px solid var(--primary); background: rgba(34,197,94,0.06); }
+.profit-card.main.negative { border-color: var(--danger); background: rgba(239,68,68,0.06); }
 </style>
 
-<script>
-  if ('serviceWorker' in navigator) {
+<script> if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
       navigator.serviceWorker.register('/sw.js')
         .then(reg => console.log('Service Worker registrado'))
@@ -214,6 +222,8 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                         <option value="TRABAJO_SOCIAL">Trabajo Social</option>
                     </select>
                     </div>
+                    <!-- ⭐ NUEVO: tarifa por visita -->
+                    <div class="form-group"><label>💵 Tarifa por visita (opcional)</label><input type="number" id="pVisitFee" placeholder="Ej: 50000 — se paga por nota validada"></div>
                 </div>
                 <button class="btn-primary" onclick="createProf()"><i class="fas fa-save"></i> Guardar Profesional</button>
             </div>
@@ -223,19 +233,51 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                     <button class="btn-small btn-info" id="profViewActiveBtn" onclick="setProfView('active')">✅ Activos</button>
                     <button class="btn-small btn-secondary" id="profViewArchivedBtn" onclick="setProfView('archived')">📦 Archivados</button>
                 </div>
-                <table id="profTable"><thead><tr><th>Nombre</th><th>Cédula</th><th>Rol</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+                <table id="profTable"><thead><tr><th>Nombre</th><th>Cédula</th><th>Rol</th><th>Tarifa/Visita</th><th>Estado</th><th>Acciones</th></tr></thead><tbody></tbody></table>
             </div>
         </div>
 
         <div id="admin_pat" class="hidden">
             <div class="card">
                 <h3 style="cursor:default;">Nuevo Paciente</h3>
+                <h4>📋 Identificación</h4>
                 <div class="grid">
-                    <div class="form-group"><label>Nombre *</label><input type="text" id="patName"></div>
-                    <div class="form-group"><label>Cédula *</label><input type="text" id="patDoc"></div>
+                    <div class="form-group"><label>Nombre Completo *</label><input type="text" id="patName"></div>
+                    <!-- ⭐ NUEVO: tipo de documento (orden frontera: CC, PPT, CE, TI, PA, RC) -->
+                    <div class="form-group"><label>Tipo de Documento *</label>
+                        <select id="patDocType">
+                            <option value="CC">CC — Cédula de Ciudadanía</option>
+                            <option value="PPT">PPT — Permiso por Protección Temporal</option>
+                            <option value="CE">CE — Cédula de Extranjería</option>
+                            <option value="TI">TI — Tarjeta de Identidad</option>
+                            <option value="PA">PA — Pasaporte</option>
+                            <option value="RC">RC — Registro Civil</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Número de Documento *</label><input type="text" id="patDoc"></div>
+                    <div class="form-group"><label>Fecha de Nacimiento</label><input type="date" id="patBirth" onchange="showAge('patBirth','patAgePreview')"><div id="patAgePreview" style="font-size:0.8rem; color:var(--primary);"></div></div>
+                    <div class="form-group"><label>Sexo</label><select id="patSex"><option value="">Seleccionar...</option><option value="Masculino">Masculino</option><option value="Femenino">Femenino</option><option value="Otro">Otro</option></select></div>
                     <div class="form-group"><label>Ciudad</label><select id="patCity"></select></div>
-                    <div class="form-group"><label>Familiar</label><input type="text" id="famName"></div>
+                </div>
+                <h4>🏠 Domicilio (operativa del servicio)</h4>
+                <div class="grid">
+                    <div class="form-group"><label>Dirección *</label><input type="text" id="patAddress" placeholder="Cra 5 # 10-20"></div>
+                    <div class="form-group"><label>Barrio / Zona</label><input type="text" id="patNeighborhood" placeholder="Ej: Caobos"></div>
+                    <div class="form-group"><label>Tipo de Vivienda</label><select id="patHousing"><option value="">Seleccionar...</option><option value="Casa">Casa</option><option value="Apartamento">Apartamento</option><option value="Otro">Otro</option></select></div>
+                    <div class="form-group"><label>Referencias para llegar</label><input type="text" id="patArrival" placeholder="Ej: Portón verde, 2do piso"></div>
+                    <div class="form-group"><label>Indicaciones de acceso</label><input type="text" id="patAccess" placeholder="Ej: Clave portón 1234, cuidado con el perro"></div>
+                    <div class="form-group"><label>🐾 Mascotas en el hogar</label><input type="text" id="patPets" placeholder="Ej: 1 perro (amigable), sin mascotas"></div>
+                </div>
+                <h4>📞 Contacto y Emergencias</h4>
+                <div class="grid">
+                    <div class="form-group"><label>Familiar Responsable</label><input type="text" id="famName"></div>
                     <div class="form-group"><label>Celular</label><input type="tel" id="famCel"></div>
+                    <div class="form-group"><label>Email del Familiar</label><input type="email" id="patFamEmail" placeholder="Para enviar cuenta de cobro"></div>
+                    <div class="form-group"><label>Contacto de Emergencia (nombre)</label><input type="text" id="patEmgName"></div>
+                    <div class="form-group"><label>Celular de Emergencia</label><input type="tel" id="patEmgPhone"></div>
+                </div>
+                <h4>🏥 Datos Médicos / EPS</h4>
+                <div class="grid">
                     <div class="form-group"><label>Código CIE-10</label><input type="text" id="patCie" placeholder="Ej: I10"></div>
                     <div class="form-group"><label>EPS</label><input type="text" id="patEps" placeholder="Ej: Sura"></div>
                     <div class="form-group"><label>Autorización EPS</label><input type="text" id="patAuth"></div>
@@ -248,7 +290,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                     <button class="btn-small btn-info" id="patViewActiveBtn" onclick="setPatView('active')">✅ Activos</button>
                     <button class="btn-small btn-secondary" id="patViewArchivedBtn" onclick="setPatView('archived')">📦 Archivados</button>
                 </div>
-                <table id="patTable"><thead><tr><th>Nombre</th><th>Ciudad</th><th>Familiar</th><th>Celular</th><th>Estado</th><th>Consent.</th><th>Acciones</th></tr></thead><tbody></tbody></table>
+                <table id="patTable"><thead><tr><th>Nombre</th><th>Doc.</th><th>Edad</th><th>Ciudad</th><th>Dirección</th><th>Familiar</th><th>Celular</th><th>Estado</th><th>Consent.</th><th>Acciones</th></tr></thead><tbody></tbody></table>
             </div>
         </div>
 
@@ -331,9 +373,27 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
         </div>
 
         <div id="admin_finance" class="hidden">
+            <!-- ⭐ NUEVO: RENTABILIDAD -->
+            <div class="card" style="border-color: var(--primary);">
+                <h3 style="cursor:default; color: var(--primary);">📊 Rentabilidad del Mes — Ganancia Real</h3>
+                <p style="font-size:0.8rem; color:#94a3b8;">Calcula con turnos y notas <strong>VALIDADOS</strong>: lo facturado al cliente (tarifas de turnos + tarifas CUPS) menos lo pagado a auxiliares (ley) y a profesionales (tarifa por visita).</p>
+                <div class="grid">
+                    <div class="form-group"><label>Mes</label>
+                        <select id="profitMonth">
+                            <option value="01">Enero</option><option value="02">Febrero</option><option value="03">Marzo</option>
+                            <option value="04">Abril</option><option value="05">Mayo</option><option value="06">Junio</option>
+                            <option value="07">Julio</option><option value="08">Agosto</option><option value="09">Septiembre</option>
+                            <option value="10">Octubre</option><option value="11">Noviembre</option><option value="12">Diciembre</option>
+                        </select>
+                    </div>
+                    <div class="form-group"><label>Año</label><input type="number" id="profitYear" value="2026"></div>
+                </div>
+                <button class="btn-primary btn-info" onclick="loadProfitability()"><i class="fas fa-calculator"></i> Calcular Rentabilidad</button>
+                <div id="profitResult" class="hidden" style="margin-top:15px;"></div>
+            </div>
             <div class="card">
                 <h3 style="cursor:default;">⚙️ Parámetros de Ley Vigentes</h3>
-                <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:10px;">Configura los valores legales de los honorarios de contratistas.</p>
+                <p style="font-size:0.85rem; color:#94a3b8; margin-bottom:10px;">Valores oficiales 2026 cargados (Decretos 1469 y 1470 de dic 2025). Edítalos si cambian.</p>
                 <div class="grid">
                     <div class="form-group"><label>Año Vigente</label><input type="number" id="finYear" value="2026"></div>
                     <div class="form-group"><label>Salario Mínimo (SMMLV)</label><input type="number" id="finSmmlv"></div>
@@ -344,7 +404,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                 <button class="btn-primary" onclick="saveFinanceParams()"><i class="fas fa-save"></i> Guardar Parámetros</button>
             </div>
             <div class="card">
-                <h3 style="cursor:default;">💵 Tarifario para Clientes</h3>
+                <h3 style="cursor:default;">💵 Tarifario para Clientes (Turnos de Auxiliares)</h3>
                 <div class="grid">
                     <div class="form-group"><label>Turno 6h Diurno ($)</label><input type="number" id="t_6h_diurno"></div>
                     <div class="form-group"><label>Turno 6h Nocturno ($)</label><input type="number" id="t_6h_nocturno"></div>
@@ -355,6 +415,41 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                     <div class="form-group"><label>Turno 24h ($)</label><input type="number" id="t_24h"></div>
                 </div>
                 <button class="btn-primary" onclick="saveClientTariffs()"><i class="fas fa-save"></i> Guardar Tarifas Clientes</button>
+            </div>
+            <!-- ⭐ NUEVO: Tarifas por especialidad (CUPS) -->
+            <div class="card">
+                <h3 style="cursor:default;">🏷️ Tarifas al Cliente por Especialidad (CUPS)</h3>
+                <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:10px;">Lo que le cobras al cliente por cada visita profesional validada. Calíbralas con SOAT como referencia. Las visitas solo se facturan si su especialidad tiene tarifa mayor a $0.</p>
+                <div class="grid">
+                    <div class="form-group"><label>Medicina (890105)</label><input type="number" id="cups_MEDICINA"></div>
+                    <div class="form-group"><label>Enfermería Jefe (890106)</label><input type="number" id="cups_ENFERMERIA_JEFE"></div>
+                    <div class="form-group"><label>Psicología (890108)</label><input type="number" id="cups_PSICOLOGIA"></div>
+                    <div class="form-group"><label>Fisioterapia (890109)</label><input type="number" id="cups_FISIOTERAPIA"></div>
+                    <div class="form-group"><label>Fonoaudiología (890112)</label><input type="number" id="cups_FONOAUDIOLOGIA"></div>
+                    <div class="form-group"><label>Terapia Ocupacional (890110)</label><input type="number" id="cups_TERAPIA_OCUPACIONAL"></div>
+                    <div class="form-group"><label>Terapia Respiratoria (890111)</label><input type="number" id="cups_TERAPIA_RESPIRATORIA"></div>
+                    <div class="form-group"><label>Nutrición (890113)</label><input type="number" id="cups_NUTRICION"></div>
+                    <div class="form-group"><label>Trabajo Social</label><input type="number" id="cups_TRABAJO_SOCIAL"></div>
+                </div>
+                <button class="btn-primary" onclick="saveCupsTariffs()"><i class="fas fa-save"></i> Guardar Tarifas CUPS</button>
+            </div>
+            <!-- ⭐ NUEVO: Datos de la Empresa -->
+            <div class="card">
+                <h3 style="cursor:default;">🏢 Datos de la Empresa (aparecen en todos los PDFs)</h3>
+                <p style="font-size:0.8rem; color:#94a3b8; margin-bottom:10px;">Persona natural: cobras con tu cédula. Cuando te conviertas en IPS, cambia el tipo a NIT aquí mismo y todo se actualiza.</p>
+                <div class="grid">
+                    <div class="form-group"><label>Nombre del Responsable *</label><input type="text" id="cpName" placeholder="Tu nombre completo"></div>
+                    <div class="form-group"><label>Tipo de Documento</label>
+                        <select id="cpDocType"><option value="CC">CC — Cédula</option><option value="NIT">NIT (futuro IPS)</option></select>
+                    </div>
+                    <div class="form-group"><label>Número de Documento *</label><input type="text" id="cpDocNumber"></div>
+                    <div class="form-group"><label>Dirección</label><input type="text" id="cpAddress"></div>
+                    <div class="form-group"><label>Teléfono</label><input type="tel" id="cpPhone"></div>
+                    <div class="form-group"><label>Email</label><input type="email" id="cpEmail"></div>
+                    <div class="form-group"><label>Ciudad</label><input type="text" id="cpCity" value="Cúcuta"></div>
+                    <div class="form-group"><label>Régimen Tributario</label><input type="text" id="cpTaxRegime" value="No responsable de IVA"></div>
+                </div>
+                <button class="btn-primary" onclick="saveCompany()"><i class="fas fa-save"></i> Guardar Datos de la Empresa</button>
             </div>
             <div class="card">
                 <h3 style="cursor:default;">🧾 Liquidación de Honorarios (Contratistas)</h3>
@@ -433,7 +528,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
         </div>
     </div>
 
-    <div id="auxPanel" class="hidden">
+        <div id="auxPanel" class="hidden">
         <div id="auxPatientSelection" class="card">
             <div class="card" style="border-color: var(--warning);">
                 <h3 style="cursor:default;">📜 Mis Turnos Cerrados</h3>
@@ -580,8 +675,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                         </div>
                     </div>
                 </div>
-                <div class="accordion">
-                    <div class="accordion-header" onclick="toggleAccordion(this)"><span>🚶 Movilización</span><i class="fas fa-chevron-down"></i></div>
+                <div class="accordion"><div class="accordion-header" onclick="toggleAccordion(this)"><span>🚶 Movilización</span><i class="fas fa-chevron-down"></i></div>
                     <div class="accordion-content">
                         <div id="repMobility"></div>
                         <div class="add-row-buttons">
@@ -745,8 +839,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
                     </div>
                 </div>
 
-                <div id="profNutriFields" class="hidden">
-                    <h4>🥗 Nota de Evolución Nutricional</h4>
+                <div id="profNutriFields" class="hidden"> <h4>🥗 Nota de Evolución Nutricional</h4>
                     <h4>S — Subjetivo</h4>
                     <div class="grid">
                         <div class="form-group"><label>Recordatorio de 24 horas</label><textarea id="nuS" rows="2"></textarea></div>
@@ -919,8 +1012,7 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     </div>
 </div>
 
-<div id="forgotModal" class="modal-overlay-confirm" onclick="if(event.target===this) closeForgotModal()">
-    <div class="modal-confirm-box" style="border-color: var(--info); max-width: 380px;">
+<div id="forgotModal" class="modal-overlay-confirm" onclick="if(event.target===this) closeForgotModal()">  <div class="modal-confirm-box" style="border-color: var(--info); max-width: 380px;">
         <div class="modal-icon" style="background: rgba(59,130,246,0.15); color: var(--info);"><i class="fas fa-mug-hot"></i></div>
         <h3 style="color: var(--info);">¿Olvidaste tu contraseña?</h3>
         <p>😴 Tranquilo, pasa hasta en las mejores familias.</p>
@@ -962,10 +1054,10 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
 </div>
 
 <div id="editPatModal" class="modal-overlay-confirm" onclick="if(event.target===this) closeEditPatModal()">
-    <div class="modal-confirm-box" style="border-color: var(--info); max-width: 480px;">
+    <div class="modal-confirm-box" style="border-color: var(--info); max-width: 520px;">
         <div class="modal-icon" style="background: rgba(59,130,246,0.15); color: var(--info);"><i class="fas fa-user-pen"></i></div>
         <h3 style="color: var(--info);">Editar Paciente</h3>
-        <div id="editPatFields" style="text-align:left;"></div>
+        <div id="editPatFields" style="text-align:left; max-height: 60vh; overflow-y: auto;"></div>
         <div class="modal-actions">
             <button class="btn-primary btn-secondary" style="margin-top:0;" onclick="closeEditPatModal()">Cancelar</button>
             <button class="btn-primary" id="editPatSaveBtn" style="margin-top:0;">💾 Guardar Cambios</button>
@@ -998,7 +1090,6 @@ input.vital-danger { border-color: var(--danger) !important; background: #450a0a
     </div>
 </div>
 <div id="toast" class="toast"></div>
-
 <script>
 const API_URL = '';
 const LOGO_URL = 'https://i.imgur.com/01YZxey.jpeg';
@@ -1015,10 +1106,10 @@ const CIUDADES_COLOMBIA = {
     'Inírida': { altitud: 170, spo2_min: 96 }, 'San José del Guaviare': { altitud: 175, spo2_min: 96 },
     'Mitú': { altitud: 180, spo2_min: 96 }, 'Sincelejo': { altitud: 205, spo2_min: 96 },
     'Florencia': { altitud: 242, spo2_min: 96 }, 'Girardot': { altitud: 280, spo2_min: 96 },
-    'Cúcuta': { altitud: 320, spo2_min: 96 }, 'Yopal': { altitud: 350, spo2_min: 96 },
-    'Leticia': { altitud: 96, spo2_min: 96 },
+    'Cúcuta': { altitud: 320, spo2_min: 95 }, 'Ocaña': { altitud: 810, spo2_min: 95 },
+    'Pamplona': { altitud: 1700, spo2_min: 94 }, 'Villa del Rosario': { altitud: 330, spo2_min: 95 },
+    'Los Patios': { altitud: 320, spo2_min: 95 }, 'El Zulia': { altitud: 330, spo2_min: 95 },
     'Neiva': { altitud: 442, spo2_min: 95 }, 'Villavicencio': { altitud: 467, spo2_min: 95 },
-    'Mocoa': { altitud: 600, spo2_min: 95 }, 'Ocaña': { altitud: 810, spo2_min: 95 },
     'Bucaramanga': { altitud: 959, spo2_min: 95 }, 'Tuluá': { altitud: 960, spo2_min: 95 },
     'Palmira': { altitud: 1000, spo2_min: 95 }, 'Cali': { altitud: 1018, spo2_min: 95 },
     'Ibagué': { altitud: 1285, spo2_min: 94 }, 'Pereira': { altitud: 1411, spo2_min: 94 },
@@ -1079,6 +1170,7 @@ let _addendaReviewTarget = null;
 let _exceptionalShiftId = null;
 let _plansList = [], _activePlanForPatient = null;
 let _changeEmailProfId = null;
+let _companyData = null;
 
 // ============ HELPERS ============
 function showToast(msg, type = 'success') { const t = document.getElementById('toast'); t.textContent = msg; t.className = `toast ${type} show`; setTimeout(() => t.classList.remove('show'), 4500); }
@@ -1088,6 +1180,9 @@ function togglePass(id, btn) { const i = document.getElementById(id); i.type = i
 function escapeHtml(str) { if (str === null || str === undefined) return ''; return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
 function forgotPassword() { document.getElementById('forgotModal').classList.add('show'); }
 function closeForgotModal() { document.getElementById('forgotModal').classList.remove('show'); }
+function calcAge(birth) { if (!birth) return null; const b = new Date(birth); const t = new Date(); let a = t.getFullYear() - b.getFullYear(); const m = t.getMonth() - b.getMonth(); if (m < 0 || (m === 0 && t.getDate() < b.getDate())) a--; return a; }
+function showAge(inputId, outId) { const a = calcAge(getVal(inputId)); const el = document.getElementById(outId); if (el) el.textContent = a !== null ? `👉 Edad: ${a} años` : ''; }
+function patientAge(p) { const a = calcAge(p.birth_date); return a === null ? '-' : a + ' años'; }
 function addendaBadgeHtml(arr) {
     if (!arr || !arr.length) return '';
     const val = arr.filter(a => a.admin_validated).length;
@@ -1111,6 +1206,13 @@ async function apiFetch(url, options = {}) {
     return res;
 }
 
+// 🏢 Datos de empresa (para PDFs)
+async function getCompany() {
+    if (_companyData) return _companyData;
+    try { const r = await apiFetch(`${API_URL}/api/company`); const d = await r.json(); _companyData = d.data || null; } catch (e) { _companyData = null; }
+    return _companyData;
+}
+
 // ============ LOGIN ============
 async function login() {
     const email = document.getElementById('loginEmail').value.trim(), password = document.getElementById('loginPassword').value;
@@ -1120,7 +1222,7 @@ async function login() {
         const data = await res.json();
         if (data.success) {
             localStorage.setItem('vital_token', data.data.token);
-            currentUser = { ...data.data.user, specialty_name: data.data.user.specialties?.name };
+            currentUser = { ...data.data.user, specialty_name: data.data.user.specialty_name };
             localStorage.setItem('vital_user', JSON.stringify(currentUser));
             initApp();
         } else { showToast(data.message || 'Credenciales inválidas', 'error'); }
@@ -1133,7 +1235,7 @@ function initApp() {
     document.getElementById('userName').textContent = currentUser.full_name; document.getElementById('userRoleDisplay').textContent = currentUser.specialty_name;
     if (currentUser.specialty_name === 'ADMINISTRACION' || currentUser.specialty_name === 'ENFERMERIA_JEFE') {
         document.getElementById('adminPanel').classList.remove('hidden');
-        loadProfs(); loadPats(); loadConsents(); loadEduList(); loadScheduledShiftsAdmin(); loadFinanceData(); loadSupports(); updateStats(); loadSuggestedVisits(); loadPlans();
+        loadProfs(); loadPats(); loadConsents(); loadEduList(); loadScheduledShiftsAdmin(); loadFinanceData(); loadSupports(); updateStats(); loadSuggestedVisits(); loadPlans(); loadCompanyForm();
         updateSchedShiftType();
         refreshChat('adminMessageList'); setInterval(() => { if (!document.getElementById('admin_messages').classList.contains('hidden')) refreshChat('adminMessageList'); }, 7000);
     } else if (currentUser.specialty_name === 'AUXILIAR_ENFERMERIA') {
@@ -1147,7 +1249,7 @@ function initApp() {
 }
 
 // ============ ADMIN: NAVEGACIÓN ============
-function showAdminTab(tab, btn) { ['admin_prof','admin_pat','admin_plans','admin_supports','admin_edu','admin_reports','admin_finance','admin_agenda','admin_messages'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById('admin_'+tab).classList.remove('hidden'); document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); if (tab === 'supports') loadSupports(); if (tab === 'plans') loadPlans(); }
+function showAdminTab(tab, btn) { ['admin_prof','admin_pat','admin_plans','admin_supports','admin_edu','admin_reports','admin_finance','admin_agenda','admin_messages'].forEach(t => document.getElementById(t).classList.add('hidden')); document.getElementById('admin_'+tab).classList.remove('hidden'); document.querySelectorAll('#adminTabs .tab').forEach(t => t.classList.remove('active')); btn.classList.add('active'); if (tab === 'supports') loadSupports(); if (tab === 'plans') loadPlans(); if (tab === 'finance') { loadFinanceData(); loadCupsTariffsForm(); loadCompanyForm(); } }
 
 // --- PROFESIONALES ---
 async function loadProfs() {
@@ -1164,14 +1266,15 @@ function setProfView(mode) {
 function renderProfs() {
     const list = profsRegistry.filter(p => profViewMode === 'active' ? p.is_active !== false : p.is_active === false);
     document.querySelector('#profTable tbody').innerHTML = list.length ? list.map(p => {
+        const fee = (p.visit_fee && Number(p.visit_fee) > 0) ? formatCurrency(p.visit_fee) : '—';
         if (profViewMode === 'active') {
-            return `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.document_number)}</td><td>${escapeHtml(p.specialties?.name||'N/A')}</td><td>✅ Activo</td><td><button class="btn-small btn-warning" onclick="openEditProfModal('${p.id}')">Editar</button> <button class="btn-small btn-archive" onclick="archiveProf('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deleteProf('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`;
+            return `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.document_number)}</td><td>${escapeHtml(p.specialties?.name||'N/A')}</td><td>${fee}</td><td>✅ Activo</td><td><button class="btn-small btn-warning" onclick="openEditProfModal('${p.id}')">Editar</button> <button class="btn-small btn-archive" onclick="archiveProf('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deleteProf('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`;
         } else {
-            return `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.document_number)}</td><td>${escapeHtml(p.specialties?.name||'N/A')}</td><td>📦 Archivado</td><td><button class="btn-small btn-primary" onclick="reactivateProf('${p.id}')">🔁 Reactivar</button> <button class="btn-small btn-warning" onclick="openEditProfModal('${p.id}')">Editar</button> <button class="btn-small btn-danger" onclick="deleteProf('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`;
+            return `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.document_number)}</td><td>${escapeHtml(p.specialties?.name||'N/A')}</td><td>${fee}</td><td>📦 Archivado</td><td><button class="btn-small btn-primary" onclick="reactivateProf('${p.id}')">🔁 Reactivar</button> <button class="btn-small btn-warning" onclick="openEditProfModal('${p.id}')">Editar</button> <button class="btn-small btn-danger" onclick="deleteProf('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`;
         }
-    }).join('') : `<tr><td colspan="5" style="text-align:center;color:#94a3b8;">${profViewMode === 'active' ? 'No hay profesionales activos' : 'No hay profesionales archivados'}</td></tr>`;
+    }).join('') : `<tr><td colspan="6" style="text-align:center;color:#94a3b8;">${profViewMode === 'active' ? 'No hay profesionales activos' : 'No hay profesionales archivados'}</td></tr>`;
 }
-async function archiveProf(id) { if(!confirm('¿Archivar este profesional? Desaparecerá de la lista activa pero podrás reactivarlo desde "Archivados".')) return; try { await apiFetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: false }) }); showToast('Profesional archivado'); loadProfs(); } catch(e) { if (e.message !== 'Sesión expirada') showToast('Error al archivar', 'error'); } }
+async function archiveProf(id) { if(!confirm('¿Archivar este profesional? Desaparecerá de la lista activa pero podrás reactivarlo desde "Archivados". Su historial se conserva.')) return; try { await apiFetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: false }) }); showToast('Profesional archivado'); loadProfs(); } catch(e) { if (e.message !== 'Sesión expirada') showToast('Error al archivar', 'error'); } }
 async function reactivateProf(id) { try { await apiFetch(`${API_URL}/api/professionals/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ isActive: true }) }); showToast('✅ Profesional reactivado'); loadProfs(); } catch(e) { if (e.message !== 'Sesión expirada') showToast('Error al reactivar', 'error'); } }
 
 function openEditProfModal(id) {
@@ -1182,9 +1285,10 @@ function openEditProfModal(id) {
         <div class="form-group"><label>Nombre Completo *</label><input type="text" id="epName" value="${escapeHtml(p.full_name||'')}"></div>
         <div class="form-group"><label>Cédula *</label><input type="text" id="epDoc" value="${escapeHtml(p.document_number||'')}"></div>
         <div class="form-group"><label>Tarjeta Profesional / RETHUS *</label><input type="text" id="epCard" value="${escapeHtml(p.professional_card||'')}"></div>
-        <div class="form-group"><label>Correo (no editable desde aquí)</label><input type="text" id="epEmail" value="${escapeHtml(p.email || 'No disponible')}" readonly style="opacity:0.6;"></div>
+        <div class="form-group"><label>Correo (cámbialo con el botón de abajo)</label><input type="text" id="epEmail" value="${escapeHtml(p.email || 'No disponible')}" readonly style="opacity:0.6;"></div>
         <div class="form-group"><label>Especialidad</label><select id="epSpec">${specOptions.map(s => `<option value="${s}" ${s === (p.specialties?.name||'') ? 'selected' : ''}>${s}</option>`).join('')}</select></div>
-        <div class="form-group"><label>🔑 Nueva Contraseña (déjalo vacío para no cambiarla)</label><input type="text" id="epPass" placeholder="Solo escribe aquí si quieres cambiarla"></div>`;
+        <div class="form-group"><label>💵 Tarifa por visita (se paga por cada nota VALIDADA)</label><input type="number" id="epVisitFee" value="${p.visit_fee ? Number(p.visit_fee) : ''}" placeholder="Ej: 50000 — déjalo vacío si es Auxiliar/Admin"></div>
+        <div class="form-group"><label>🔑 Nueva Contraseña (vacío = no cambiar)</label><input type="text" id="epPass" placeholder="Solo escribe aquí si quieres cambiarla"></div>`;
     document.getElementById('editProfModal').classList.add('show');
 }
 function closeEditProfModal() { document.getElementById('editProfModal').classList.remove('show'); _editingProfId = null; }
@@ -1220,31 +1324,71 @@ function renderPats() {
         const consentBtn = c
             ? `<button class="btn-small btn-primary" onclick="openConsentModal('${p.id}')" title="Firmado el ${new Date(c.created_at).toLocaleDateString('es-CO')}">📋 ✔</button>`
             : `<button class="btn-small btn-warning" onclick="openConsentModal('${p.id}')" title="Sin consentimiento firmado">📋 ⚠️</button>`;
+        const docLabel = (p.document_type ? p.document_type + ' ' : '') + (p.document_number || '');
         if (patViewMode === 'active') {
-            return `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.altitude_profiles?.city_name||'N/A')}</td><td>${escapeHtml(p.family_name||'N/A')}</td><td>${escapeHtml(p.contact_phone||'N/A')}</td><td>✅ Activo</td><td>${consentBtn}</td><td><button class="btn-small btn-warning" onclick="openEditPatModal('${p.id}')">Editar</button> <button class="btn-small btn-archive" onclick="archivePatient('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deletePatient('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`;
+            return `<tr><td>${escapeHtml(p.full_name)}<br><small style="color:#94a3b8;">${escapeHtml(p.address || 'Sin dirección')} ${p.neighborhood ? '· ' + escapeHtml(p.neighborhood) : ''}</small></td><td>${escapeHtml(docLabel)}</td><td>${patientAge(p)}</td><td>${escapeHtml(p.altitude_profiles?.city_name||'N/A')}</td><td>${escapeHtml(p.family_name||'N/A')}</td><td>${escapeHtml(p.contact_phone||'N/A')}</td><td>✅ Activo</td><td>${consentBtn}</td><td><button class="btn-small btn-warning" onclick="openEditPatModal('${p.id}')">Editar</button> <button class="btn-small btn-archive" onclick="archivePatient('${p.id}')">Archivar</button> <button class="btn-small btn-danger" onclick="deletePatient('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`;
         } else {
-            return `<tr><td>${escapeHtml(p.full_name)}</td><td>${escapeHtml(p.altitude_profiles?.city_name||'N/A')}</td><td>${escapeHtml(p.family_name||'N/A')}</td><td>${escapeHtml(p.contact_phone||'N/A')}</td><td>📦 Archivado</td><td>${consentBtn}</td><td><button class="btn-small btn-primary" onclick="reactivatePatient('${p.id}')">🔁 Reactivar</button> <button class="btn-small btn-warning" onclick="openEditPatModal('${p.id}')">Editar</button> <button class="btn-small btn-danger" onclick="deletePatient('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`;
+            return `<tr><td>${escapeHtml(p.full_name)}<br><small style="color:#94a3b8;">${escapeHtml(p.address || 'Sin dirección')}</small></td><td>${escapeHtml(docLabel)}</td><td>${patientAge(p)}</td><td>${escapeHtml(p.altitude_profiles?.city_name||'N/A')}</td><td>${escapeHtml(p.family_name||'N/A')}</td><td>${escapeHtml(p.contact_phone||'N/A')}</td><td>📦 Archivado</td><td>${consentBtn}</td><td><button class="btn-small btn-primary" onclick="reactivatePatient('${p.id}')">🔁 Reactivar</button> <button class="btn-small btn-warning" onclick="openEditPatModal('${p.id}')">Editar</button> <button class="btn-small btn-danger" onclick="deletePatient('${p.id}')" title="Eliminar permanente"><i class="fas fa-trash"></i></button></td></tr>`;
         }
-    }).join('') : `<tr><td colspan="7" style="text-align:center;color:#94a3b8;">${patViewMode === 'active' ? 'No hay pacientes activos' : 'No hay pacientes archivados'}</td></tr>`;
+    }).join('') : `<tr><td colspan="10" style="text-align:center;color:#94a3b8;">${patViewMode === 'active' ? 'No hay pacientes activos' : 'No hay pacientes archivados'}</td></tr>`;
 }
 async function archivePatient(id) { if(!confirm('¿Archivar (dar de baja) este paciente? Podrás reactivarlo desde "Archivados".')) return; try { await apiFetch(`${API_URL}/api/patients/${id}/discharge`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ reason: 'Archivado por administración' }) }); showToast('Paciente archivado'); loadPats(); } catch(e) { if (e.message !== 'Sesión expirada') showToast('Error al archivar', 'error'); } }
 async function reactivatePatient(id) { try { await apiFetch(`${API_URL}/api/patients/${id}/reactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) }); showToast('✅ Paciente reactivado'); loadPats(); } catch(e) { if (e.message !== 'Sesión expirada') showToast('Error al reactivar', 'error'); } }
 
+function patFormFields(p) {
+    p = p || {};
+    const ciudadActual = p.altitude_profiles?.city_name || '';
+    const cityOptions = Object.keys(CIUDADES_COLOMBIA).map(c => `<option value="${c}" ${c === ciudadActual ? 'selected' : ''}>${c}</option>`).join('');
+    const docTypes = ['CC','PPT','CE','TI','PA','RC'];
+    return `
+        <h4>📋 Identificación</h4>
+        <div class="form-group"><label>Nombre Completo *</label><input type="text" id="etName" value="${escapeHtml(p.full_name||'')}"></div>
+        <div class="grid">
+            <div class="form-group"><label>Tipo de Documento *</label><select id="etDocType">${docTypes.map(d => `<option value="${d}" ${d === (p.document_type||'CC') ? 'selected' : ''}>${d}</option>`).join('')}</select></div>
+            <div class="form-group"><label>Número de Documento *</label><input type="text" id="etDoc" value="${escapeHtml(p.document_number||'')}"></div>
+        </div>
+        <div class="grid">
+            <div class="form-group"><label>Fecha de Nacimiento</label><input type="date" id="etBirth" value="${p.birth_date || ''}" onchange="showAge('etBirth','etAgePreview')"><div id="etAgePreview" style="font-size:0.8rem; color:var(--primary);"></div></div>
+            <div class="form-group"><label>Sexo</label><select id="etSex"><option value="">Seleccionar...</option><option value="Masculino" ${p.sex==='Masculino'?'selected':''}>Masculino</option><option value="Femenino" ${p.sex==='Femenino'?'selected':''}>Femenino</option><option value="Otro" ${p.sex==='Otro'?'selected':''}>Otro</option></select></div>
+            <div class="form-group"><label>Ciudad</label><select id="etCity"><option value="">Sin ciudad</option>${cityOptions}</select></div>
+        </div>
+        <h4>🏠 Domicilio</h4>
+        <div class="grid">
+            <div class="form-group"><label>Dirección</label><input type="text" id="etAddress" value="${escapeHtml(p.address||'')}"></div>
+            <div class="form-group"><label>Barrio / Zona</label><input type="text" id="etNeighborhood" value="${escapeHtml(p.neighborhood||'')}"></div>
+            <div class="form-group"><label>Tipo de Vivienda</label><select id="etHousing"><option value="">Seleccionar...</option><option value="Casa" ${p.housing_type==='Casa'?'selected':''}>Casa</option><option value="Apartamento" ${p.housing_type==='Apartamento'?'selected':''}>Apartamento</option><option value="Otro" ${p.housing_type==='Otro'?'selected':''}>Otro</option></select></div>
+        </div>
+        <div class="grid">
+            <div class="form-group"><label>Referencias para llegar</label><input type="text" id="etArrival" value="${escapeHtml(p.arrival_references||'')}" placeholder="Ej: Portón verde, 2do piso"></div>
+            <div class="form-group"><label>Indicaciones de acceso</label><input type="text" id="etAccess" value="${escapeHtml(p.access_notes||'')}" placeholder="Ej: Clave portón, cuidado con el perro"></div>
+            <div class="form-group"><label>🐾 Mascotas</label><input type="text" id="etPets" value="${escapeHtml(p.pets||'')}"></div>
+        </div>
+        <h4>📞 Contacto y Emergencias</h4>
+        <div class="grid">
+            <div class="form-group"><label>Familiar Responsable</label><input type="text" id="etFam" value="${escapeHtml(p.family_name||'')}"></div>
+            <div class="form-group"><label>Celular</label><input type="tel" id="etCel" value="${escapeHtml(p.contact_phone||'')}"></div>
+            <div class="form-group"><label>Email del Familiar</label><input type="email" id="etFamEmail" value="${escapeHtml(p.family_email||'')}"></div>
+        </div>
+        <div class="grid">
+            <div class="form-group"><label>Contacto de Emergencia</label><input type="text" id="etEmgName" value="${escapeHtml(p.emergency_name||'')}"></div>
+            <div class="form-group"><label>Celular de Emergencia</label><input type="tel" id="etEmgPhone" value="${escapeHtml(p.emergency_phone||'')}"></div>
+        </div>
+        <h4>🏥 Datos Médicos / EPS</h4>
+        <div class="grid">
+            <div class="form-group"><label>Código CIE-10</label><input type="text" id="etCie" value="${escapeHtml(p.cie_10_code||'')}"></div>
+            <div class="form-group"><label>EPS</label><input type="text" id="etEps" value="${escapeHtml(p.eps_name||'')}"></div>
+            <div class="form-group"><label>Autorización EPS</label><input type="text" id="etAuth" value="${escapeHtml(p.eps_authorization||'')}"></div>
+        </div>`;
+}
+function collectPatForm() {
+    return { fullName: getVal('etName').trim(), documentType: getVal('etDocType'), documentNumber: getVal('etDoc').trim(), birthDate: getVal('etBirth') || null, sex: getVal('etSex'), cityName: getVal('etCity'), address: getVal('etAddress').trim(), neighborhood: getVal('etNeighborhood').trim(), housingType: getVal('etHousing'), arrivalReferences: getVal('etArrival').trim(), accessNotes: getVal('etAccess').trim(), pets: getVal('etPets').trim(), familyName: getVal('etFam'), contactPhone: getVal('etCel'), familyEmail: getVal('etFamEmail').trim(), emergencyName: getVal('etEmgName').trim(), emergencyPhone: getVal('etEmgPhone').trim(), cie10Code: getVal('etCie'), epsName: getVal('etEps'), epsAuthorization: getVal('etAuth') };
+}
 function openEditPatModal(id) {
     const p = patientsRegistry.find(x => x.id === id); if (!p) return;
     _editingPatId = id;
-    const ciudadActual = p.altitude_profiles?.city_name || '';
-    const cityOptions = Object.keys(CIUDADES_COLOMBIA).map(c => `<option value="${c}" ${c === ciudadActual ? 'selected' : ''}>${c}</option>`).join('');
-    document.getElementById('editPatFields').innerHTML = `
-        <div class="form-group"><label>Nombre *</label><input type="text" id="etName" value="${escapeHtml(p.full_name||'')}"></div>
-        <div class="form-group"><label>Cédula *</label><input type="text" id="etDoc" value="${escapeHtml(p.document_number||'')}"></div>
-        <div class="form-group"><label>Ciudad</label><select id="etCity"><option value="">Sin ciudad</option>${cityOptions}</select></div>
-        <div class="form-group"><label>Familiar</label><input type="text" id="etFam" value="${escapeHtml(p.family_name||'')}"></div>
-        <div class="form-group"><label>Celular</label><input type="tel" id="etCel" value="${escapeHtml(p.contact_phone||'')}"></div>
-        <div class="form-group"><label>Código CIE-10</label><input type="text" id="etCie" value="${escapeHtml(p.cie_10_code||'')}"></div>
-        <div class="form-group"><label>EPS</label><input type="text" id="etEps" value="${escapeHtml(p.eps_name||'')}"></div>
-        <div class="form-group"><label>Autorización EPS</label><input type="text" id="etAuth" value="${escapeHtml(p.eps_authorization||'')}"></div>`;
+    document.getElementById('editPatFields').innerHTML = patFormFields(p);
     document.getElementById('editPatModal').classList.add('show');
+    if (p.birth_date) showAge('etBirth','etAgePreview');
 }
 function closeEditPatModal() { document.getElementById('editPatModal').classList.remove('show'); _editingPatId = null; }
 
@@ -1265,9 +1409,8 @@ function openConsentModal(patientId) {
     const parentescos = ['Hijo/a','Esposo/a - Cónyuge','Padre/Madre','Hermano/a','Tío/a','Primo/a','Nieto/a','Sobrino/a','Cuñado/a','Cuidador contratado','Apoderado/Representante legal','Otro'];
     const body = document.getElementById('consentBody');
     if (c) {
-        body.innerHTML = `
-            <div class="consent-ok"><strong>✅ Consentimiento firmado</strong><br>
-            👤 Firmado por: <strong>${escapeHtml(c.signed_by_name||'-')}</strong> — CC ${escapeHtml(c.signed_by_id||'-')}<br>
+        body.innerHTML = `<div class="consent-ok"><strong>✅ Consentimiento firmado</strong><br>
+            👤 Firmado por: <strong>${escapeHtml(c.signed_by_name||'-')}</strong> — ${escapeHtml(c.signed_by_id||'-')}<br>
             👥 Parentesco: ${escapeHtml(c.signed_by_relationship||'-')}<br>
             📅 Fecha: ${new Date(c.created_at).toLocaleString('es-CO')}</div>
             <button class="btn-primary btn-warning" style="margin-top:0;" onclick="generateConsentPDF('${patientId}', true)"><i class="fas fa-file-pdf"></i> Descargar copia firmada (PDF)</button>`;
@@ -1303,18 +1446,23 @@ async function saveConsent() {
         else showToast(d.message || 'Error al guardar', 'error');
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
-function generateConsentPDF(patientId, isCopy) {
+async function generateConsentPDF(patientId, isCopy) {
     const p = patientsRegistry.find(x => x.id === patientId); if (!p) return showToast('Paciente no encontrado', 'error');
     const c = isCopy ? getConsentFor(patientId) : null;
+    const company = await getCompany();
     const { jsPDF } = window.jspdf; const doc = new jsPDF();
     try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
     doc.setFontSize(16); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 18, null, null, "center");
+    if (company && company.responsible_name) {
+        doc.setFontSize(8); doc.setTextColor(80);
+        doc.text(`${company.doc_type || 'CC'} ${company.doc_number || ''} — ${company.responsible_name} — ${company.city || 'Cúcuta'}, Colombia`, 105, 24, null, null, "center");
+        doc.text(`${company.tax_regime || 'No responsable de IVA'}`, 105, 28, null, null, "center");
+    }
     doc.setFontSize(11); doc.setTextColor(0);
-    doc.text("CONSENTIMIENTO INFORMADO GENERAL DE INGRESO", 105, 28, null, null, "center");
-    doc.text("SERVICIO DE ATENCION DOMICILIARIA EN SALUD", 105, 34, null, null, "center");
+    doc.text("CONSENTIMIENTO INFORMADO GENERAL DE INGRESO", 105, 34, null, null, "center");
     doc.setFontSize(9);
-    let y = 44;
-    doc.text(`Paciente: ${p.full_name || '-'} — CC ${p.document_number || '-'}${p.altitude_profiles?.city_name ? ' — Ciudad: ' + p.altitude_profiles.city_name : ''}`, 14, y); y += 10;
+    let y = 42;
+    doc.text(`Paciente: ${p.full_name || '-'} — ${p.document_type || 'CC'} ${p.document_number || '-'}${p.altitude_profiles?.city_name ? ' — Ciudad: ' + p.altitude_profiles.city_name : ''}`, 14, y); y += 10;
     const clausulas = [
         'Por medio del presente documento, quien suscribe, en su condicion de paciente o familiar/representante responsable, manifiesto que:',
         '1. He sido informado(a) del servicio de atencion domiciliaria que presta VITAL HOGAR PRO, incluyendo su proposito, alcance y el personal que lo ejecutara (auxiliares de enfermeria y profesionales de la salud).',
@@ -1336,12 +1484,12 @@ function generateConsentPDF(patientId, isCopy) {
         doc.setDrawColor(0); doc.line(30, y + 6, 85, y + 6);
         doc.setFontSize(8);
         doc.text('Firma del Paciente / Familiar Responsable', 57.5, y + 11, null, null, 'center');
-        doc.text(`${c.signed_by_name || '-'} — CC ${c.signed_by_id || '-'}`, 57.5, y + 15, null, null, 'center');
+        doc.text(`${c.signed_by_name || '-'} — ${c.signed_by_id || '-'}`, 57.5, y + 15, null, null, 'center');
         doc.text(`Parentesco: ${c.signed_by_relationship || '-'} | Fecha: ${new Date(c.created_at).toLocaleDateString('es-CO')}`, 57.5, y + 19, null, null, 'center');
         if (c.admin_signature) { try { doc.addImage(c.admin_signature, 'JPEG', 120, y - 12, 55, 16); } catch(e) {} }
         doc.line(120, y + 6, 175, y + 6);
         doc.text('Por VITAL HOGAR PRO', 147.5, y + 11, null, null, 'center');
-        doc.text('Representante legal / Administrador', 147.5, y + 15, null, null, 'center');
+        doc.text(company?.responsible_name || 'Representante legal / Administrador', 147.5, y + 15, null, null, 'center');
         doc.setFontSize(7); doc.setTextColor(120);
         doc.text(`Documento generado electronicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Registro oficial del expediente del paciente. Ley 1581 de 2012.`, 105, y + 26, null, null, 'center');
     } else {
@@ -1350,10 +1498,10 @@ function generateConsentPDF(patientId, isCopy) {
         doc.line(25, y + 10, 85, y + 10);
         doc.text('Firma del Paciente / Familiar Responsable', 55, y + 15, null, null, 'center');
         doc.text('Nombre: ________________________', 55, y + 20, null, null, 'center');
-        doc.text('C.C.: ____________________  Parentesco: ____________', 55, y + 24, null, null, 'center');
+        doc.text('Documento: ____________________  Parentesco: ____________', 55, y + 24, null, null, 'center');
         doc.line(120, y + 10, 180, y + 10);
         doc.text('Por VITAL HOGAR PRO', 150, y + 15, null, null, 'center');
-        doc.text('Nombre y sello: ________________________', 150, y + 20, null, null, 'center');
+        doc.text(company?.responsible_name || 'Nombre y sello: ________________________', 150, y + 20, null, null, 'center');
         doc.text('Fecha de ingreso al servicio: ____ / ____ / ________', 150, y + 24, null, null, 'center');
         doc.setFontSize(7); doc.setTextColor(120);
         doc.text(`Documento generado electronicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Ley 1581 de 2012.`, 105, y + 30, null, null, 'center');
@@ -1369,7 +1517,7 @@ function fillSelects() {
     setOpts('reportPatient', pats, p => p.full_name);
     setOpts('invoicePatient', pats, p => p.full_name);
     setOpts('schedPatient', pats, p => p.full_name);
-    setOpts('liquidationProf', profs, p => p.full_name);
+    setOpts('liquidationProf', profs, p => `${p.full_name} (${p.specialties?.name||''})`);
     setOpts('schedProf', profs, p => p.full_name);
     setOpts('eduResp', profs, p => p.full_name);
     setOpts('planPatient', pats, p => p.full_name);
@@ -1403,7 +1551,7 @@ function initAdminChart(values) {
     window._adminChart = new Chart(ctx, { type: 'bar', data: { labels: ['Pacientes', 'Profesionales', 'Soportes pend.'], datasets: [{ data: values, backgroundColor: ['#22c55e','#3b82f6','#f59e0b'], borderRadius: 8 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } }, x: { ticks: { color: '#94a3b8' }, grid: { display: false } } } } });
 }
 
-// ============ 🎯 PLANES DE TRATAMIENTO ============
+// ============ 🎯 PLANES ============
 async function loadPlans() {
     try {
         const r = await apiFetch(`${API_URL}/api/treatment-plans`); const d = await r.json();
@@ -1433,14 +1581,13 @@ async function createPlan() {
     const patientId = getVal('planPatient'), specialtyCode = getVal('planSpec'), sessions = Number(getVal('planSessions'));
     if (!patientId || !specialtyCode || !sessions || sessions < 1) return showToast('Completa: paciente, especialidad y sesiones autorizadas', 'error');
     try {
-        const r = await apiFetch(`${API_URL}/api/treatment-plans`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ patientId, professionalId: getVal('planProf') || null, specialtyCode, sessionsAuthorized: sessions, validUntil: getVal('planValid') || null, notes: getVal('planNotes') || null, createdBy: currentUser.id }) });
+        const r = await apiFetch(`${API_URL}/api/treatment-plans`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ patientId, professionalId: getVal('planProf') || null, specialtyCode, sessionsAuthorized: sessions, validUntil: getVal('planValid') || null, notes: getVal('planNotes') || null }) });
         const d = await r.json();
         if (d.success) { showToast('🎯 ' + d.message); loadPlans(); }
         else showToast(d.message || 'Error al crear plan', 'error');
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
-async function deactivatePlan(id) {
-    if (!confirm('¿Desactivar este plan de tratamiento? El profesional dejará de ver el banner.')) return;
+async function deactivatePlan(id) { if (!confirm('¿Desactivar este plan de tratamiento? El profesional dejará de ver el banner.')) return;
     try {
         const r = await apiFetch(`${API_URL}/api/treatment-plans/${id}/deactivate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) });
         const d = await r.json();
@@ -1460,12 +1607,13 @@ async function loadSupports() {
             const aprobado = s.admin_approved_exceptional;
             let estado = s.admin_validated ? '✅ Validado' : '⏳ Pendiente';
             if (excepcional && !aprobado) estado = `<span class="exceptional-badge">🔓 CIERRE EXCEPCIONAL — Pendiente de aprobación</span>`;
-            else if (excepcional && aprobado) estado += ` <span class="exceptional-badge" style="border-color:var(--warning);">🔓 Cierre excepcional aprobado</span>`;
+            else if (excepcional && aprobado) estado += ` <span class="exceptional-badge" style="border-color:var(--warning);">🔓 Aprobado</span>`;
             const addendas = Array.isArray(s.closing_addendas) ? s.closing_addendas : [];
             const valBtn = s.admin_validated ? `<button class="btn-small btn-primary" disabled>Validado</button>` : (excepcional && !aprobado ? `<button class="btn-small btn-secondary" disabled title="Aprueba primero el cierre excepcional">Validar</button>` : `<button class="btn-small btn-primary" onclick="validateSupport('shift', '${s.id}', this)">Validar</button>`);
             const addendaBtn = addendas.length ? `<button class="btn-small btn-info" onclick="openAddendaReview('shift', '${s.id}')"><i class="fas fa-clipboard-list"></i> 📜 Addendas</button>` : '';
             const excepcionalBtn = (excepcional && !aprobado) ? `<button class="btn-small btn-danger" onclick="openExceptionalReview('${s.id}')"><i class="fas fa-unlock"></i> Revisar cierre</button>` : '';
-            return `<tr><td>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}${addendaBadgeHtml(addendas)}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn} ${excepcionalBtn} ${valBtn}</td></tr>`;
+            const actaBtn = excepcional ? `<button class="btn-small btn-warning" onclick="downloadExceptionalActaPDF('${s.id}')">⚖️ Acta</button>` : '';
+            return `<tr><td>${escapeHtml(new Date(s.start_time).toLocaleString('es-CO', { day:'2-digit', month:'2-digit', year:'2-digit', hour:'2-digit', minute:'2-digit' }))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}${addendaBadgeHtml(addendas)}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${estado}</td><td><button class="btn-small btn-warning" onclick="downloadSupportShiftPDF('${s.id}')"><i class="fas fa-file-pdf"></i> PDF</button> ${addendaBtn} ${excepcionalBtn} ${actaBtn} ${valBtn}</td></tr>`;
         }).join('') : '<tr><td colspan="6" style="text-align:center;color:#94a3b8;">No hay turnos cerrados</td></tr>';
         const r2 = await apiFetch(`${API_URL}/api/professional-records/list`); const d2 = await r2.json();
         _supportNotes = (d2.success ? d2.data : []) || [];
@@ -1488,9 +1636,8 @@ async function validateSupport(type, id, btn) {
         const r = await apiFetch(`${API_URL}/api/${ruta}/${id}/validate`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({}) });
         const d = await r.json();
         if (d.success) {
-            const row = btn.closest('tr');
-            if (row) { row.querySelector('td:nth-child(5)').textContent = '✅ Validado'; btn.disabled = true; btn.textContent = 'Validado'; }
-            showToast('✅ Soporte validado (guardado en la base de datos)');
+            showToast('✅ Soporte validado (contará para liquidación y facturación)');
+            loadSupports(); updateStats();
         } else showToast(d.message || 'Error al validar', 'error');
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
@@ -1529,7 +1676,22 @@ async function loadOpenShifts() {
     } catch (e) { console.error(e); }
 }
 
-// --- 📜 Firmas legales (sin emojis, texto plano PDF) ---
+// --- Firmas y documentos legales (con datos de empresa en PDFs) ---
+async function pdfHeader(doc, title) {
+    const company = await getCompany();
+    try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
+    doc.setFontSize(16); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 18, null, null, "center");
+    let y = 25;
+    if (company && company.responsible_name) {
+        doc.setFontSize(7.5); doc.setTextColor(80);
+        doc.text(`${company.responsible_name} — ${company.doc_type || 'CC'} ${company.doc_number || ''}`, 105, y, null, null, 'center'); y += 4;
+        const l2 = [company.address, company.city ? (company.city + ', Colombia') : 'Colombia', company.phone, company.email].filter(Boolean).join(' · ');
+        if (l2) { doc.text(l2, 105, y, null, null, 'center'); y += 4; }
+        doc.text(company.tax_regime || 'No responsable de IVA', 105, y, null, null, 'center'); y += 4;
+    }
+    doc.setFontSize(11); doc.setTextColor(0); doc.text(title, 105, y + 4, null, null, "center");
+    return y + 10;
+}
 function drawLegalSignatures(doc, y, d) {
     if (y > 235) { doc.addPage(); y = 40; }
     doc.setFontSize(8); doc.setTextColor(80);
@@ -1539,17 +1701,16 @@ function drawLegalSignatures(doc, y, d) {
     if (d.auxSig) { try { doc.addImage(d.auxSig, 'JPEG', 30, y - 12, 55, 16); } catch(e) {} }
     doc.setDrawColor(0); doc.line(30, y + 6, 85, y + 6);
     doc.text(leftLabel, 57.5, y + 11, null, null, 'center');
-    doc.text(`${d.auxName} — CC ${d.auxDoc}`, 57.5, y + 15, null, null, 'center');
+    doc.text(`${d.auxName} — ${d.auxDocType || 'CC'} ${d.auxDoc}`, 57.5, y + 15, null, null, 'center');
     doc.text(leftExtra, 57.5, y + 19, null, null, 'center');
     if (d.famSig) { try { doc.addImage(d.famSig, 'JPEG', 120, y - 12, 55, 16); } catch(e) {} }
     doc.line(120, y + 6, 175, y + 6);
     doc.text('Firma Familiar / Cuidador', 147.5, y + 11, null, null, 'center');
-    doc.text(`${d.famName} — CC ${d.famDoc}`, 147.5, y + 15, null, null, 'center');
+    doc.text(`${d.famName} — ${d.famDocType || 'CC'} ${d.famDoc}`, 147.5, y + 15, null, null, 'center');
     doc.text(`Parentesco: ${d.famRel || '-'}`, 147.5, y + 19, null, null, 'center');
     doc.setFontSize(7); doc.setTextColor(120);
     doc.text(`Documento generado electronicamente por Vital Hogar Pro el ${new Date().toLocaleString('es-CO')}. Registro clinico oficial. Ley 1581 de 2012.`, 105, y + 27, null, null, 'center');
 }
-
 function drawAddendas(doc, y, addendas, whoLabel) {
     if (!addendas || !addendas.length) return y;
     if (y > 240) { doc.addPage(); y = 30; }
@@ -1581,21 +1742,19 @@ async function downloadSupportShiftPDF(shiftId) {
         const { shift, records, signatures } = d.data;
         const sig = signatures && signatures[0] ? signatures[0] : null;
         const { jsPDF } = window.jspdf; const doc = new jsPDF();
-        try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
-        doc.setFontSize(16); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 18, null, null, "center");
-        doc.setFontSize(11); doc.setTextColor(0); doc.text("RESUMEN CLINICO DEL TURNO - Evidencia del Servicio", 105, 27, null, null, "center");
-        doc.setFontSize(9);
-        doc.text(`Paciente: ${shift.patients?.full_name || '-'} — CC ${shift.patients?.document_number || '-'}`, 14, 38);
-        doc.text(`Auxiliar: ${sig?.auxiliary_name || shift.professionals?.full_name || '-'} — CC ${sig?.auxiliary_id_number || shift.professionals?.document_number || '-'}`, 14, 44);
-        doc.text(`Registro ReTHUS: ${shift.professionals?.professional_card || '(pendiente)'}`, 14, 50);
-        doc.text(`Turno: ${shift.shift_type || '-'} | Inicio: ${new Date(shift.start_time).toLocaleString('es-CO')} | Cierre: ${shift.end_time ? new Date(shift.end_time).toLocaleString('es-CO') : '-'}`, 14, 56);
-        doc.text(`Recepcion: ${shift.patient_received_status || '-'} | Entrega: ${shift.patient_delivered_status || '-'}`, 14, 62);
+        const y0 = await pdfHeader(doc, "RESUMEN CLINICO DEL TURNO - Evidencia del Servicio");
+        doc.setFontSize(9); doc.setTextColor(0);
+        doc.text(`Paciente: ${shift.patients?.full_name || '-'} — ${shift.patients?.document_number || '-'}`, 14, y0 + 6);
+        doc.text(`Auxiliar: ${sig?.auxiliary_name || shift.professionals?.full_name || '-'} — ${sig?.auxiliary_id_number || shift.professionals?.document_number || '-'}`, 14, y0 + 12);
+        doc.text(`Registro ReTHUS: ${shift.professionals?.professional_card || '(pendiente)'}`, 14, y0 + 18);
+        doc.text(`Turno: ${shift.shift_type || '-'} | Inicio: ${new Date(shift.start_time).toLocaleString('es-CO')} | Cierre: ${shift.end_time ? new Date(shift.end_time).toLocaleString('es-CO') : '-'}`, 14, y0 + 24);
+        doc.text(`Recepcion: ${shift.patient_received_status || '-'} | Entrega: ${shift.patient_delivered_status || '-'}`, 14, y0 + 30);
+        let y = y0 + 36;
         if (shift.exceptional_closure) {
             doc.setTextColor(220,38,38);
-            doc.text("ADVERTENCIA: CIERRE EXCEPCIONAL - las firmas del dia no fueron obtenidas.", 14, 68, { maxWidth: 182 });
-            doc.setTextColor(0);
+            doc.text("ADVERTENCIA: CIERRE EXCEPCIONAL - las firmas del dia no fueron obtenidas.", 14, y, { maxWidth: 182 });
+            doc.setTextColor(0); y += 8;
         }
-        let y = shift.exceptional_closure ? 76 : 68;
         if (records && records.length) {
             doc.autoTable({ startY: y, head: [['Hora','PA','FC','FR','Temp','SpO2','Glu','EVA','Glasg','Braden']], body: records.map(rc => [String(rc.created_at||'').slice(11,16), rc.blood_pressure||'-', rc.heart_rate||'-', rc.respiratory_rate||'-', rc.temperature||'-', rc.spo2||'-', rc.glucose||'-', rc.eva_score??'-', (rc.glasgow_eyes||0)+(rc.glasgow_verbal||0)+(rc.glasgow_motor||0), rc.braden_score||'-']), headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
             y = doc.lastAutoTable.finalY + 6;
@@ -1623,35 +1782,63 @@ async function downloadSupportShiftPDF(shiftId) {
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error generando PDF', 'error'); } }
 }
 
-function downloadSupportNotePDF(noteId) {
+async function downloadSupportNotePDF(noteId) {
     try {
         const rec = _supportNotes.find(n => n.id === noteId);
         if (!rec) return showToast('Nota no encontrada', 'error');
         const { jsPDF } = window.jspdf; const doc = new jsPDF();
-        try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
-        doc.setFontSize(16); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 18, null, null, "center");
-        doc.setFontSize(11); doc.setTextColor(0); doc.text(rec.record_type || 'Nota de Evolucion Profesional', 105, 27, null, null, "center");
-        doc.setFontSize(9);
-        doc.text(`Paciente: ${rec.patients?.full_name || '-'} — CC ${rec.patients?.document_number || '-'}`, 14, 38);
-        doc.text(`Profesional: ${rec.professionals?.full_name || '-'} — CC ${rec.professionals?.document_number || '-'}`, 14, 44);
-        doc.text(`Tarjeta Profesional: ${rec.professionals?.professional_card || '(pendiente)'}`, 14, 50);
-        doc.text(`Fecha: ${new Date(rec.created_at).toLocaleString('es-CO')}`, 14, 56);
+        const y0 = await pdfHeader(doc, rec.record_type || 'Nota de Evolucion Profesional');
+        doc.setFontSize(9); doc.setTextColor(0);
+        doc.text(`Paciente: ${rec.patients?.full_name || '-'} — ${rec.patients?.document_number || '-'}`, 14, y0 + 6);
+        doc.text(`Profesional: ${rec.professionals?.full_name || '-'} — ${rec.professionals?.document_number || '-'}`, 14, y0 + 12);
+        doc.text(`Tarjeta Profesional: ${rec.professionals?.professional_card || '(pendiente)'}`, 14, y0 + 18);
+        doc.text(`Fecha: ${new Date(rec.created_at).toLocaleString('es-CO')}`, 14, y0 + 24);
         const vs = rec.vital_signs || {};
-        doc.text(`Motivo: ${vs.motivo || '-'} | Duracion: ${vs.duracion || '-'} (${vs.visitaInicio || '?'} a ${vs.visitaFin || '?'})`, 14, 62);
-        if (rec.imc) doc.text(`PA ${vs.bp || '-'} · FC ${vs.hr || '-'} · Peso ${rec.weight || '-'} kg · IMC ${rec.imc}`, 14, 68);
+        doc.text(`Motivo: ${vs.motivo || '-'} | Duracion: ${vs.duracion || '-'} (${vs.visitaInicio || '?'} a ${vs.visitaFin || '?'})`, 14, y0 + 30);
+        if (rec.imc) doc.text(`PA ${vs.bp || '-'} · FC ${vs.hr || '-'} · Peso ${rec.weight || '-'} kg · IMC ${rec.imc}`, 14, y0 + 36);
         const consRows = vs.consentimiento ? [['Consentimiento - Intervencion informada', vs.consentimiento.procedimiento || '-'], ['Consentimiento - Aceptacion', 'El paciente/cuidador fue informado de riesgos, beneficios y alternativas, y otorgo su consentimiento.']] : [];
         if (vs.planInfo) {
             consRows.push(['Plan de tratamiento', `Sesion ${vs.planInfo.used + 1} de ${vs.planInfo.authorized} autorizadas${vs.planInfo.outside ? ' — FUERA DE PLAN (sesion adicional)' : ''}`]);
         }
         const body = [['S - Subjetivo', rec.subjective || '-'], ['O - Objetivo', rec.objective || '-'], ['A - Analisis', rec.analysis || '-'], ['P - Plan', rec.plan || '-'], ...consRows];
-        doc.autoTable({ startY: 74, head: [['Seccion','Contenido']], body, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 55 } } });
+        doc.autoTable({ startY: y0 + 42, head: [['Seccion','Contenido']], body, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 55 } } });
         let y = doc.lastAutoTable.finalY + 12;
-        const relDelTestigo = (rec.vital_signs?.testigoParentesco) || ((rec.family_name || '').includes('(') ? (rec.family_name || '').split('(').pop().replace(')', '').trim() : 'Testigo');
+        const relDelTestigo = (vs.testigoParentesco) || ((rec.family_name || '').includes('(') ? (rec.family_name || '').split('(').pop().replace(')', '').trim() : 'Testigo');
         y = drawAddendas(doc, y, rec.addendas, 'profesional de la salud');
         drawLegalSignatures(doc, y, { docType: 'profesional', auxName: rec.professionals?.full_name || '-', auxDoc: rec.professionals?.document_number || '-', auxCard: rec.professionals?.professional_card || '-', auxSig: rec.professional_signature || null, famName: (rec.family_name || '-').split('(')[0].trim(), famDoc: rec.family_id || '-', famRel: relDelTestigo, famSig: rec.family_signature || null });
         doc.save(`Soporte_Nota_${(rec.patients?.full_name||'paciente').replace(/\s+/g,'_')}_${noteId.slice(0,8)}.pdf`);
         showToast('PDF generado desde la base de datos');
-    } catch (e) { console.error(e); showToast('Error generando PDF', 'error'); }
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error generando PDF', 'error'); } }
+}
+
+// ⚖️ ACTA DE CIERRE EXCEPCIONAL
+async function downloadExceptionalActaPDF(shiftId) {
+    try {
+        const r = await apiFetch(`${API_URL}/api/shifts/${shiftId}/closure-data`); const d = await r.json();
+        if (!d.success) return showToast(d.message || 'Error', 'error');
+        const shift = d.data.shift; const e = shift.exceptional_closure;
+        if (!e) return showToast('Este turno no tiene cierre excepcional', 'error');
+        const company = await getCompany();
+        const { jsPDF } = window.jspdf; const doc = new jsPDF();
+        try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(err) {}
+        doc.setFontSize(15); doc.setTextColor(220,38,38); doc.text("ACTA DE CIERRE EXCEPCIONAL DE TURNO", 105, 22, null, null, "center");
+        doc.setFontSize(10); doc.setTextColor(0); doc.text("VITAL HOGAR PRO — Cuidados Domiciliarios", 105, 30, null, null, "center");
+        if (company && company.responsible_name) { doc.setFontSize(7.5); doc.setTextColor(80); doc.text(`${company.responsible_name} — ${company.doc_type || 'CC'} ${company.doc_number || ''} — ${company.tax_regime || ''}`, 105, 36, null, null, "center"); }
+        doc.setFontSize(9); let y = 45;
+        const line = (t) => { const ls = doc.splitTextToSize(t, 182); doc.text(ls, 14, y); y += ls.length * 4.5 + 2; };
+        line(`Paciente: ${shift.patients?.full_name || '-'} — ${shift.patients?.document_number || '-'}`);
+        line(`Auxiliar declarante: ${e.auxName || '-'} — CC ${e.auxDoc || '-'}`);
+        line(`Turno: ${shift.shift_type || '-'} · Inicio: ${new Date(shift.start_time).toLocaleString('es-CO')} · Cerrado: ${shift.end_time ? new Date(shift.end_time).toLocaleString('es-CO') : '-'}`);
+        line(`1. DECLARACION — Por que no fue posible el cierre normal: ${e.reason || '-'}`);
+        line(`2. DECLARACION — Que ocurrio con el paciente: ${e.whatHappened || '-'}`);
+        line(`Declaracion firmada digitalmente por el auxiliar el ${new Date(e.fecha).toLocaleString('es-CO')}. Las firmas del dia NO fueron obtenidas.`);
+        line(shift.admin_approved_exceptional ? `3. APROBACION: Cierre excepcional APROBADO por coordinacion.` : `3. PENDIENTE: Falta aprobacion de coordinacion.`);
+        if (e.signature) { try { doc.addImage(e.signature, 'JPEG', 30, y, 55, 18); } catch(err) {} }
+        doc.setDrawColor(0); doc.line(30, y + 24, 85, y + 24); doc.text(`Firma del declarante: ${e.auxName || '-'}`, 57.5, y + 29, null, null, 'center');
+        doc.line(120, y + 24, 175, y + 24); doc.text(`Coordinacion: ${company?.responsible_name || currentUser.full_name}`, 147.5, y + 29, null, null, 'center');
+        doc.save(`Acta_Cierre_Excepcional_${(shift.patients?.full_name||'paciente').replace(/\s+/g,'_')}_${shiftId.slice(0,8)}.pdf`);
+        showToast('Acta generada');
+    } catch (e2) { if (e2.message !== 'Sesión expirada') showToast('Error generando acta', 'error'); }
 }
 
 // ============ ADMIN: CREAR ============
@@ -1660,20 +1847,21 @@ async function createProf() {
     if (!fullName || !doc || !email || !pass) return showToast('Completa: nombre, cédula, correo y contraseña', 'error');
     if (!getVal('pCard').trim()) return showToast('⚠️ La tarjeta profesional es obligatoria (requisito legal de las notas)', 'error');
     try {
-        const r = await apiFetch(`${API_URL}/api/professionals`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fullName, documentNumber: doc, professionalCard: getVal('pCard'), email, password: pass, specialtyName: getVal('pSpec') }) });
+        const r = await apiFetch(`${API_URL}/api/professionals`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fullName, documentNumber: doc, professionalCard: getVal('pCard'), email, password: pass, specialtyName: getVal('pSpec'), visitFee: getVal('pVisitFee') || null }) });
         const d = await r.json();
-        if (d.success) { showToast('✅ Profesional creado'); ['pName','pDoc','pCard','pEmail','pPass'].forEach(i => document.getElementById(i).value = ''); loadProfs(); }
+        if (d.success) { showToast('✅ Profesional creado'); ['pName','pDoc','pCard','pEmail','pPass','pVisitFee'].forEach(i => document.getElementById(i).value = ''); loadProfs(); }
         else showToast(d.message || 'Error al crear', 'error');
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 
 async function createPat() {
     const fullName = getVal('patName').trim(), doc = getVal('patDoc').trim();
-    if (!fullName || !doc) return showToast('Completa: nombre y cédula', 'error');
+    if (!fullName || !doc) return showToast('Completa: nombre y número de documento', 'error');
     try {
-        const r = await apiFetch(`${API_URL}/api/patients`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ fullName, documentNumber: doc, cityName: getVal('patCity'), familyName: getVal('famName'), contactPhone: getVal('famCel'), cie10Code: getVal('patCie'), epsName: getVal('patEps'), epsAuthorization: getVal('patAuth') }) });
+        const body = { fullName, documentType: getVal('patDocType'), documentNumber: doc, birthDate: getVal('patBirth') || null, sex: getVal('patSex'), cityName: getVal('patCity'), address: getVal('patAddress').trim(), neighborhood: getVal('patNeighborhood').trim(), housingType: getVal('patHousing'), arrivalReferences: getVal('patArrival').trim(), accessNotes: getVal('patAccess').trim(), pets: getVal('patPets').trim(), familyName: getVal('famName'), contactPhone: getVal('famCel'), familyEmail: getVal('patFamEmail').trim(), emergencyName: getVal('patEmgName').trim(), emergencyPhone: getVal('patEmgPhone').trim(), cie10Code: getVal('patCie'), epsName: getVal('patEps'), epsAuthorization: getVal('patAuth') };
+        const r = await apiFetch(`${API_URL}/api/patients`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
         const d = await r.json();
-        if (d.success) { showToast('✅ Paciente creado'); ['patName','patDoc','famName','famCel','patCie','patEps','patAuth'].forEach(i => document.getElementById(i).value = ''); loadPats(); }
+        if (d.success) { showToast('✅ Paciente creado'); ['patName','patDoc','patBirth','patAddress','patNeighborhood','patArrival','patAccess','patPets','famName','famCel','patFamEmail','patEmgName','patEmgPhone','patCie','patEps','patAuth'].forEach(i => { const el = document.getElementById(i); if (el) el.value = ''; }); ['patSex','patHousing'].forEach(i => document.getElementById(i).value = ''); document.getElementById('patAgePreview').textContent = ''; loadPats(); }
         else showToast(d.message || 'Error al crear', 'error');
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
@@ -1723,7 +1911,7 @@ async function loadScheduledShiftsAdmin() {
     try {
         const r = await apiFetch(`${API_URL}/api/scheduled-shifts`); const d = await r.json();
         const list = d.data || [];
-        document.querySelector('#schedTable tbody').innerHTML = list.length ? list.map(s => `<tr><td>${escapeHtml(new Date(s.shift_date).toLocaleDateString('es-CO'))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${escapeHtml(s.status||'')}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">No hay turnos publicados</td></tr>';
+        document.querySelector('#schedTable tbody').innerHTML = list.length ? list.map(s => `<tr><td>${escapeHtml(new Date(s.shift_date + 'T12:00:00').toLocaleDateString('es-CO'))}</td><td>${escapeHtml(s.patients?.full_name||'N/A')}</td><td>${escapeHtml(s.professionals?.full_name||'N/A')}</td><td>${escapeHtml(s.shift_type||'')}</td><td>${escapeHtml(s.status||'')}</td></tr>`).join('') : '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">No hay turnos publicados</td></tr>';
     } catch (e) { if (e.message !== 'Sesión expirada') console.error(e); }
 }
 async function loadSuggestedVisits() {
@@ -1748,27 +1936,124 @@ async function loadSuggestedVisits() {
 
 // ============ ADMIN: FINANZAS ============
 async function loadFinanceData() {
-    try { const r = await apiFetch(`${API_URL}/api/finance/parameters`); const d = await r.json(); const p = d.data; if (p && p.id) { finParamsId = p.id; if (p.year) document.getElementById('finYear').value = p.year; if (p.smmlv) document.getElementById('finSmmlv').value = p.smmlv; if (p.subsidy_transport) document.getElementById('finSubsidy').value = p.subsidy_transport; if (p.night_surcharge_percentage) document.getElementById('finNightPct').value = p.night_surcharge_percentage; if (p.holiday_surcharge_percentage) document.getElementById('finSunPct').value = p.holiday_surcharge_percentage; } } catch (e) {}
+    try { const r = await apiFetch(`${API_URL}/api/finance/parameters`); const d = await r.json(); const p = d.data; if (p && p.id) { finParamsId = p.id; if (p.year) document.getElementById('finYear').value = p.year; if (p.smmlv) document.getElementById('finSmmlv').value = p.smmlv; if (p.subsidy_transport) document.getElementById('finSubsidy').value = p.subsidy_transport; if (p.night_surcharge_percentage !== undefined) document.getElementById('finNightPct').value = p.night_surcharge_percentage; if (p.holiday_surcharge_percentage !== undefined) document.getElementById('finSunPct').value = p.holiday_surcharge_percentage; } } catch (e) {}
     try { const r = await apiFetch(`${API_URL}/api/finance/tariffs`); const d = await r.json(); const t = d.data; if (t && t.id) { tariffId = t.id; ['6h_diurno','6h_nocturno','8h_diurno','8h_nocturno','12h_diurno','12h_nocturno','24h'].forEach(k => { const el = document.getElementById('t_' + k); if (el && t['t_' + k] != null) el.value = t['t_' + k]; }); } } catch (e) {}
 }
 async function saveFinanceParams() {
     if (!getVal('finSmmlv')) return showToast('Ingresa el SMMLV', 'error');
-    if (!finParamsId) return showToast('No hay fila de parámetros en la BD (crea una en Supabase)', 'error');
     try {
-        const r = await apiFetch(`${API_URL}/api/finance/parameters/${finParamsId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ year: Number(getVal('finYear')), smmlv: Number(getVal('finSmmlv')), subsidy_transport: Number(getVal('finSubsidy')), night_surcharge_percentage: Number(getVal('finNightPct')), holiday_surcharge_percentage: Number(getVal('finSunPct')) }) });
+        const r = await apiFetch(`${API_URL}/api/finance/parameters/${finParamsId || 'x'}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ year: Number(getVal('finYear')), smmlv: Number(getVal('finSmmlv')), subsidy_transport: Number(getVal('finSubsidy')), night_surcharge_percentage: Number(getVal('finNightPct')), holiday_surcharge_percentage: Number(getVal('finSunPct')) }) });
         const d = await r.json();
         if (d.success) showToast('✅ Parámetros guardados'); else showToast(d.message || 'Error', 'error');
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 async function saveClientTariffs() {
-    if (!tariffId) return showToast('No hay fila de tarifas en la BD (crea una en Supabase)', 'error');
     const keys = ['6h_diurno','6h_nocturno','8h_diurno','8h_nocturno','12h_diurno','12h_nocturno','24h'];
     const body = {}; keys.forEach(k => body['t_' + k] = Number(getVal('t_' + k)) || 0);
     try {
-        const r = await apiFetch(`${API_URL}/api/finance/tariffs/${tariffId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+        const r = await apiFetch(`${API_URL}/api/finance/tariffs/${tariffId || 'x'}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
         const d = await r.json();
         if (d.success) showToast('✅ Tarifas guardadas'); else showToast(d.message || 'Error', 'error');
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
+}
+
+// 🏷️ TARIFAS CUPS
+async function loadCupsTariffsForm() {
+    try {
+        const r = await apiFetch(`${API_URL}/api/finance/cups-tariffs`); const d = await r.json();
+        (d.data || []).forEach(c => { const el = document.getElementById('cups_' + c.specialty_code); if (el) el.value = c.price || 0; });
+    } catch (e) { console.error(e); }
+}
+async function saveCupsTariffs() {
+    const specs = ['MEDICINA','ENFERMERIA_JEFE','PSICOLOGIA','FISIOTERAPIA','FONOAUDIOLOGIA','TERAPIA_OCUPACIONAL','TERAPIA_RESPIRATORIA','NUTRICION','TRABAJO_SOCIAL'];
+    let saved = 0;
+    for (const s of specs) {
+        const val = Number(getVal('cups_' + s)) || 0;
+        try { const r = await apiFetch(`${API_URL}/api/finance/cups-tariffs/${s}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ price: val }) }); const d = await r.json(); if (d.success) saved++; } catch (e) {}
+    }
+    showToast(saved === specs.length ? '✅ Tarifas CUPS guardadas (9/9)' : `⚠️ Guardadas ${saved}/${specs.length} — reintentar`);
+}
+
+// 🏢 DATOS DE EMPRESA
+async function loadCompanyForm() {
+    try {
+        const c = await getCompany();
+        if (!c) return;
+        if (c.responsible_name) document.getElementById('cpName').value = c.responsible_name;
+        if (c.doc_type) document.getElementById('cpDocType').value = c.doc_type;
+        if (c.doc_number) document.getElementById('cpDocNumber').value = c.doc_number;
+        if (c.address) document.getElementById('cpAddress').value = c.address;
+        if (c.phone) document.getElementById('cpPhone').value = c.phone;
+        if (c.email) document.getElementById('cpEmail').value = c.email;
+        if (c.city) document.getElementById('cpCity').value = c.city;
+        if (c.tax_regime) document.getElementById('cpTaxRegime').value = c.tax_regime;
+    } catch (e) { console.error(e); }
+}
+async function saveCompany() {
+    if (!getVal('cpName').trim() || !getVal('cpDocNumber').trim()) return showToast('Completa: nombre del responsable y número de documento', 'error');
+    try {
+        const r = await apiFetch(`${API_URL}/api/company`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ responsibleName: getVal('cpName').trim(), docType: getVal('cpDocType'), docNumber: getVal('cpDocNumber').trim(), address: getVal('cpAddress').trim(), phone: getVal('cpPhone').trim(), email: getVal('cpEmail').trim(), city: getVal('cpCity').trim(), taxRegime: getVal('cpTaxRegime').trim() }) });
+        const d = await r.json();
+        if (d.success) { _companyData = d.data; showToast('✅ Datos de la empresa guardados (saldrán en los PDFs)'); }
+        else showToast(d.message || 'Error', 'error');
+    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
+}
+
+// 💰 RENTABILIDAD
+async function loadProfitability() {
+    const month = getVal('profitMonth') || '01', year = getVal('profitYear') || new Date().getFullYear();
+    const box = document.getElementById('profitResult');
+    box.classList.remove('hidden');
+    box.innerHTML = '<p style="text-align:center; color:#94a3b8;">⏳ Calculando...</p>';
+    try {
+        const r = await apiFetch(`${API_URL}/api/finance/profitability/${month}/${year}`);
+        const d = await r.json();
+        if (!d.success) { box.innerHTML = `<p style="color:var(--danger); text-align:center;">${escapeHtml(d.message || 'Error')}</p>`; return; }
+        const t = d.data.totals;
+        const profitCls = t.profit >= 0 ? 'positive' : 'negative';
+        const auxRows = (d.data.auxiliaries || []).map(a => `<tr><td>${escapeHtml(a.name)}</td><td>${formatCurrency(a.amount)}</td></tr>`).join('');
+        const patRows = (d.data.patients || []).map(p => `
+            <tr><td>${escapeHtml(p.patient)}</td><td>${formatCurrency(p.billed)}</td><td>${formatCurrency(p.paidAux)}</td><td>${formatCurrency(p.paidProf)}</td><td style="color:${p.profit >= 0 ? 'var(--primary)' : 'var(--danger)'}; font-weight:bold;">${formatCurrency(p.profit)}</td></tr>`).join('');
+        box.innerHTML = `
+            <div class="profit-cards">
+                <div class="profit-card"><div class="p-label">💰 Facturado al Cliente</div><div class="p-value">${formatCurrency(t.billed)}</div></div>
+                <div class="profit-card"><div class="p-label">💵 Pagado a Auxiliares</div><div class="p-value" style="color:var(--warning);">${formatCurrency(t.paidAuxiliaries)}</div></div>
+                <div class="profit-card"><div class="p-label">🎓 Pagado a Profesionales</div><div class="p-value" style="color:var(--info);">${formatCurrency(t.paidProfessionals)}</div></div>
+                <div class="profit-card main ${profitCls === 'negative' ? 'negative' : ''}"><div class="p-label">📊 GANANCIA</div><div class="p-value">${formatCurrency(t.profit)}</div></div>
+            </div>
+            ${(d.data.auxiliaries || []).length ? `<h4>Pagos por Auxiliar (turnos validados)</h4><table><thead><tr><th>Auxiliar</th><th>Total a Pagar</th></tr></thead><tbody>${auxRows}</tbody></table>` : '<p style="color:#94a3b8; font-size:0.85rem;">Sin turnos validados en este mes.</p>'}
+            ${patRows ? `<h4>Rentabilidad por Paciente</h4><table><thead><tr><th>Paciente</th><th>Facturado</th><th>Pagado Aux.</th><th>Pagado Prof.</th><th>Margen</th></tr></thead><tbody>${patRows}</tbody></table>` : ''}
+            <button class="btn-primary btn-warning" style="width:auto; display:inline-block; margin-top:12px;" onclick="generateProfitPDF(${JSON.stringify(d.data).replace(/"/g,'&quot;')})"><i class="fas fa-file-pdf"></i> Descargar PDF</button>`;
+        window._profitData = d.data;
+    } catch (e) { if (e.message !== 'Sesión expirada') { box.innerHTML = '<p style="color:var(--danger); text-align:center;">Error de conexión</p>'; console.error(e); } }
+}
+function generateProfitPDF() {
+    const d = window._profitData; if (!d) return;
+    const { jsPDF } = window.jspdf; const doc = new jsPDF();
+    const c = d.company || {};
+    try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
+    doc.setFontSize(18); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
+    doc.setFontSize(8); doc.setTextColor(80);
+    if (c.responsible_name) doc.text(`${c.responsible_name} — ${c.doc_type || 'CC'} ${c.doc_number || ''} — ${c.tax_regime || ''}`, 105, 27, null, null, "center");
+    doc.setFontSize(12); doc.setTextColor(0); doc.text("Informe de Rentabilidad Mensual", 105, 34, null, null, "center");
+    doc.text(`Periodo: ${MESES_ES[d.period.month] || ''} ${d.period.year}`, 14, 46);
+    const t = d.totals;
+    doc.autoTable({ startY: 54, head: [['Concepto', 'Valor']], body: [
+        ['Facturado al cliente', formatCurrency(t.billed)],
+        ['Pagado a auxiliares (turnos validados)', formatCurrency(t.paidAuxiliaries)],
+        ['Pagado a profesionales (notas validadas)', formatCurrency(t.paidProfessionals)],
+        ['GANANCIA', formatCurrency(t.profit)]
+    ], headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 10 }, columnStyles: { 1: { halign: 'right' } } });
+    let y = doc.lastAutoTable.finalY + 10;
+    if ((d.auxiliaries || []).length) {
+        doc.autoTable({ startY: y, head: [['Auxiliar', 'Total a pagar']], body: d.auxiliaries.map(a => [a.name, formatCurrency(a.amount)]), headStyles: { fillColor: [59,130,246] }, styles: { fontSize: 9 }, columnStyles: { 1: { halign: 'right' } } });
+        y = doc.lastAutoTable.finalY + 8;
+    }
+    if ((d.patients || []).length) {
+        doc.autoTable({ startY: y, head: [['Paciente', 'Facturado', 'Pagado Aux.', 'Pagado Prof.', 'Margen']], body: d.patients.map(p => [p.patient, formatCurrency(p.billed), formatCurrency(p.paidAux), formatCurrency(p.paidProf), formatCurrency(p.profit)]), headStyles: { fillColor: [245,158,11] }, styles: { fontSize: 9 }, columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } } });
+    }
+    doc.save(`Rentabilidad_${d.period.month}_${d.period.year}.pdf`);
+    showToast('PDF generado');
 }
 
 async function calculateLiquidation() {
@@ -1793,44 +2078,63 @@ async function calculateLiquidation() {
 function renderLiquidation(data) {
     const c = document.getElementById('liquidationResult'); c.classList.remove('hidden');
     const rows = (data.shifts || []).map(x => `<tr><td>${escapeHtml(x.date)}</td><td>${escapeHtml(x.patient)}</td><td>${escapeHtml(x.shift_type)}</td><td>${x.hours}h</td><td>${formatCurrency(x.base_pay)}</td><td>${formatCurrency(x.night_bonus)}</td><td>${formatCurrency(x.sunday_bonus)}</td><td><strong>${formatCurrency(x.total)}</strong></td></tr>`).join('');
-    c.innerHTML = `<h4 style="color:var(--primary);">Liquidación por Turnos — ${MESES_ES[data._month]||''} ${data._year}</h4><table><thead><tr><th>Fecha</th><th>Paciente</th><th>Turno</th><th>Horas</th><th>Base</th><th>Nocturno</th><th>Dominical</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>${data.subsidyApplied ? `<p style="color:#94a3b8;">Incluye subsidio de transporte: ${formatCurrency(data.subsidyApplied)}</p>` : ''}<div style="text-align:right; margin-top:10px;"><h3 style="color:var(--primary);">Total: ${formatCurrency(data.totalAmount)}</h3><button class="btn-primary btn-warning" style="width:auto; display:inline-block; margin-top:8px;" onclick="generateLiquidationPDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button></div>`;
+    const auxilioMsg = data.auxilioExcluded
+        ? `<p style="color:var(--warning); font-size:0.85rem;">⚠️ Auxilio de transporte NO aplicado: la liquidación supera 2 SMMLV (${formatCurrency(data.auxilioLimit)}).</p>`
+        : (data.subsidyApplied ? `<p style="color:#94a3b8;">Incluye auxilio de transporte: ${formatCurrency(data.subsidyApplied)}</p>` : '');
+    c.innerHTML = `<h4 style="color:var(--primary);">Liquidación por Turnos — ${MESES_ES[data._month]||''} ${data._year}</h4>
+    <p style="font-size:0.85rem; color:#94a3b8;">👤 ${escapeHtml(data.professional?.full_name||'')} — ${escapeHtml(data.professional?.document||'')} · ${data.shiftsCount} turno(s) VALIDADO(S) · Hora: ${formatCurrency(Math.round((data.auxilioLimit/2)/240))}</p>
+    <table><thead><tr><th>Fecha</th><th>Paciente</th><th>Turno</th><th>Horas</th><th>Base</th><th>Nocturno</th><th>Dom/Fest</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table>
+    ${auxilioMsg}
+    <div style="text-align:right; margin-top:10px;"><h3 style="color:var(--primary);">Total a Pagar: ${formatCurrency(data.totalAmount)}</h3><button class="btn-primary btn-warning" style="width:auto; display:inline-block; margin-top:8px;" onclick="generateLiquidationPDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button></div>`;
 }
 function renderLiquidationVisits(data) {
     const c = document.getElementById('liquidationResult'); c.classList.remove('hidden');
     const rows = (data.visits || []).map(x => `<tr><td>${escapeHtml(x.date)}</td><td>${escapeHtml(x.patient)}</td><td>${escapeHtml(x.record_type)}</td><td>${formatCurrency(x.amount)}</td></tr>`).join('');
-    c.innerHTML = `<h4 style="color:var(--primary);">Liquidación por Visitas — ${MESES_ES[data._month]||''} ${data._year}</h4><p style="font-size:0.85rem; color:#94a3b8;">👤 ${escapeHtml(data.professional?.full_name||'')} (${escapeHtml(data.professional?.specialty||'')}) · Tarifa por visita: ${formatCurrency(data.professional?.fee||0)}</p><table><thead><tr><th>Fecha</th><th>Paciente</th><th>Tipo de Nota</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table>${data.totalPending > 0 ? `<p style="color:var(--warning); font-size:0.85rem;">⚠️ Hay ${data.totalPending} nota(s) PENDIENTE(S) de validar que NO se incluyen.</p>` : ''}<div style="text-align:right; margin-top:10px;"><h3 style="color:var(--primary);">Total: ${formatCurrency(data.totalAmount)} (${data.totalValidated} visitas validadas)</h3><button class="btn-primary btn-warning" style="width:auto; display:inline-block; margin-top:8px;" onclick="generateLiquidationVisitsPDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button></div>`;
+    c.innerHTML = `<h4 style="color:var(--primary);">Liquidación por Visitas — ${MESES_ES[data._month]||''} ${data._year}</h4><p style="font-size:0.85rem; color:#94a3b8;">👤 ${escapeHtml(data.professional?.full_name||'')} (${escapeHtml(data.professional?.specialty||'')}) · Tarifa por visita: ${formatCurrency(data.professional?.fee||0)} · ${data.totalValidated} nota(s) VALIDADA(S)</p><table><thead><tr><th>Fecha</th><th>Paciente</th><th>Tipo de Nota</th><th>Valor</th></tr></thead><tbody>${rows}</tbody></table>${(data.professional?.fee || 0) === 0 ? '<p style="color:var(--warning); font-size:0.85rem;">⚠️ Este profesional no tiene tarifa por visita configurada. Edítalo en Profesionales → Editar.</p>' : ''}<div style="text-align:right; margin-top:10px;"><h3 style="color:var(--primary);">Total: ${formatCurrency(data.totalAmount)}</h3><button class="btn-primary btn-warning" style="width:auto; display:inline-block; margin-top:8px;" onclick="generateLiquidationVisitsPDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button></div>`;
 }
-function generateLiquidationPDF() {
+async function generateLiquidationPDF() {
     if (!lastLiquidationData || lastLiquidationData._tipo !== 'shifts') return;
     const { jsPDF } = window.jspdf; const doc = new jsPDF();
+    const company = await getCompany();
     const profName = document.getElementById('liquidationProf').selectedOptions[0].text;
     try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
     doc.setFontSize(18); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
-    doc.setFontSize(12); doc.setTextColor(0); doc.text("Liquidacion de Honorarios (Por Turnos)", 105, 30, null, null, "center");
-    doc.text(`Profesional: ${profName}`, 14, 45); doc.text(`Periodo: ${MESES_ES[lastLiquidationData._month]||''} ${lastLiquidationData._year}`, 14, 52);
+    if (company?.responsible_name) { doc.setFontSize(8); doc.setTextColor(80); doc.text(`${company.responsible_name} — ${company.doc_type || 'CC'} ${company.doc_number || ''} — ${company.tax_regime || ''}`, 105, 27, null, null, "center"); }
+    doc.setFontSize(12); doc.setTextColor(0); doc.text("Liquidacion de Honorarios (Por Turnos — Contratista)", 105, 34, null, null, "center");
+    doc.setFontSize(10);
+    doc.text(`Contratista: ${lastLiquidationData.professional?.full_name || profName}`, 14, 48);
+    doc.text(`Documento: ${lastLiquidationData.professional?.document || '-'}`, 14, 55);
+    doc.text(`Periodo: ${MESES_ES[lastLiquidationData._month]||''} ${lastLiquidationData._year} · ${lastLiquidationData.shiftsCount} turnos validados`, 14, 62);
     const rows = (lastLiquidationData.shifts || []).map(x => [x.date, x.patient, x.shift_type, x.hours, formatCurrency(x.base_pay), formatCurrency(x.night_bonus), formatCurrency(x.sunday_bonus), formatCurrency(x.total)]);
-    doc.autoTable({ startY: 60, head: [['Fecha','Paciente','Turno','Horas','Base','Noct.','Dom.','Total']], body: rows, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8 } });
-    const y = doc.lastAutoTable.finalY + 10;
-    doc.setFontSize(13); doc.setTextColor(34,197,94); doc.text(`Total: ${formatCurrency(lastLiquidationData.totalAmount)}`, 14, y);
-    doc.save(`Liquidacion_${profName}_${lastLiquidationData._month}_${lastLiquidationData._year}.pdf`); showToast('PDF generado');
+    doc.autoTable({ startY: 70, head: [['Fecha','Paciente','Turno','Horas','Base','Noct.','Dom/Fest','Total']], body: rows, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8 } });
+    let y = doc.lastAutoTable.finalY + 10;
+    if (lastLiquidationData.subsidyApplied) { doc.setFontSize(9); doc.text(`Incluye auxilio de transporte: ${formatCurrency(lastLiquidationData.subsidyApplied)}`, 14, y); y += 7; }
+    if (lastLiquidationData.auxilioExcluded) { doc.setFontSize(9); doc.setTextColor(220,38,38); doc.text(`Auxilio de transporte no aplicado (liquidacion supera 2 SMMLV)`, 14, y); doc.setTextColor(0); y += 7; }
+    doc.setFontSize(13); doc.setTextColor(34,197,94); doc.text(`Total a Pagar: ${formatCurrency(lastLiquidationData.totalAmount)}`, 14, y);
+    doc.setFontSize(8); doc.setTextColor(120);
+    doc.text(`El contratista declara estar afiliado al Sistema de Seguridad Social (salud, pension y ARL) y es responsable de sus aportes. No existe subordinacion ni exclusividad.`, 105, y + 12, null, null, 'center');
+    doc.save(`Liquidacion_${profName.replace(/\s+/g,'_')}_${lastLiquidationData._month}_${lastLiquidationData._year}.pdf`); showToast('PDF generado');
 }
-function generateLiquidationVisitsPDF() {
+async function generateLiquidationVisitsPDF() {
     if (!lastLiquidationData || lastLiquidationData._tipo !== 'visits') return;
     const { jsPDF } = window.jspdf; const doc = new jsPDF();
+    const company = await getCompany();
     const profName = document.getElementById('liquidationProf').selectedOptions[0].text;
     try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
     doc.setFontSize(18); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
-    doc.setFontSize(12); doc.setTextColor(0); doc.text("Liquidacion de Honorarios (Por Visitas)", 105, 30, null, null, "center");
+    if (company?.responsible_name) { doc.setFontSize(8); doc.setTextColor(80); doc.text(`${company.responsible_name} — ${company.doc_type || 'CC'} ${company.doc_number || ''} — ${company.tax_regime || ''}`, 105, 27, null, null, "center"); }
+    doc.setFontSize(12); doc.setTextColor(0); doc.text("Liquidacion de Honorarios (Por Visitas — Contratista)", 105, 34, null, null, "center");
     doc.setFontSize(10);
-    doc.text(`Profesional: ${profName} (${lastLiquidationData.professional?.specialty || '-'})`, 14, 45);
-    doc.text(`Tarifa por visita: ${formatCurrency(lastLiquidationData.professional?.fee || 0)}`, 14, 52);
-    doc.text(`Periodo: ${MESES_ES[lastLiquidationData._month]||''} ${lastLiquidationData._year}`, 14, 59);
+    doc.text(`Contratista: ${lastLiquidationData.professional?.full_name || profName} (${lastLiquidationData.professional?.specialty || '-'})`, 14, 48);
+    doc.text(`Documento: ${lastLiquidationData.professional?.document || '-'}`, 14, 55);
+    doc.text(`Tarifa por visita: ${formatCurrency(lastLiquidationData.professional?.fee || 0)} · Periodo: ${MESES_ES[lastLiquidationData._month]||''} ${lastLiquidationData._year}`, 14, 62);
     const rows = (lastLiquidationData.visits || []).map(x => [x.date, x.patient, x.record_type, formatCurrency(x.amount)]);
-    doc.autoTable({ startY: 66, head: [['Fecha','Paciente','Tipo de Nota','Valor']], body: rows, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8 } });
+    doc.autoTable({ startY: 70, head: [['Fecha','Paciente','Tipo de Nota','Valor']], body: rows, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8 } });
     const y = doc.lastAutoTable.finalY + 10;
     doc.setFontSize(13); doc.setTextColor(34,197,94); doc.text(`Total: ${formatCurrency(lastLiquidationData.totalAmount)} (${lastLiquidationData.totalValidated} visitas validadas)`, 14, y);
-    if (lastLiquidationData.totalPending > 0) { doc.setFontSize(9); doc.setTextColor(220,38,38); doc.text(`Advertencia: ${lastLiquidationData.totalPending} nota(s) pendiente(s) de validacion NO incluidas.`, 14, y + 8); }
-    doc.save(`Liquidacion_Visitas_${profName}_${lastLiquidationData._month}_${lastLiquidationData._year}.pdf`); showToast('PDF generado');
+    doc.setFontSize(8); doc.setTextColor(120);
+    doc.text(`El contratista declara estar afiliado al Sistema de Seguridad Social (salud, pension y ARL) y es responsable de sus aportes. No existe subordinacion ni exclusividad.`, 105, y + 12, null, null, 'center');
+    doc.save(`Liquidacion_Visitas_${profName.replace(/\s+/g,'_')}_${lastLiquidationData._month}_${lastLiquidationData._year}.pdf`); showToast('PDF generado');
 }
 
 async function calculateInvoice() {
@@ -1845,21 +2149,41 @@ async function calculateInvoice() {
 function renderInvoice(data) {
     const container = document.getElementById('invoiceResult'); container.classList.remove('hidden');
     const detailsHtml = data.details.map(d => `<tr><td>${escapeHtml(d.date)}</td><td>${escapeHtml(d.service)}</td><td>${escapeHtml(d.auxiliaries || 'Equipo Vital Hogar')}</td><td>${formatCurrency(d.amount)}</td></tr>`).join('');
-    container.innerHTML = `<h4 style="color:var(--primary);">Cuenta de Cobro Generada</h4><p style="color:#94a3b8; font-size:0.9rem; margin:5px 0 15px;">Período: ${MESES_ES[data._month]||''} ${data._year} — Paciente: ${escapeHtml(data.patient?.full_name||'')}</p><table><thead><tr><th>Fecha</th><th>Servicio</th><th>Personal</th><th>Valor</th></tr></thead><tbody>${detailsHtml}</tbody></table><div style="margin-top:15px; text-align:right;"><h3 style="color:var(--primary);">Total: ${formatCurrency(data.totalAmount)}</h3><button class="btn-primary btn-warning" style="width:auto; display:inline-block; margin-top:8px;" onclick="generateInvoicePDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button></div>`;
+    const p = data.patient || {};
+    container.innerHTML = `<h4 style="color:var(--primary);">Cuenta de Cobro Generada</h4>
+    <p style="color:#94a3b8; font-size:0.9rem; margin:5px 0;">Paciente: ${escapeHtml(p.full_name||'')} — ${p.document_type || 'CC'} ${p.document_number || ''}${p.address ? ' · ' + escapeHtml(p.address) : ''}${p.altitude_profiles?.city_name ? ' · ' + escapeHtml(p.altitude_profiles.city_name) : ''}</p>
+    <p style="color:#94a3b8; font-size:0.9rem; margin:5px 0 15px;">Período: ${MESES_ES[data._month]||''} ${data._year} — Solo servicios VALIDADOS</p>
+    <table><thead><tr><th>Fecha</th><th>Servicio</th><th>Personal</th><th>Valor</th></tr></thead><tbody>${detailsHtml}</tbody></table><div style="margin-top:15px; text-align:right;"><h3 style="color:var(--primary);">Total: ${formatCurrency(data.totalAmount)}</h3><button class="btn-primary btn-warning" style="width:auto; display:inline-block; margin-top:8px;" onclick="generateInvoicePDF()"><i class="fas fa-file-pdf"></i> Descargar PDF</button></div>`;
 }
-function generateInvoicePDF() {
+async function generateInvoicePDF() {
     if (!lastInvoiceData) return;
     const { jsPDF } = window.jspdf; const doc = new jsPDF();
-    const patName = document.getElementById('invoicePatient').selectedOptions[0].text;
+    const company = await getCompany();
+    const p = lastInvoiceData.patient || {};
     try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
     doc.setFontSize(18); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
-    doc.setFontSize(12); doc.setTextColor(0); doc.text("Cuenta de Cobro", 105, 30, null, null, "center");
-    doc.text(`Paciente: ${patName}`, 14, 45); doc.text(`Periodo: ${MESES_ES[lastInvoiceData._month]||''} ${lastInvoiceData._year}`, 14, 52);
+    if (company?.responsible_name) {
+        doc.setFontSize(8); doc.setTextColor(80);
+        doc.text(`${company.responsible_name} — ${company.doc_type || 'CC'} ${company.doc_number || ''}`, 105, 27, null, null, "center");
+        const l2 = [company.address, company.city ? (company.city + ', Colombia') : 'Colombia', company.phone, company.email].filter(Boolean).join(' · ');
+        doc.text(l2, 105, 31, null, null, "center");
+        doc.text(company.tax_regime || 'No responsable de IVA', 105, 35, null, null, "center");
+    }
+    doc.setFontSize(12); doc.setTextColor(0); doc.text("CUENTA DE COBRO", 105, 43, null, null, "center");
+    doc.setFontSize(10);
+    doc.text(`Paciente: ${p.full_name || '-'} — ${p.document_type || 'CC'} ${p.document_number || '-'}`, 14, 56);
+    doc.text(`Direccion: ${p.address || '-'}${p.neighborhood ? ' (' + p.neighborhood + ')' : ''} — ${p.altitude_profiles?.city_name || ''}`, 14, 62);
+    doc.text(`Periodo: ${MESES_ES[lastInvoiceData._month]||''} ${lastInvoiceData._year}`, 14, 68);
     const tableData = lastInvoiceData.details.map(d => [d.date, d.service, d.auxiliaries || 'Equipo Vital Hogar', formatCurrency(d.amount)]);
-    doc.autoTable({ startY: 60, head: [['Fecha','Servicio','Personal','Valor']], body: tableData, headStyles: { fillColor: [34,197,94] } });
+    doc.autoTable({ startY: 74, head: [['Fecha','Servicio','Personal','Valor']], body: tableData, headStyles: { fillColor: [34,197,94] } });
     const y = doc.lastAutoTable.finalY + 10;
-    doc.setFontSize(14); doc.setTextColor(34,197,94); doc.text(`Total: ${formatCurrency(lastInvoiceData.totalAmount)}`, 14, y);
-    doc.save(`Cuenta_Cobro_${patName}_${lastInvoiceData._month}_${lastInvoiceData._year}.pdf`); showToast('PDF generado');
+    doc.setFontSize(14); doc.setTextColor(34,197,94); doc.text(`TOTAL A PAGAR: ${formatCurrency(lastInvoiceData.totalAmount)}`, 14, y);
+    doc.setFontSize(9); doc.setTextColor(80);
+    const sigY = Math.min(y + 30, 250);
+    doc.line(120, sigY, 180, sigY);
+    doc.text(`${company?.responsible_name || 'Vital Hogar Pro'}`, 150, sigY + 6, null, null, 'center');
+    doc.text(`${company?.doc_type || 'CC'} ${company?.doc_number || ''} — Responsable del cobro`, 150, sigY + 11, null, null, 'center');
+    doc.save(`Cuenta_Cobro_${(p.full_name || 'paciente').replace(/\s+/g,'_')}_${lastInvoiceData._month}_${lastInvoiceData._year}.pdf`); showToast('PDF generado');
 }
 
 // ============ ADMIN: INFORME MENSUAL ============
@@ -1874,15 +2198,18 @@ async function generateMonthlyPDF() {
         const r = await apiFetch(`${API_URL}/api/reports/${patId}/${month}/${year}`); const d = await r.json();
         if (!d.success) { status.textContent = ''; return showToast(d.message || 'Error', 'error'); }
         const { jsPDF } = window.jspdf; const doc = new jsPDF();
+        const company = await getCompany();
         const patName = d.data.patient?.full_name || 'Paciente';
         try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
         doc.setFontSize(18); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
-        doc.setFontSize(12); doc.setTextColor(0); doc.text("Informe Mensual Consolidado", 105, 30, null, null, "center");
-        doc.text(`Paciente: ${patName}`, 14, 45); doc.text(`Ciudad: ${d.data.patient?.altitude_profiles?.city_name || 'N/A'}`, 14, 52); doc.text(`Periodo: ${MESES_ES[month]||''} ${year}`, 14, 59);
+        if (company?.responsible_name) { doc.setFontSize(8); doc.setTextColor(80); doc.text(`${company.responsible_name} — ${company.doc_type || 'CC'} ${company.doc_number || ''} — ${company.tax_regime || ''}`, 105, 27, null, null, "center"); }
+        doc.setFontSize(12); doc.setTextColor(0); doc.text("Informe Mensual Consolidado", 105, 34, null, null, "center");
+        doc.setFontSize(10);
+        doc.text(`Paciente: ${patName}`, 14, 46); doc.text(`Ciudad: ${d.data.patient?.altitude_profiles?.city_name || 'N/A'}`, 14, 52); doc.text(`Periodo: ${MESES_ES[month]||''} ${year}`, 14, 58);
         const rows = [];
         (d.data.records || []).forEach(rec => rows.push([(rec.created_at||'').slice(0,10), 'Nota Auxiliar', [rec.blood_pressure && `PA ${rec.blood_pressure}`, rec.heart_rate && `FC ${rec.heart_rate}`, rec.spo2 && `SpO2 ${rec.spo2}`, rec.eva_score ? `EVA ${rec.eva_score}` : '', rec.notes].filter(Boolean).join(' | ') || 'Sin detalles']));
         (d.data.profRecords || []).forEach(rec => rows.push([(rec.created_at||'').slice(0,10), rec.record_type || 'Nota Profesional', `${rec.professionals?.full_name || ''}: ${[rec.subjective, rec.analysis].filter(Boolean).join(' ')}`.slice(0, 150)]));
-        doc.autoTable({ startY: 66, head: [['Fecha','Tipo','Resumen']], body: rows, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 35 } } });
+        doc.autoTable({ startY: 64, head: [['Fecha','Tipo','Resumen']], body: rows, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 8, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 25 }, 1: { cellWidth: 35 } } });
         let y = doc.lastAutoTable.finalY + 20;
         if (y > 230) { doc.addPage(); y = 30; }
         try { doc.addImage(sig, 'JPEG', 40, y, 60, 25); } catch(e) {}
@@ -1938,12 +2265,12 @@ async function reportAdverseEvent() {
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); sessionAdverseEvents.push({ hora, descripcion: desc.trim() }); showToast('Evento registrado localmente (sin conexión)', 'warning'); } }
 }
 
-// ============ AUXILIAR: PACIENTES Y TURNOS ============
+// ============ AUXILIAR ============
 async function loadAuxPatients() {
     try {
         const r = await apiFetch(`${API_URL}/api/patients`); const d = await r.json();
         const active = (d.data || []).filter(p => p.is_active !== false);
-        document.getElementById('auxPatientList').innerHTML = active.length ? active.map(p => `<div class="patient-card" onclick='selectPatient(${JSON.stringify({ id: p.id, full_name: p.full_name, document_number: p.document_number, altitude_profiles: p.altitude_profiles }).replace(/'/g, "&#39;")})'><strong>🧑 ${escapeHtml(p.full_name)}</strong><br><small>📍 ${escapeHtml(p.altitude_profiles?.city_name || 'Sin ciudad')} · EPS: ${escapeHtml(p.eps_name || 'N/A')}</small></div>`).join('') : '<p style="color:#94a3b8; text-align:center;">No hay pacientes activos.</p>';
+        document.getElementById('auxPatientList').innerHTML = active.length ? active.map(p => `<div class="patient-card" onclick='selectPatient(${JSON.stringify({ id: p.id, full_name: p.full_name, document_number: p.document_number, document_type: p.document_type, altitude_profiles: p.altitude_profiles }).replace(/'/g, "&#39;")})'><strong>🧑 ${escapeHtml(p.full_name)}</strong><br><small>📍 ${escapeHtml(p.address || 'Sin dirección')}${p.neighborhood ? ' · ' + escapeHtml(p.neighborhood) : ''} · ${escapeHtml(p.altitude_profiles?.city_name || 'Sin ciudad')}</small><br><small>🏠 ${escapeHtml(p.arrival_references || '')}${p.access_notes ? ' · 🔑 ' + escapeHtml(p.access_notes) : ''}${p.pets ? ' · 🐾 ' + escapeHtml(p.pets) : ''}</small><br><small>EPS: ${escapeHtml(p.eps_name || 'N/A')}</small></div>`).join('') : '<p style="color:#94a3b8; text-align:center;">No hay pacientes activos.</p>';
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error cargando pacientes', 'error'); } }
 }
 async function loadAuxScheduledShifts() {
@@ -1952,7 +2279,7 @@ async function loadAuxScheduledShifts() {
         const c = document.getElementById('auxScheduledList');
         if (!d.data || d.data.length === 0) { c.innerHTML = '<p style="color:#94a3b8; text-align:center;">No hay turnos publicados para ti.</p>'; return; }
         scheduledShiftsMap = {};
-        c.innerHTML = d.data.map(s => { scheduledShiftsMap[s.id] = s; return `<div class="card" style="cursor:pointer; border-left:4px solid var(--info); margin-bottom:10px;"><strong>${escapeHtml(new Date(s.shift_date).toLocaleDateString('es-CO'))}</strong> - ${escapeHtml(s.patients?.full_name||'')}<br><small>Turno: ${escapeHtml(s.shift_type||'')}</small><button class="btn-small btn-primary" style="margin-top:10px;" onclick="acceptShiftById('${s.id}')">Aceptar y Atender</button></div>`; }).join('');
+        c.innerHTML = d.data.map(s => { scheduledShiftsMap[s.id] = s; return `<div class="card" style="cursor:pointer; border-left:4px solid var(--info); margin-bottom:10px;"><strong>${escapeHtml(new Date(s.shift_date + 'T12:00:00').toLocaleDateString('es-CO'))}</strong> - ${escapeHtml(s.patients?.full_name||'')}<br><small>📍 ${escapeHtml(s.patients?.address || '')}${s.patients?.neighborhood ? ' · ' + escapeHtml(s.patients.neighborhood) : ''}</small><br><small>Turno: ${escapeHtml(s.shift_type||'')}</small><button class="btn-small btn-primary" style="margin-top:10px;" onclick="acceptShiftById('${s.id}')">Aceptar y Atender</button></div>`; }).join('');
     } catch (e) { if (e.message !== 'Sesión expirada') console.error(e); }
 }
 function acceptShiftById(shiftId) { const s = scheduledShiftsMap[shiftId]; if (!s) return showToast('Turno no encontrado', 'error'); showToast('Turno aceptado'); selectPatient(s.patients); }
@@ -2046,6 +2373,21 @@ async function saveExceptionalClose() {
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
 
+// --- 📜 REVISIÓN DE ADDENDAS (ADMIN) ---
+function openAddendaReview(type, id) {
+    const list = type === 'shift' ? _supportShifts : _supportNotes;
+    const item = list.find(x => x.id === id);
+    if (!item) return showToast('No encontrado', 'error');
+    const addendas = type === 'shift' ? (item.closing_addendas || []) : (item.addendas || []);
+    const body = document.getElementById('addendaReviewBody');
+    if (!addendas.length) { body.innerHTML = '<p>No hay addendas.</p>'; }
+    else {
+        body.innerHTML = addendas.map((a, i) => `<div class="addenda-item ${a.admin_validated ? 'validated' : 'pending'}"><strong>ADDENDA ${i + 1}</strong> — ${new Date(a.fecha).toLocaleString('es-CO')} ${a.admin_validated ? '· ✅ Validada' : '· ⏳ Pendiente'}<br>👤 ${escapeHtml(a.auxName || a.profName || '')} — ${escapeHtml(a.auxDoc || a.profDoc || '')}<br><br><strong>❌ Omitió registrar:</strong> ${escapeHtml(a.descriptionOmitted)}<br><strong>✅ Realmente ocurrió:</strong> ${escapeHtml(a.descriptionActual)}</div>`).join('');
+    }
+    document.getElementById('addendaReviewModal').classList.add('show');
+}
+function closeAddendaReviewModal() { document.getElementById('addendaReviewModal').classList.remove('show'); }
+
 // ============ AUXILIAR: FLUJO DE TURNO ============
 function toggleCustomShift() { document.getElementById('customShiftTimes').classList.toggle('hidden', getVal('shiftType') !== 'personalizado'); }
 
@@ -2076,7 +2418,7 @@ async function startShift() {
         if (d.success) {
             currentShiftId = d.data.id; shiftStartTime = new Date();
             sessionRecords = []; sessionAdverseEvents = [];
-            lastShiftData = { start: { paciente: selectedPatient.full_name, pacienteDoc: selectedPatient.document_number || '', auxiliar: currentUser.full_name, auxiliarDoc: currentUser.document_number || '', auxiliarCard: currentUser.professional_card || '', tipo: shiftType, recepcion: getVal('patientReceivedStatus'), fecha: shiftStartTime.toLocaleString('es-CO') } };
+            lastShiftData = { start: { paciente: selectedPatient.full_name, pacienteDoc: (selectedPatient.document_type || 'CC') + ' ' + (selectedPatient.document_number || ''), auxiliar: currentUser.full_name, auxiliarDoc: currentUser.document_number || '', auxiliarCard: currentUser.professional_card || '', tipo: shiftType, recepcion: getVal('patientReceivedStatus'), fecha: shiftStartTime.toLocaleString('es-CO') } };
             showToast('✅ Turno iniciado');
             document.getElementById('auxShiftStart').classList.add('hidden');
             document.getElementById('auxClinicalForm').classList.remove('hidden');
@@ -2180,8 +2522,7 @@ function addMeal() {
     document.getElementById('mealList').appendChild(div);
 }
 function addMedication() {
-    const div = document.createElement('div');
-    div.className = 'med-item med-row';
+    const div = document.createElement('div');div.className = 'med-item med-row';
     div.innerHTML = '<input type="text" class="med-name" placeholder="Medicamento">' +
         '<input type="text" class="med-dose" placeholder="Dosis">' +
         '<input type="text" class="med-prescriber" placeholder="Prescrito por (Médico)">' +
@@ -2343,7 +2684,7 @@ function generateClosurePDF() {
     doc.setFontSize(16); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 18, null, null, "center");
     doc.setFontSize(11); doc.setTextColor(0); doc.text("RESUMEN CLINICO DEL TURNO - Evidencia del Servicio Prestado", 105, 27, null, null, "center");
     doc.setFontSize(9);
-    doc.text(`Paciente: ${s.paciente || c.paciente || '-'}${s.pacienteDoc ? ' — CC ' + s.pacienteDoc : ''}`, 14, 38);
+    doc.text(`Paciente: ${s.paciente || c.paciente || '-'}${s.pacienteDoc ? ' — ' + s.pacienteDoc : ''}`, 14, 38);
     doc.text(`Auxiliar de Enfermeria: ${s.auxiliar || c.auxiliaryName || '-'} — CC ${s.auxiliarDoc || c.auxiliaryIdNumber || '-'}`, 14, 44);
     doc.text(`Registro ReTHUS: ${s.auxiliarCard || '(pendiente de registrar)'}`, 14, 50);
     doc.text(`Turno: ${s.tipo || '-'} | Inicio: ${s.fecha || '-'} | Cierre: ${c.fecha || '-'}`, 14, 56);
@@ -2358,8 +2699,7 @@ function generateClosurePDF() {
         doc.autoTable({ startY: y, head: [['Actividad / Cuidado','Hora','Detalles']], body: acts.map(a => [a.actividad||'', a.hora||'-', Object.entries(a).filter(([k,v]) => !['actividad','hora'].includes(k) && v).map(([k,v]) => `${k}: ${v}`).join(' | ') || '-']), headStyles: { fillColor: [59,130,246] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
         y = doc.lastAutoTable.finalY + 6;
     }
-    const meds = (sn.actividades?.medicamentos) || [];
-    if (meds.length) {
+    const meds = (sn.actividades?.medicamentos) || []; if (meds.length) {
         doc.autoTable({ startY: y, head: [['Medicamento','Dosis','Via','Hora','Prescrito por']], body: meds.map(m => [m.medicamento||'-', m.dosis||'-', m.via||'-', m.hora||'-', m.prescritoPor||'-']), headStyles: { fillColor: [245,158,11] }, styles: { fontSize: 7 }, margin: { left: 14, right: 14 } });
         y = doc.lastAutoTable.finalY + 6;
     }
@@ -2399,7 +2739,7 @@ async function loadProfScheduledShifts() {
         const r = await apiFetch(`${API_URL}/api/scheduled-shifts`); const d = await r.json();
         const mine = (d.data || []).filter(x => x.professional_id === currentUser.id && x.shift_type === 'Visita Domiciliaria' && x.status === 'Programado');
         const el = document.getElementById('profScheduledList'); if (!el) return;
-        el.innerHTML = mine.length ? mine.map(x => `<div class="sub-activity">📅 <strong>${escapeHtml(new Date(x.shift_date).toLocaleDateString('es-CO'))}</strong> — ${escapeHtml(x.patients?.full_name||'')} (${escapeHtml(x.shift_type)})</div>`).join('') : '<p style="color:#94a3b8;">No tienes visitas programadas.</p>';
+        el.innerHTML = mine.length ? mine.map(x => `<div class="sub-activity">📅 <strong>${escapeHtml(new Date(x.shift_date + 'T12:00:00').toLocaleDateString('es-CO'))}</strong> — ${escapeHtml(x.patients?.full_name||'')} (${escapeHtml(x.shift_type)})</div>`).join('') : '<p style="color:#94a3b8;">No tienes visitas programadas.</p>';
     } catch (e) { if (e.message !== 'Sesión expirada') console.error(e); }
 }
 async function loadProfPatients() {
@@ -2407,7 +2747,7 @@ async function loadProfPatients() {
         const r = await apiFetch(`${API_URL}/api/patients`); const d = await r.json();
         patientsRegistry = d.data || [];
         const active = patientsRegistry.filter(p => p.is_active !== false);
-        document.getElementById('profPatientList').innerHTML = active.length ? active.map(p => `<div class="patient-card" onclick="selectProfPatientById('${p.id}')"><strong>🧑 ${escapeHtml(p.full_name)}</strong><br><small>CIE-10: ${escapeHtml(p.cie_10_code || 'N/A')} · EPS: ${escapeHtml(p.eps_name || 'N/A')}</small></div>`).join('') : '<p style="color:#94a3b8; text-align:center;">No hay pacientes activos.</p>';
+        document.getElementById('profPatientList').innerHTML = active.length ? active.map(p => `<div class="patient-card" onclick="selectProfPatientById('${p.id}')"><strong>🧑 ${escapeHtml(p.full_name)}</strong><br><small>📍 ${escapeHtml(p.address || 'Sin dirección')}${p.neighborhood ? ' · ' + escapeHtml(p.neighborhood) : ''}</small><br><small>CIE-10: ${escapeHtml(p.cie_10_code || 'N/A')} · EPS: ${escapeHtml(p.eps_name || 'N/A')}</small></div>`).join('') : '<p style="color:#94a3b8; text-align:center;">No hay pacientes activos.</p>';
     } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error cargando pacientes', 'error'); } }
 }
 function selectProfPatientById(id) { const p = patientsRegistry.find(x => x.id === id); if (p) selectProfPatient(p); }
@@ -2426,6 +2766,7 @@ async function checkPlanBanner() {
     if (!banner) return;
     banner.classList.add('hidden');
     banner.className = 'plan-banner hidden';
+    _activePlanForPatient = null;
     try {
         const r = await apiFetch(`${API_URL}/api/treatment-plans`); const d = await r.json();
         const plans = (d.success ? d.data : []).filter(p => p.patient_id === selectedPatient.id && p.is_active && p.specialty_code === currentUser.specialty_name);
@@ -2434,6 +2775,7 @@ async function checkPlanBanner() {
         const usageRes = await apiFetch(`${API_URL}/api/treatment-plans/usage/${plan.id}`);
         const usage = (await usageRes.json()).data;
         const fuera = usage.used >= usage.authorized;
+        _activePlanForPatient = { planId: plan.id, used: usage.used, authorized: usage.authorized, outside: fuera };
         const ultima = usage.used === usage.authorized - 1;
         banner.classList.remove('hidden');
         banner.className = `plan-banner ${fuera ? 'warn' : ''}`;
@@ -2569,9 +2911,10 @@ async function saveProfRecord() {
         vitalSigns: { bp: getVal('profBP'), hr: getVal('profHR'), visitaInicio: getVal('visitStart'), visitaFin: getVal('visitEnd'), duracion: getVal('visitDuration'), motivo: getVal('visitReason'), consentimiento: { procedimiento: getVal('profConsentProcedure'), aceptado: true }, testigoParentesco: famRelRaw },
         subjective: S, objective: O, analysis: A, plan: P,
         professionalSignature: getSigData('profSigCanvas'), familySignature: getSigData('famProfSigCanvas'),
-        familyName: getVal('profFamName').trim(), familyId: getVal('profFamId')
+        familyName: getVal('profFamName').trim(), familyId: getVal('profFamId'),
+        outsideJustification: justificacion
     };
-    lastProfRecordData = { ...payload, patientName: selectedPatient.full_name, patientDoc: selectedPatient.document_number || '', profName: currentUser.full_name, profDoc: currentUser.document_number || '', specialty: sp, tarjeta: currentUser.professional_card || '', cups, fecha: new Date().toLocaleString('es-CO'), secciones, famRel: famRelRaw };
+    lastProfRecordData = { ...payload, patientName: selectedPatient.full_name, patientDoc: (selectedPatient.document_type || 'CC') + ' ' + (selectedPatient.document_number || ''), profName: currentUser.full_name, profDoc: currentUser.document_number || '', specialty: sp, tarjeta: currentUser.professional_card || '', cups, fecha: new Date().toLocaleString('es-CO'), secciones, famRel: famRelRaw };
     try {
         const r = await apiFetch(`${API_URL}/api/professional-records`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(payload) });
         const d = await r.json();
@@ -2580,27 +2923,28 @@ async function saveProfRecord() {
             document.getElementById('generateProfPDFBtn').classList.remove('hidden');
             loadMyNotes();
         }
-        else showToast(d.message || 'Error', 'error');
-    } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
+        else showToast(d.message || 'Error', 'error');  } catch (e) { if (e.message !== 'Sesión expirada') { console.error(e); showToast('Error de conexión', 'error'); } }
 }
-function generateProfPDF() {
+async function generateProfPDF() {
     if (!lastProfRecordData) return showToast('Guarda primero la nota', 'error');
     const d = lastProfRecordData;
+    const company = await getCompany();
     const { jsPDF } = window.jspdf; const doc = new jsPDF();
     try { doc.addImage(LOGO_URL, 'JPEG', 14, 10, 30, 30); } catch(e) {}
     doc.setFontSize(18); doc.setTextColor(34,197,94); doc.text("VITAL HOGAR PRO", 105, 20, null, null, "center");
+    if (company?.responsible_name) { doc.setFontSize(8); doc.setTextColor(80); doc.text(`${company.responsible_name} — ${company.doc_type || 'CC'} ${company.doc_number || ''} — ${company.tax_regime || ''}`, 105, 27, null, null, "center"); }
     doc.setFontSize(12); doc.setTextColor(0);
-    doc.text(d.cups ? `Visita Domiciliaria (CUPS ${d.cups})` : "Nota de Evolucion Profesional", 105, 30, null, null, "center");
+    doc.text(d.cups ? `Visita Domiciliaria (CUPS ${d.cups})` : "Nota de Evolucion Profesional", 105, 36, null, null, "center");
     doc.setFontSize(10);
-    doc.text(`Paciente: ${d.patientName}${d.patientDoc ? ' — CC ' + d.patientDoc : ''}`, 14, 45);
-    doc.text(`Profesional: ${d.profName} (${d.specialty}) — CC ${d.profDoc || '-'}`, 14, 52);
-    doc.text(`Tarjeta Profesional: ${d.tarjeta || '(pendiente de registrar)'}`, 14, 59);
-    doc.text(`Fecha: ${d.fecha}`, 14, 66);
-    doc.text(`Motivo: ${d.vitalSigns?.motivo || '-'} | Duracion: ${d.vitalSigns?.duracion || '-'} (${d.vitalSigns?.visitaInicio || '?'} a ${d.vitalSigns?.visitaFin || '?'})`, 14, 73);
-    if (d.imc) doc.text(`PA ${d.vitalSigns?.bp || '-'} · FC ${d.vitalSigns?.hr || '-'} · Peso ${d.weight || '-'} kg · IMC ${d.imc}`, 14, 80);
+    doc.text(`Paciente: ${d.patientName}${d.patientDoc ? ' — ' + d.patientDoc : ''}`, 14, 50);
+    doc.text(`Profesional: ${d.profName} (${d.specialty}) — CC ${d.profDoc || '-'}`, 14, 57);
+    doc.text(`Tarjeta Profesional: ${d.tarjeta || '(pendiente de registrar)'}`, 14, 64);
+    doc.text(`Fecha: ${d.fecha}`, 14, 71);
+    doc.text(`Motivo: ${d.vitalSigns?.motivo || '-'} | Duracion: ${d.vitalSigns?.duracion || '-'} (${d.vitalSigns?.visitaInicio || '?'} a ${d.vitalSigns?.visitaFin || '?'})`, 14, 78);
+    if (d.imc) doc.text(`PA ${d.vitalSigns?.bp || '-'} · FC ${d.vitalSigns?.hr || '-'} · Peso ${d.weight || '-'} kg · IMC ${d.imc}`, 14, 85);
     const body = (d.secciones && d.secciones.length ? d.secciones : [['Nota', `${d.subjective || ''} ${d.objective || ''} ${d.analysis || ''} ${d.plan || ''}`]])
         .map(([k, v]) => [k, (v && String(v).trim()) ? String(v) : '(No registrado)']);
-    doc.autoTable({ startY: 88, head: [['Seccion', 'Contenido']], body, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 9, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 55 } } });
+    doc.autoTable({ startY: 92, head: [['Seccion', 'Contenido']], body, headStyles: { fillColor: [34,197,94] }, styles: { fontSize: 9, cellWidth: 'wrap' }, columnStyles: { 0: { cellWidth: 55 } } });
     let y = doc.lastAutoTable.finalY + 15;
     drawLegalSignatures(doc, y, { docType: 'profesional', auxName: d.profName || '-', auxDoc: d.profDoc || '-', auxCard: d.tarjeta || '-', auxSig: d.professionalSignature || null, famName: d.familyName || '-', famDoc: d.familyId || '-', famRel: d.famRel || 'Testigo', famSig: d.familySignature || null });
     doc.save(`Visita_Domiciliaria_${d.patientName.replace(/\s+/g,'_')}_${Date.now()}.pdf`); showToast('PDF generado');
@@ -2650,7 +2994,7 @@ async function deleteProf(id) {
     showConfirmModal({
         title: 'Eliminar Profesional',
         message: `Vas a eliminar permanentemente a "${prof.full_name}".`,
-        warning: '⚠️ Se borrarán TAMBIÉN sus turnos, registros, firmas y mensajes. Usa solo con datos de PRUEBA. Para usuarios reales usa "Archivar".',
+        warning: '⚠️ Se borrará TAMBIÉN su acceso. Usa solo con datos de PRUEBA. Para usuarios reales usa "Archivar".',
         requireText: 'ELIMINAR',
         onConfirm: async () => {
             try {
@@ -2696,7 +3040,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const editProfSaveBtn = document.getElementById('editProfSaveBtn');
     if (editProfSaveBtn) editProfSaveBtn.addEventListener('click', async () => {
         if (!_editingProfId) return;
-        const body = { fullName: getVal('epName').trim(), documentNumber: getVal('epDoc').trim(), professionalCard: getVal('epCard').trim(), specialtyName: getVal('epSpec') };
+        const body = { fullName: getVal('epName').trim(), documentNumber: getVal('epDoc').trim(), professionalCard: getVal('epCard').trim(), specialtyName: getVal('epSpec'), visitFee: getVal('epVisitFee') !== '' ? getVal('epVisitFee') : undefined };
         const nuevaPass = getVal('epPass');
         if (nuevaPass) body.newPassword = nuevaPass;
         try {
@@ -2709,7 +3053,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const editPatSaveBtn = document.getElementById('editPatSaveBtn');
     if (editPatSaveBtn) editPatSaveBtn.addEventListener('click', async () => {
         if (!_editingPatId) return;
-        const body = { fullName: getVal('etName').trim(), documentNumber: getVal('etDoc').trim(), cityName: getVal('etCity'), familyName: getVal('etFam'), contactPhone: getVal('etCel'), cie10Code: getVal('etCie'), epsName: getVal('etEps'), epsAuthorization: getVal('etAuth') };
+        const body = collectPatForm();
         try {
             const r = await apiFetch(`${API_URL}/api/patients/${_editingPatId}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
             const d = await r.json();
@@ -2743,6 +3087,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!_changeEmailProfId) return;
         const e1 = getVal('ceNew1').trim(), e2 = getVal('ceNew2').trim();
         if (!e1 || !e2) return showToast('Escribe el correo nuevo en ambos campos', 'error');
+        if (e1.toLowerCase() !== e2.toLowerCase()) return showToast('Los correos no coinciden', 'error');
         if (!document.getElementById('ceNotifyAck').checked) return showToast('Confirma que notificarás al usuario', 'warning');
         try {
             const r = await apiFetch(`${API_URL}/api/professionals/${_changeEmailProfId}/change-email`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ newEmail: e1, newEmailConfirm: e2 }) });
