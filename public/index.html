@@ -35,7 +35,8 @@ h4 { border-bottom: 1px solid var(--border); padding-bottom: 8px; margin-top: 20
 .btn-info { background: var(--info); }
 .btn-secondary { background: var(--border); }
 .btn-archive { background: #6b7280; }
-.form-group { margin-bottom: 14px; position: relative; }
+.form-group { margin-bottom: 14px; position: relative; display: flex; flex-direction: column; }
+.form-group > input, .form-group > select { margin-top: auto; }
 .form-group label { display: block; font-size: 0.75rem; text-transform: uppercase; color: #94a3b8; margin-bottom: 4px; font-weight: 600; }
 .form-group input, .form-group select, .form-group textarea { width: 100%; background: var(--bg-dark); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; color: var(--text-main); font-size: 1rem; box-sizing: border-box; }
 .form-group input:focus, .form-group select:focus, .form-group textarea:focus { outline: none; border-color: var(--primary); }
